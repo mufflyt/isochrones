@@ -152,7 +152,7 @@ hereR::isoline(
 ####
 # Tools
 
-We used github LFS (large file storage).  
+We used github LFS (large file storage).  2GB is the largest that LFS can handle.  Do NOT exceed. 
 
 ```r
 git lfs install
