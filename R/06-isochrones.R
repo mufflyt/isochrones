@@ -10,9 +10,9 @@ source("R/01-setup.R")
 
 input_file <- readr::read_csv("data/05-geocode-cleaning/end_inner_join_postmastr_clinician_data.csv") %>%
   dplyr::mutate(id = row_number()) %>%
-  dplyr::filter(postmastr.name.x != "Hye In Park, MD") %>%
+  dplyr::filter(postmastr.name.x != "Hye In Park, MD") %>% # for testing
   dplyr::distinct(here.address, .keep_all = TRUE) %>%
-  dplyr::filter(postmastr.pm.state == "CO" & postmastr.pm.city == "AURORA")
+  dplyr::filter(postmastr.pm.state == "CO" & postmastr.pm.city == "AURORA") # For testing with a small sample
 
 #**********************************************
 # TESTING ISOCHRONES WITH A ONE SECOND ISOCHRONE
@@ -29,7 +29,7 @@ input_file_no_error_rows <- input_file %>%
   dplyr::filter(!id %in% error_rows)
 
 # Number of rows of unique physician points * 4 (number of isochrones)
-nrow(input_file_no_error_rows) * 4 # 8,544
+nrow(input_file_no_error_rows) * 4 
 
 #**************************
 #* HERE API CREATES ISOCHRONES
@@ -46,8 +46,6 @@ class(isochrones_sf)
 #This takes 15 minutes for some reasons
 isochrones_df <- sf::st_read("data/isochrones/isochrones_ 20231223111020 _chunk_ 1 _to_ 4") %>%
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering.
-  #dplyr::distinct(id, rank, .keep_all = TRUE)
-  #dplyr::select(woe_id, woe_name, latitude, longitude, fips, postal, iso_a2, id, rank, departure, arrival, range) %>% filter(woe_name == "Colorado")
 
 # Clip the isochrones to the USA border.
 usa_borders <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf") %>%
