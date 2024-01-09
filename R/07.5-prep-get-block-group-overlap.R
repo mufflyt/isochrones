@@ -1,6 +1,7 @@
 #######################
 source("R/01-setup.R")
 #######################
+#Please check data/07.5-prep-get-block-group-overlap to see if these have all been created already.  
 
 #This code downloads, transforms, and writes shapefiles for block groups in the USA for multiple years, including 2022, 2021, 2020, and 2019. It then proceeds to download block group data for earlier years (from 2018 to 2008) for the entire USA by merging state-level data, ensuring a comprehensive dataset for block groups spanning these years.
 
