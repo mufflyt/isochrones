@@ -43,8 +43,7 @@ isochrones_sf <- process_and_save_isochrones(input_file_no_error_rows)
 dim(isochrones_sf)
 class(isochrones_sf)
 
-#This takes 15 minutes for some reasons
-isochrones_df <- sf::st_read("data/isochrones/isochrones_ 20231223111020 _chunk_ 1 _to_ 4") %>%
+isochrones_df <- sf::st_read("data/06-isochrones/isochrones_ 20231223111020 _chunk_ 1 _to_ 4/isochrones.shp") %>%
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering.
 
 # Clip the isochrones to the USA border.
