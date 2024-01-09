@@ -2,3 +2,13 @@
 .Rhistory
 .RData
 .Ruserdata
+*.shp
+*.dbf
+*.html
+data/*
+data/shp/block-groups/US_blck_grp_2021.shp
+data/07-isochrone-mapping/*
+data/07.5-prep-get-block-group-overlap/*
+data/08-get-block-group-overlap/*
+data/tigris/*
+figures/*
