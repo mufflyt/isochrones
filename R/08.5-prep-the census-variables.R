@@ -1,7 +1,8 @@
 #######################
 source("R/01-setup.R")
 #######################
-# TODO: get block variables for non-decennial census years.
+# TODO: get block variables of total female population per block group for non-decennial census years.
+
 # This code is focused on retrieving and preparing census variables for analysis. It starts by loading demographic and housing characteristic variables for the 2020 decennial census. The code filters and cleans these variables to include only the data related to females, excluding males and irrelevant annotations, and then writes the cleaned data to a CSV file. It also extracts ACS (American Community Survey) variables for 2020, specifically targeting variables related to population demographics. The code selects and stores these variables in a data frame and saves them as a CSV file. Overall, the code prepares demographic data for further analysis, focusing on gender and race-related variables.
 
 #************************************
@@ -54,9 +55,10 @@ census_variables_prepped <- vars %>%
   unite(complete_description, label, description, sep = ", ", remove = FALSE, na.rm = FALSE) %>%
   mutate(abbreviated = word(description, 1, sep = "\\s+"), .after = ifelse("description" %in% names(.), "description", last_col())) %>%
   select(-label, -description) %>%
-  reorder_cols(abbreviated) %>%
+  reorder_cols(abbreviated)
   # Age and Race included, 686 rows included
-  write_csv(., "data/08.5-prep-the-census-variables/end_census_variables_prepped.csv"); head(census_variables_prepped)
+
+write_csv(census_variables_prepped, "data/08.5-prep-the-census-variables/end_census_variables_prepped.csv"); head(census_variables_prepped)
 
 #***********************************************************************
 # CLEAN THE DECENNIAL CENSUS VARIABLES FOR TOTALS ONLY
@@ -136,6 +138,7 @@ filter(str_ends(complete_description, fixed(", NOT HISPANIC OR LATINO)")) & str_
   write_csv(., "data/08.5-prep-the-census-variables/demographics_bg.csv") -> abc
 
 read_csv("data/08.5-prep-the-census-variables/demographics_bg.csv")
+abc
 
 #************************************
 # GET THE ACS CENSUS VARIABLES

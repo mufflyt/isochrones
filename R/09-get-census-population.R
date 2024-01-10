@@ -17,7 +17,11 @@ us_fips_list <- tigris::fips_codes %>%
   dplyr::select(state_code) %>%
   dplyr::pull()
 
-all_census_data <- tyler::get_census_data(us_fips = us_fips_list)
+#************************************
+# GET THE ACS CENSUS VARIABLES
+#************************************
+#* ???????????????????????????????????????????????????????????????????
+all_census_data <- tyler::get_census_data(us_fips_list = us_fips_list)
 
 demographics_bg <- all_census_data %>%
   dplyr::rename(name = NAME,
@@ -34,8 +38,7 @@ demographics_bg <- all_census_data %>%
   dplyr::select(fips_block_group, name, population)
 
 head(demographics_bg)
-# ```
-#
+ 
 # And finally! Multiply the population of each block group by its overlap percent to calculate population within and not within ???45???-minutes of a gynecologic oncologist.
 #
 # First, make a flat non-sf dataframe with the overlap information and join to population. Then multiply and summarize. This is the easiest part of the project.

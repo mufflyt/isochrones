@@ -13,13 +13,13 @@ source("R/01-setup.R")
 
 ##########################################################################
 # search_by_taxonomy
-# This will allow us to get subspecialty names and NPI numbers
+# This will allow us to get subspecialty names and NPI numbers as a starting point.  FYI the limit is 1,200 physicians.  
 go_search_by_taxonomy_data <- search_by_taxonomy("Gynecologic Oncology")
 fpmrs_search_by_taxonomy_data <- search_by_taxonomy("Female Pelvic Medicine and Reconstructive Surgery")
 rei_search_by_taxonomy_data <- search_by_taxonomy("Reproductive Endocrinology")
 mfm_search_by_taxonomy_data <- search_by_taxonomy("Maternal & Fetal Medicine")
 
-# Merge all data frames into one
+# Merge all data frames of each of the four subspecialties into one
 all_taxonomy_search_data <- dplyr::bind_rows(
   go_search_by_taxonomy_data,
   fpmrs_search_by_taxonomy_data,
@@ -44,10 +44,7 @@ cleaned_all_taxonomy_search_data <-
 
   # Show the subspecialty from goba.
   mutate(sub1 = recode(sub1, "Obstetrics & Gynecology, Female Pelvic Medicine and Reconstructive Surgery" = "FPM", "Obstetrics & Gynecology, Gynecologic Oncology" = "ONC", "Obstetrics & Gynecology, Maternal & Fetal Medicine" = "MFM", "Obstetrics & Gynecology, Reproductive Endocrinology" = "REI"))
-
-dim(cleaned_all_taxonomy_search_data)
-glimpse(cleaned_all_taxonomy_search_data)
-
+ 
 write_rds(cleaned_all_taxonomy_search_data, "data/02-search_taxonomy/end_cleaned_all_taxonomy_search_data.rds")
 
 #**********************************************

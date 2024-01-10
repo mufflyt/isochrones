@@ -172,7 +172,7 @@ isochrone_map <- leaflet() %>%
     title = "Drive Time (minutes)",
     opacity = 0.3
   ) %>%
-  setView(lng = -99, lat = 38, zoom = 6); isochrone_map
+  setView(lng = -105, lat = 39, zoom = 6); isochrone_map
 
 timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
 

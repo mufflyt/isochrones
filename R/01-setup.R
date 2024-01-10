@@ -46,11 +46,17 @@ library(tidycensus)
 library(rnaturalearth)
 library(purrr)
 library(stringr)
+library(stringi)
 library(exploratory)
 library(humaniformat)
 library(ggplot2)
 library(ggthemes)
 library(maps)
+library(forcats)
+
+#Of note this is a personal package with some bespoke functions and data that we will use occasionally.  It is still under development and it is normal for it to give multiple warnings at libary(tyler).
+# devtools::install_github("mufflyt/tyler")
+# library(tyler)
 
 # Store tidycensus data on cache
 options(tigris_use_cache = TRUE)
@@ -60,11 +66,10 @@ readRenviron("~/.Renviron")
 hereR::set_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
 
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
-#####  Directory
+#####  Directory structure with here
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
-#here::set_here(path = ".", verbose = TRUE)
-setwd("~/Dropbox (Personal)/Tannous")
-here::i_am(path = "Tannous.Rproj")
+here::set_here(path = ".", verbose = TRUE)
+here::i_am(path = "isochrones.Rproj")
 data_folder <- here::here("data")
 results_folder <- here::here("results")
 images_folder <- here::here("figures")

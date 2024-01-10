@@ -31,27 +31,25 @@ filtered_subspecialists <- readr::read_csv("data/03-search_and_process_npi/subsp
   readr::write_csv("data/03-search_and_process_npi/filtered_subspecialists_only.csv")
 
 #**************************
-#* GET NPI NUMBERS for those that do not have any in subspecialists.csv
-#**************************
-### tyler::search_and_process_npi
+#* GET NPI NUMBERS for those that do not have any in subspecialists.csv, using search_and_process_npi
 input_file <- "data/03-search_and_process_npi/filtered_subspecialists_only.csv"
-output_result <- search_and_process_npi(input_file) #Runs the function
+output_result <- search_and_process_npi(input_file) #Runs the function to get data from the NPPES website
 
 searched_npi_numbers <- output_result %>%
   dplyr::distinct(npi, .keep_all = TRUE) %>%
-  mutate(across(c(basic_first_name, basic_last_name, basic_credential),
-                .fns = ~str_remove_all(., "[[\\p{P}][\\p{S}]]"))) %>%
-  mutate(basic_credential = str_to_upper(basic_credential)) %>%
-  filter(str_detect(basic_credential, "MD|DO")) %>%
-  mutate(basic_credential = str_sub(basic_credential,1 ,2)) %>%
-  filter(basic_credential %in% c("DO", "MD")) %>%
-  filter(str_detect(taxonomies_desc, fixed("Gyn", ignore_case=TRUE))) %>%
-  distinct(npi, .keep_all = TRUE) %>%
-  mutate(npi = as.numeric(npi)) %>%
+  dplyr::mutate(across(c(basic_first_name, basic_last_name, basic_credential),
+                .fns = ~sstringr::tr_remove_all(., "[[\\p{P}][\\p{S}]]"))) %>%
+  dplyr::mutate(basic_credential = stringr::str_to_upper(basic_credential)) %>%
+  dplyr::filter(stringr::str_detect(basic_credential, "MD|DO")) %>%
+  dplyr::mutate(basic_credential = stringr::str_sub(basic_credential,1 ,2)) %>%
+  dplyr::filter(basic_credential %in% c("DO", "MD")) %>%
+  dplyr::filter(stringr::str_detect(taxonomies_desc, fixed("Gyn", ignore_case=TRUE))) %>%
+  dplyr::distinct(npi, .keep_all = TRUE) %>%
+  dplyr::mutate(npi = as.numeric(npi)) %>%
   readr::write_csv("data/03-search_and_process_npi/searched_npi_numbers.csv") ### File with NPI numbers to complete subspecialty.csv file.    We need to merge the results of new NPI numbers in `searched_npi_numbers` with subspecialty.csv
 
-
-### Read in the original subspecialty.csv file
+### Read in the original subspecialty.csv file.  This file is given and is not calculated earlier in the workflow.  
+# File Provenance: "/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/goba/subspecialists_only.csv"
 subspecialists_only <- read_csv("data/03-search_and_process_npi/subspecialists_only.csv") %>%
   mutate(NPI = as.numeric(NPI))
 
@@ -71,8 +69,8 @@ taxonomy_plus_NPI <- all_NPI_numbers_we_will_ever_find %>%
   exploratory::bind_rows(all_taxonomy_search_data, id_column_name = "ID", current_df_name = "subspecialists_only",         force_data_type = TRUE) %>%
   dplyr::distinct(NPI, .keep_all = TRUE)
 
-### Merge rows of `all_taxonomy_search_data` and `searched_npi_numbers`
-# Brings in the younger subspecialists who have a taxonomy code but not board-certification yet.
+### Merge rows of `all_taxonomy_search_data` from 02-search_taxonomy and `searched_npi_numbers` from 03-search_and_process_npi 
+# Brings in the younger subspecialists who have a taxonomy code but not board-certification yet.  Board certification for OBGYN usually takes 2 years after graduating from fellowship.  
 complete_npi_for_subspecialists <- all_NPI_numbers_we_will_ever_find %>%
   exploratory::bind_rows(all_taxonomy_search_data, id_column_name = "ID", current_df_name = "subspecialists_only", force_data_type = TRUE) %>%
   dplyr::distinct(NPI, .keep_all = TRUE) %>%
@@ -81,7 +79,7 @@ complete_npi_for_subspecialists <- all_NPI_numbers_we_will_ever_find %>%
   dplyr::mutate(zip = stringr::str_sub(`Zip CodePhysicianCompare`,1 ,5), .after = ifelse("Zip CodePhysicianCompare" %in% names(.), "Zip CodePhysicianCompare", last_col())) %>%
   dplyr::filter(!is.na(state) & !is.na(city)) %>%
 
-  # i need to change this back eventually.
+  # TODO: i need to change this back eventually.
   dplyr::mutate(zip = exploratory::impute_na(zip, type = "value", val = "")) %>%
   tidyr::unite(address, city, state, zip, sep = ", ", remove = FALSE, na.rm = FALSE) %>%
   dplyr::distinct(address, .keep_all = TRUE) %>%

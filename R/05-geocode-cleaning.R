@@ -21,8 +21,8 @@ geocoded_data_to_match_house_number <- geocoded_data %>%
 #**************************
 #* STEP B TO MATCH CLINICIAN_DATA TO GEOCODED_DATA
 #**************************
+#*  https://slu-opengis.github.io/postmastr/index.html
 #postmastr’s functionality rests on an order of operations that must be followed to ensure correct parsing:
-
 # * prep
 # * postal code
 # * state
@@ -44,20 +44,25 @@ clinician_data_postmastr_min <- postmastr::pm_prep(clinician_data_postmastr, var
   mutate(pm.address = stringr::str_squish(pm.address))
 
 # removes the second line address with the word "suite" and the suite number.  postmastr needs a little help at the start
-clinician_data_postmastr_min <- clinician_data_postmastr_min %>%
-  mutate(postmastr::pm.address = stringr::str_replace_all(pm.address, "\\bSUITE \\d+\\b", ""))
+# clinician_data_postmastr_min <- clinician_data_postmastr_min %>%
+#   mutate(postmastr::pm.address = stringr::str_replace_all(pm.address, "\\bSUITE \\d+\\b", ""))
 
+# Postal code parsing
 # Postal code: Once we have our data prepared, we can begin working our way down the order of operations list.
 clinician_data_postmastr_min <- postmastr::pm_postal_parse(clinician_data_postmastr_min)
 
+# State parsing
 # Create state directory
 stateDict <- postmastr::pm_dictionary(locale = "us", type = "state", case = c("title", "upper")); stateDict
-postmastr::pm_state_all(clinician_data_postmastr_min, dictionary = stateDict) #Checks to make sure that all states have matches
+postmastr::pm_state_all(clinician_data_postmastr_min, dictionary = stateDict) #Checks to make sure that all states have matches in the dataset with the created dictionary
 clinician_data_postmastr_min <- postmastr::pm_state_parse(clinician_data_postmastr_min, dictionary = stateDict)
 
+# City parsing
 # City dictionary
 # city <- pm_dictionary(type = "city", locale = "us", filter = c("AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"), case = c("title", "upper", "lower")) %>%
 # write_rds("data/city.rds")
+
+#This takes a while so a hard copy is stored in data/05-geocode-cleaning
 city <- readr::read_rds("data/05-geocode-cleaning/city.rds")
 
 postmastr::pm_city_all(clinician_data_postmastr_min, dictionary = city) #Checks to make sure that all cities have matches
@@ -67,12 +72,12 @@ clinician_data_postmastr_min <- postmastr::pm_city_parse(clinician_data_postmast
 postmastr::pm_house_all(clinician_data_postmastr_min)
 clinician_data_postmastr_min <- postmastr::pm_house_parse(clinician_data_postmastr_min, locale = "us")
 clinician_data_postmastr_min <- postmastr::pm_streetSuf_parse(clinician_data_postmastr_min, locale = "us")
-clinician_data_postmastr_min <- postmastr::pm_streetDir_parse(clinician_data_postmastr_min, locale = "us")
+clinician_data_postmastr_min <- postmastr::pm_streetDir_parse(clinician_data_postmastr_min, locale = "us") 
 
 # Street Parse
 clinician_data_postmastr_min <- postmastr::pm_street_parse(clinician_data_postmastr_min, ordinal = TRUE, drop = TRUE, locale = "us")
 
-ACOG_Districts <- tyler::ACOG_Districts
+ACOG_Districts <- tyler::ACOG_Districts #Also found on READ.ME as an appendix.  
 
 # Writes the postmastr data back to the original dataframe
 clinician_data_postmastr_parsed <- postmastr::pm_replace(street = clinician_data_postmastr_min, 
@@ -93,22 +98,13 @@ readr::write_csv(clinician_data_postmastr_parsed, "data/05-geocode-cleaning/end_
 # Now do a join between the postmastr file `postmastr_clinician_data.csv` and the geocoded results file `geocoded_data_to_match_house_number`
 
 #**********************************************
-# SENT TO EXPLORATORY WHERE AN INNER JOIN WAS DONE.
+# SENT TO EXPLORATORY WHERE AN INNER JOIN WAS DONE. This part is not documented.  
 # RESULT
 #**********************************************
 inner_join_postmastr_clinician_data <- readr::read_csv("data/05-geocode-cleaning/end_inner_join_postmastr_clinician_data.csv") %>%
   exploratory::left_join(`ACOG_Districts`, by = join_by(`postmastr.pm.state` == `State_Abbreviations`))
 
-# Reorder factor levels
-inner_join_postmastr_clinician_data$ACOG_District <- factor(
-  inner_join_postmastr_clinician_data$ACOG_District,
-  levels = c("District I", "District II", "District III", "District IV", "District V",
-             "District VI", "District VII", "District VIII", "District IX",
-             "District XI", "District XII"))
-
 readr::write_csv(inner_join_postmastr_clinician_data, "data/05-geocode-cleaning/end_inner_join_postmastr_clinician_data.csv")
-
-inner_join_postmastr_clinician_data
 
 # Define the number of ACOG districts
 num_acog_districts <- 11
@@ -116,7 +112,7 @@ num_acog_districts <- 11
 # Create a custom color palette using viridis
 district_colors <- viridis::viridis(num_acog_districts, option = "viridis")
 
-# Generate ACOG districts using tyler::generate_acog_districts_sf()
+# Generate ACOG districts with geometry borders in sf using tyler::generate_acog_districts_sf()
 acog_districts_sf <- tyler::generate_acog_districts_sf()
 
 

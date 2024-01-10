@@ -1,4 +1,5 @@
 ##########################################################################
+# NOT USED TYPICALLY.  
 ### RUN on search_and_process_npi second machine overnight ### OR ### Run against the database ####
 ### Retrieve clinician data using "tyler::retrieve_clinician_data"
 #readr::read_csv("data/complete_npi_for_subspecialists.csv")

@@ -44,7 +44,7 @@ dim(isochrones_sf)
 class(isochrones_sf)
 
 isochrones_df <- sf::st_read("data/06-isochrones/isochrones_ 20231223111020 _chunk_ 1 _to_ 4/isochrones.shp") %>%
-  dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering.
+  dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering in the leaflet map later on.
 
 # Clip the isochrones to the USA border.
 usa_borders <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf") %>%

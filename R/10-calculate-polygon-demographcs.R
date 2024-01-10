@@ -4,10 +4,16 @@ source("R/01-setup.R")
 
 #The code provided aims to report various demographic statistics related to different population groups within the context of the isochrones created for accessibility analysis. It begins by reading in necessary data files, such as regions, state FIPS codes, and precomputed summary statistics for specific population groups within the isochrones. It then proceeds to generate a series of informative messages, each highlighting different aspects of the population covered by the isochrones. These messages include information about the total female population, the number of women from different racial and ethnic backgrounds, and the degree of coverage within the isochrones for each group. The code uses formatted and rounded numbers to present this information in a human-readable format. 
 
+#************************************
+# READ IN SOME GIVEN VARIABLES
+#************************************
 regions <- read.csv("data/fips-appalachia-delta.csv", colClasses = c("fips_county" = "character"))
 state_fips <- read.csv("data/fips-states.csv", colClasses = "character")
 state_fips <- state_fips %>% select(fips_state, state_code)
 
+#************************************
+# END FILE OF 09-GET-CENSUS-POPULATION DONE ELSEWHERE
+#************************************
 # Jesus I did this in exploratory and it just works
 state_sums <- read_csv("data/08.5-prep-the-census-variables/end_state_sums.csv")
 

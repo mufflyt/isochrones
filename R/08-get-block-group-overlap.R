@@ -4,7 +4,9 @@ source("R/01-setup.R")
 #This code is primarily focused on processing and analyzing the spatial overlap between block groups and isochrones. It starts by reading a shapefile of block groups for Colorado, transforming it to a suitable projection, simplifying geometries, and writing the processed shapefile to a new location. It then reads isochrones data, applies similar transformations, combines them into a single feature, and creates a reference map. Next, it calculates the percentage overlap between each block group and the isochrones, summarizing the results to provide information about the extent of overlap. The final output includes a summary message indicating the percentage of block groups that overlap with the isochrones.
 
 # Define file paths
-block_groups_file <- "data/shp/block-groups/colorado/"
+# The shp directory has general use files.  
+block_groups_file <- "data/shp/block-groups/colorado/" # Colorado is a smaller state for the toy example.  
+#block_groups_file <- "data/07.5-prep-get-block-group=overlap" #For full project 
 
 # Read, transform, and process block groups shapefile in one chain
 block_groups <- sf::st_read(block_groups_file) %>%
@@ -19,7 +21,7 @@ sf::st_write(block_groups,
              driver = "ESRI Shapefile",
              quiet = FALSE, append = FALSE)
 
-# TODO: How to clip water out of the isochrones.  
+# TODO: How to clip water out of the isochrones?  Rstudio crashes with a national file.  Maybe tigris::erase_water in 07.5?
 
 isochrones <- sf::st_read(dsn = "data/07-isochrone-mapping")
 
@@ -44,7 +46,7 @@ drive_times <- unique(isochrones$range)
 
 isochrones <- isochrones %>%
   rename("drive_time" ="range")
-tyler::create_individual_isochrone_plots(isochrones, drive_times)
+tyler::create_individual_isochrone_plots(isochrones, drive_times) # TODO: only gives one map, needs to return multiple 
 
 ### Filter GYN Oncologists with `st_intersects`
 #Important note: for computations in sf we should use a planar projection, [not a lat/long projection](https://r-spatial.github.io/sf/articles/sf6.html#although-coordinates-are-longitudelatitude-xxx-assumes-that-they-are-planar) like we'd use for making Leaflet maps. We'll use projection ESPG [2163](https://epsg.io/2163).Now calculate the percent overlap between each block group and the isochrones.

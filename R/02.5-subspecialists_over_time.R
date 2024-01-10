@@ -1,3 +1,5 @@
+# Not used locally but on a different machine with a Postico database.  
+
 #######################
 source("R/01-setup.R")
 #######################
