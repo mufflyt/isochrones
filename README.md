@@ -120,6 +120,14 @@ B01001_026E  Estimate _Total _Female
     female_80_to_84 = "B01001_048",
     female_85_over = "B01001_049"
 
+## US Decennial Census Demographic and Housing
+    name	label	concept
+P12Y_026N	Female:	AI/AN ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NOT HISPANIC OR LATINO)
+P12Z_026N	Female:	ASIAN ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NOT HISPANIC OR LATINO)
+P12X_026N	Female:	BLACK OR AFRICAN AMERICAN ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NOT HISPANIC OR LATINO)
+P12AA_026N	Female:	NHPI ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NOT HISPANIC OR LATINO)
+P12W_026N	Female:	WHITE ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NOT HISPANIC OR LATINO)
+
 Appendix 3: Characteristics of Isochrones
 The bespoke R code generates individual maps for each drive time, visually representing the accessible areas on a map.  The function shapefiles are geospatial data files used for storing geographic information, including the boundaries of the reachable areas.  The HERE API (here.com) was utilized because traffic and time could be standardized yearly.  Each year, the isochrones are built on the third Friday in October at 0900, defined as “posix_time”.  We imagined that patients would see their primary care provider at this time of year for an influenza vaccination or other issues.  The hereR package (https://github.com/munterfi/hereR/ ) is a wrapper around the R code that calls the HERE REST API for isoline routing (platform.here.com) and returns it as an sf object.  There is a cost of $5.50 for every 1,000 isolines created (https://www.here.com/get-started/pricing#here---platform---pricing---page-title ).  
 •	October 18, 2013
