@@ -39,6 +39,7 @@ We utilized the tigris package to get the block group geometries for different y
 
 Appendix 1: The American College of Obstetricians and Gynecologists (ACOG) is a professional organization representing obstetricians and gynecologists in the United States.  ACOG divides its membership into various geographical regions known as "ACOG Districts."
 
+```r
 State	        ACOG_District 	State_Abbreviations
 Alabama	District VII	AL
 Alaska		District VIII	AK
@@ -87,6 +88,7 @@ Virginia	District IV	VA
 Washington	District VIII	WA
 West Virginia	District IV	WV
 Wisconsin	District VI	WI
+```
 
 Appendix 2: US Census Bureau Codes Decennial Census and the American Community Survey.
 Decennial Census – Demographic and Housing Characteristics File (API variables: https://api.census.gov/data/2020/dec/dhc/variables.html)
@@ -96,7 +98,7 @@ Decennial Census – Demographic and Housing Characteristics File (API variables
 
 American Community Survey 
 (API variables: https://api.census.gov/data/2022/acs/acs1/variables.html )
-
+```r
 B01001_026E  Estimate _Total _Female
     female_10_to_14 = "B01001_029",
     female_15_to_17 = "B01001_030",
@@ -119,14 +121,17 @@ B01001_026E  Estimate _Total _Female
     female_75_to_79 = "B01001_047",
     female_80_to_84 = "B01001_048",
     female_85_over = "B01001_049"
+````
 
 ## US Decennial Census Demographic and Housing
+```r
     name	label	concept
 P12Y_026N	Female:	AI/AN ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NOT HISPANIC OR LATINO)
 P12Z_026N	Female:	ASIAN ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NOT HISPANIC OR LATINO)
 P12X_026N	Female:	BLACK OR AFRICAN AMERICAN ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NOT HISPANIC OR LATINO)
 P12AA_026N	Female:	NHPI ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NOT HISPANIC OR LATINO)
 P12W_026N	Female:	WHITE ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NOT HISPANIC OR LATINO)
+```
 
 Appendix 3: Characteristics of Isochrones
 The bespoke R code generates individual maps for each drive time, visually representing the accessible areas on a map.  The function shapefiles are geospatial data files used for storing geographic information, including the boundaries of the reachable areas.  The HERE API (here.com) was utilized because traffic and time could be standardized yearly.  Each year, the isochrones are built on the third Friday in October at 0900, defined as “posix_time”.  We imagined that patients would see their primary care provider at this time of year for an influenza vaccination or other issues.  The hereR package (https://github.com/munterfi/hereR/ ) is a wrapper around the R code that calls the HERE REST API for isoline routing (platform.here.com) and returns it as an sf object.  There is a cost of $5.50 for every 1,000 isolines created (https://www.here.com/get-started/pricing#here---platform---pricing---page-title ).  
