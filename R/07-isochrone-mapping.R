@@ -132,8 +132,7 @@ invisible(gc())
 
 #*******************************
 # SANITY CHECK
-#*******************************
-
+#******************************* 
 end_isochrones_sf_clipped$range <- as.factor(end_isochrones_sf_clipped$range)
 color_palette <- viridis::magma(length(unique(end_isochrones_sf_clipped$range)))
 isochrone_map <- leaflet() %>%
@@ -154,6 +153,7 @@ isochrone_map <- leaflet() %>%
     popup = ~paste0("<strong>Isochrone:</strong> ", range, " minutes <br />"),
     group = "Isochrones"
   ) %>%
+  
   leaflet::addCircleMarkers(
     data = subspecialists_lat_long_copy,
     radius = 2,
@@ -164,6 +164,7 @@ isochrone_map <- leaflet() %>%
                     "<strong>Location:</strong> ", city, ", ", state_code)#,
     # group = "Obstetrician/Gynecologist Subspecialist"
   ) %>%
+  
   addLegend(
     data = end_isochrones_sf_clipped,
     position = "bottomright",

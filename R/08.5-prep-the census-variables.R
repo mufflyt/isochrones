@@ -197,6 +197,3 @@ vars_acs <- tidycensus::load_variables(year = 2020, "acs5")
 #       "B01001_047E  Estimate!!Total!!Female!!75 to 79 years      \n",
 #       "B01001_048E  Estimate!!Total!!Female!!80 to 84 years      \n",
 #       "B01001_049E  Estimate!!Total!!Female!!85 years and over   \n",
-
-
-

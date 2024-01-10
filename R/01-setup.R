@@ -513,5 +513,114 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25) {
 
 ##############################
 ###############################
+us_fips_list <- tigris::fips_codes %>%
+  dplyr::select(state_code, state_name) %>%
+  dplyr::distinct(state_code, .keep_all = TRUE) %>%
+  dplyr::filter(state_code < 56) %>%
+  dplyr::select(state_code) %>%
+  dplyr::pull()
+
+get_census_data <- function (us_fips_list) 
+{
+  state_data <- list()
+  for (f in us_fips) {
+    us_fips <- tyler::fips
+    print(f)
+    stateget <- paste("state:", f, "&in=county:*&in=tract:*", 
+                      sep = "")
+    state_data[[f]] <- getCensus(name = "acs/acs5", vintage = 2019, 
+                                 vars = c("NAME", paste0("B01001_0", c("01", 26, 33:49), 
+                                                         "E")), region = "block group:*", regionin = stateget, 
+                                 key = "485c6da8987af0b9829c25f899f2393b4bb1a4fb")
+  }
+  acs_raw <- dplyr::bind_rows(state_data)
+  Sys.sleep(1)
+  return(acs_raw)
+}
+asdf <- get_census_data()
+
+
+######
+
+library(tigris)
+library(sf)
+library(dplyr)
+
+#Entiree USA blockgroups only start at 2019
+years <- c(2019, 2021, 2022, 2023)
+
+for (year in years) {
+  for (year in years) {
+    block_groups_by_year <- tigris::block_groups(state = NULL, cb = TRUE, year = year) 
+    
+    sf_block_groups <- st_as_sf(block_groups_by_year)
+    
+    # Making the geometry valid
+    sf_block_groups <- st_make_valid(sf_block_groups)
+    
+    # Transforming the CRS to EPSG:2163 and simplifying the geometry
+    sf_block_groups_transformed <- sf_block_groups %>% 
+      st_transform(2163) %>%
+      st_simplify(preserveTopology = FALSE, dTolerance = 1000)
+    
+    shapefile_name <- paste0("block_groups_tigris_", year, ".shp")
+    
+    st_write(sf_block_groups_transformed, dsn = shapefile_name, append=FALSE)
+  }
+}
+######
+library(tigris)
+library(sf)
+library(dplyr)
+
+download_and_merge_block_groups <- function(year) {
+  # Specific list of state FIPS codes
+  us_fips_list <- c("01", "02", "04", "05", "06", "08", "09", "10", "11", "12",
+                    "13", "15", "16", "17", "18", "19", "20", "21", "22", "23",
+                    "24", "25", "26", "27", "28", "29", "30", "31", "32", "33",
+                    "34", "35", "36", "37", "38", "39", "40", "41", "42", "44",
+                    "45", "46", "47", "48", "49", "50", "51", "53", "54", "55")
+  
+  # Initialize an empty list to store sf objects
+  sf_list <- list()
+  
+  # Loop through each state and download the block group data
+  for (state_code in us_fips_list) {
+    message("Processing state: ", state_code)
+    
+    # Download block group data for the state
+    state_block_groups <- block_groups(state = state_code, cb = TRUE, year = year)
+    
+    # Convert to sf object
+    state_sf <- st_as_sf(state_block_groups)
+    
+    # Make the geometry valid
+    state_sf <- st_make_valid(state_sf)
+    
+    # Transform to a common CRS
+    state_sf <- st_transform(state_sf, crs = 2163)
+    
+    # Simplify the geometry
+    state_sf <- st_simplify(state_sf, preserveTopology = FALSE, dTolerance = 1000)
+    
+    # Add a 'year' column
+    state_sf$year <- year
+    
+    # Add to the list
+    sf_list[[state_code]] <- state_sf
+  }
+  
+  # Combine all sf objects in the list into one sf object
+  usa_block_groups <- do.call(rbind, sf_list)
+  
+  # Write to a shapefile
+  shapefile_name <- paste0("block_groups_tigris_", year, ".shp")
+  st_write(usa_block_groups, shapefile_name, append=FALSE)
+  
+  return(usa_block_groups)
+}
+
+# Example usage: download data for the year 2020
+# combined_block_groups_2020 <- download_and_merge_block_groups(2020)
 
 

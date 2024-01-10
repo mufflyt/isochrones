@@ -37,6 +37,9 @@ demographics_bg <- all_census_data %>%
   dplyr::arrange(fips_state) %>%
   dplyr::select(fips_block_group, name, population)
 
+# This is what we used in Exploratory.io for demographics_bg_raw.  
+# demographicsbgraw <- getcensusdata(vintage = 2020, variables = totalscensusvariablesprepped$name, #censusvariablesprepped$name, usfips_list = "08") %>% as.data.frame()
+
 head(demographics_bg)
  
 # And finally! Multiply the population of each block group by its overlap percent to calculate population within and not within ???45???-minutes of a gynecologic oncologist.
