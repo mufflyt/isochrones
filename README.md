@@ -1,11 +1,6 @@
+
+https://github.com/mufflyt/isochrones/assets/44621942/d724430d-861a-4cd6-996d-5a85b1000a77
 # Geography
-https://github.com/mufflyt/isochrones/assets/44621942/9964c765-c7c8-4a82-b5bd-5734367b9f84
-
-
-Uploading Search Taxonomy for Physician Specialties.mp4…
-
-
-
 
 Based on:
 www.github.com/hrecht
