@@ -31,7 +31,9 @@ filtered_subspecialists <- readr::read_csv("data/03-search_and_process_npi/subsp
   readr::write_csv("data/03-search_and_process_npi/filtered_subspecialists_only.csv")
 
 #**************************
+#*. RUN THE API FOR MORE DOCTOR DEMOGRAPHICS
 #* GET NPI NUMBERS for those that do not have any in subspecialists.csv, using search_and_process_npi
+#**************************
 input_file <- "data/03-search_and_process_npi/filtered_subspecialists_only.csv"
 output_result <- search_and_process_npi(input_file) #Runs the function to get data from the NPPES website
 
@@ -84,3 +86,5 @@ complete_npi_for_subspecialists <- all_NPI_numbers_we_will_ever_find %>%
   tidyr::unite(address, city, state, zip, sep = ", ", remove = FALSE, na.rm = FALSE) %>%
   dplyr::distinct(address, .keep_all = TRUE) %>%
   readr::write_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds")
+
+# complete_npi_for_subspecialists <- readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds")

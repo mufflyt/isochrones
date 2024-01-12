@@ -50,6 +50,7 @@ write_rds(cleaned_all_taxonomy_search_data, "data/02-search_taxonomy/end_cleaned
 #**********************************************
 # SANITY CHECK
 #**********************************************
+#* cleaned_all_taxonomy_search_data <- read_rds("data/02-search_taxonomy/end_cleaned_all_taxonomy_search_data.rds")
 dim(cleaned_all_taxonomy_search_data)
 glimpse(cleaned_all_taxonomy_search_data)
 janitor::tabyl(cleaned_all_taxonomy_search_data$sub1)
