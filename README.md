@@ -14,14 +14,16 @@
 [04-geocode](https://youtu.be/S2vXh8-fzKs)
 
 ### 05-geocode-cleaning
-[05-geocode-cleaning](https://youtu.be/qFSmm0Ja4Yk)
+[05-geocode-cleaning](https://youtu.be/CwUaD5tRWo4)
 
 ### 06-isochrones
 [isochrones](https://youtu.be/crZuELWtrTA)
 
 ### 07-isochrone-mapping
+[07-isochrone-mapping](https://youtu.be/Hs2Nab7Imoc)
 
 ### 07.5-prep-get-block-group-overlap
+[07.5-prep-get-block-group-overlap]()
 
 ### 08-get-block-group-overlap
 
@@ -220,3 +222,6 @@ git add .gitattributes
 git commit -m "Track bg_shp_joined_intersect_pct.rds with Git LFS"
 git push origin main
 ```
+
+[tyler_1.1.0.tar.gz](https://github.com/mufflyt/isochrones/files/13914538/tyler_1.1.0.tar.gz)
+
