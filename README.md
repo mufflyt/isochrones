@@ -5,15 +5,19 @@
 [Setup file](https://youtu.be/4eStfNf9qjk)
 
 ### 02.5-subspecialists_over_time
-[subspecialists over time](https://youtu.be/-WfEeK8gpH8))
+[subspecialists over time](https://youtu.be/-WfEeK8gpH8)
 
 ### 03-search_and_process_npi
+[search_and_process_npi](https://youtu.be/AZVw-7y01BE)
 
 ### 04-geocode
+[04-geocode](https://youtu.be/S2vXh8-fzKs)
 
 ### 05-geocode-cleaning
+[05-geocode-cleaning](https://youtu.be/qFSmm0Ja4Yk)
 
 ### 06-isochrones
+[isochrones](https://youtu.be/crZuELWtrTA)
 
 ### 07-isochrone-mapping
 
