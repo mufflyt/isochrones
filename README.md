@@ -1,10 +1,42 @@
+### 01-setup
+[Setup file](https://youtu.be/4eStfNf9qjk)
+
+### 02-search_taxonomy
+[Setup file](https://youtu.be/4eStfNf9qjk)
+
+### 02.5-subspecialists_over_time
+[subspecialists over time](https://youtu.be/-WfEeK8gpH8)
+
+### 03-search_and_process_npi
+[search_and_process_npi](https://youtu.be/AZVw-7y01BE)
+
+### 04-geocode
+[04-geocode](https://youtu.be/S2vXh8-fzKs)
+
+### 05-geocode-cleaning
+[05-geocode-cleaning](https://youtu.be/CwUaD5tRWo4)
+
+### 06-isochrones
+[isochrones](https://youtu.be/crZuELWtrTA)
+
+### 07-isochrone-mapping
+[07-isochrone-mapping](https://youtu.be/Hs2Nab7Imoc)
+
+### 07.5-prep-get-block-group-overlap
+[07.5-prep-get-block-group-overlap]()
+
+### 08-get-block-group-overlap
+
+### 08.5-prep-the census-variables
+
+### 09-get-census-population
+
+### 10-calculate-polygon-demographcs
+
+
+
+
 # Geography
-
-
-
-https://github.com/mufflyt/isochrones/assets/44621942/9964c765-c7c8-4a82-b5bd-5734367b9f84
-
-
 
 Based on:
 www.github.com/hrecht
@@ -190,3 +222,6 @@ git add .gitattributes
 git commit -m "Track bg_shp_joined_intersect_pct.rds with Git LFS"
 git push origin main
 ```
+
+[tyler_1.1.0.tar.gz](https://github.com/mufflyt/isochrones/files/13914538/tyler_1.1.0.tar.gz)
+
