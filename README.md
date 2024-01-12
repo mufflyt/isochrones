@@ -1,5 +1,35 @@
+### 01-setup
+[Setup file](https://youtu.be/4eStfNf9qjk)
 
-https://github.com/mufflyt/isochrones/assets/44621942/d724430d-861a-4cd6-996d-5a85b1000a77
+### 02-search_taxonomy
+[Setup file](https://youtu.be/4eStfNf9qjk)
+
+### 02.5-subspecialists_over_time
+[subspecialists over time](https://youtu.be/-WfEeK8gpH8))
+
+### 03-search_and_process_npi
+
+### 04-geocode
+
+### 05-geocode-cleaning
+
+### 06-isochrones
+
+### 07-isochrone-mapping
+
+### 07.5-prep-get-block-group-overlap
+
+### 08-get-block-group-overlap
+
+### 08.5-prep-the census-variables
+
+### 09-get-census-population
+
+### 10-calculate-polygon-demographcs
+
+
+
+
 # Geography
 
 Based on:
