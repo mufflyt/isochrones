@@ -439,9 +439,6 @@ test_and_process_isochrones <- function(input_file) {
 ##############################
 ###############################
 process_and_save_isochrones <- function(input_file, chunk_size = 25) {
-  input_file <- input_file %>%
-    dplyr::mutate(id = dplyr::row_number()) %>%
-    dplyr::filter(postmastr.name.x != "Hye In Park, MD")
 
   input_file$lat <- as.numeric(input_file$lat)
   input_file$long <- as.numeric(input_file$long)
@@ -484,7 +481,7 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25) {
       # Create the file name with the current date and time
       current_datetime <- format(Sys.time(), "%Y%m%d%H%M%S")
 
-      file_name <- paste("data/isochrones/isochrones_", current_datetime, "_chunk_", min(chunk_data$id), "_to_", max(chunk_data$id))
+      file_name <- paste("data/06-isochrones/isochrones_", current_datetime, "_chunk_", min(chunk_data$id), "_to_", max(chunk_data$id))
 
       # Assuming "arrival" field is originally in character format with both date and time
       # Convert it to a DateTime object

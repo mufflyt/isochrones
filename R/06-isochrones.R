@@ -9,9 +9,10 @@ source("R/01-setup.R")
 ##### To do the actual gathering of the isochrones: `process_and_save_isochrones`.  We do this in chunks of 25 because we were losing the entire searched isochrones when one error hit.  There is a 1:1 relationship between isochrones and rows in the `input_file` so to match exactly on row we need no errors.  Lastly, we save as a shapefile so that we can keep the MULTIPOLYGON geometry setting for the sf object making it easier to work with the spatial data in the future for plotting, etc.  I struggled because outputing the data as a dataframe was not easy to write it back to a MULTIPOLYGON.
 
 input_file <- readr::read_csv("data/05-geocode-cleaning/end_inner_join_postmastr_clinician_data.csv") %>%
-  dplyr::mutate(id = row_number()) %>%
+  dplyr::mutate(id = row_number()) %>% # creates a unique identifier number
   dplyr::filter(postmastr.name.x != "Hye In Park, MD") %>% # for testing
   dplyr::distinct(here.address, .keep_all = TRUE) %>%
+  # dplyr::mutate (id = seq_len(nrow(.))) %>% # creates a unique identifier number
   dplyr::filter(postmastr.pm.state == "CO" & postmastr.pm.city == "AURORA") # For testing with a small sample
 
 #**********************************************
@@ -34,6 +35,20 @@ nrow(input_file_no_error_rows) * 4
 #**************************
 #* HERE API CREATES ISOCHRONES
 #**************************
+
+# Many thanks to Dr. Unterfinger who maintains the hereR package for emailing me regarding:  https://github.com/munterfi/hereR/issues/153.  "One potential solution I had considered is the option to specify an ID column in the request to hereR. This would tell the package to use this ID column from the input data.frame and append these IDs to the response. However, there are a few issues with this approach. Firstly, it results in the duplication of information. Secondly, the package would need to check the suitability of the column for use as an ID (e.g. duplicate IDs), which I think should not be the responsibility of the package.
+
+# The hereR package sends the requests asynchronously to the Here API and considers the rate limits in the case of a freemium plan. Although the responses from the API will not be received in the same order, the package guarantees that the responses are returned in the same order as the the rows in the input sf data.frame (or sfc column). Therefore, joining the output with the input based on the length should be straightforward and error-free, as long as the input data isn't altered between the request and the response from the package:"
+## Add IDs (or use row.names if they are the default sequence)
+#poi$id <- seq_len(nrow(poi))
+
+# Request isolines, without aggregating
+#iso = isoline(poi, aggregate = FALSE)
+#> Sending 8 request(s) with 1 RPS to: 'https://isoline.router.hereapi.com/v8/isolines?...'
+#> Received 8 response(s) with total size: 82.9 Kb
+
+# non-spatial join
+#(iso_attr <- st_sf(merge(as.data.frame(poi), iso,  by = "id", all = TRUE)))
 
 # TODO I need to fix the process_and_save_isochrones function to give it a path to save.
 # Call the `process_and_save_isochrones` function with your input_file
