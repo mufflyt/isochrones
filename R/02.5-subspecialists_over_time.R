@@ -4,13 +4,17 @@
 source("R/01-setup.R")
 #######################
 
+#**************************
+#* WAS NOT RUN LOCALLY!
+#**************************
+
 ##########################################################################
 db_details <- list(
   host = "localhost",
   port = 5433,
   name = "template1",
   user = "postgres",
-  password = "fatbastard"
+  password = "????"
 )
 #postico_database_obgyns_by_year(year = 2023, db_details)
 
@@ -61,7 +65,7 @@ db_host <- "localhost"
 db_port <- 5433  # Default PostgreSQL port
 db_name <- "template1"
 db_user <- "postgres"
-db_password <- "fatbastard"
+db_password <- "???"
 
 ################
 ## Create a database connection
@@ -146,6 +150,8 @@ db_details <- list(
   user = "postgres",
   password = "fatbastard"
 )
+
+
 postico_database_obgyns_by_year(year = 2023, db_details)
 postico_database_obgyns_by_year(year = 2022, db_details)
 postico_database_obgyns_by_year(year = 2021, db_details)
