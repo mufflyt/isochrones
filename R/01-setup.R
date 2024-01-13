@@ -438,20 +438,28 @@ test_and_process_isochrones <- function(input_file) {
 
 ##############################
 ###############################
-process_and_save_isochrones <- function(input_file, chunk_size = 25) {
-
+process_and_save_isochrones <- function(input_file, chunk_size = 25, 
+                                        iso_datetime = "2023-10-20 09:00:00",
+                                        iso_ranges = c(30*60, 60*60, 120*60, 180*60),
+                                        crs = 4326, 
+                                        transport_mode = "car",
+                                        file_path_prefix = "data/06-isochrones/isochrones_") 
+  {
+  message("Starting isochrones processing...")
   input_file$lat <- as.numeric(input_file$lat)
   input_file$long <- as.numeric(input_file$long)
 
   input_file_sf <- input_file %>%
-    sf::st_as_sf(coords = c("long", "lat"), crs = 4326)
+    sf::st_as_sf(coords = c("long", "lat"), crs = crs)
 
-  posix_time <- as.POSIXct("2023-10-20 09:00:00", format = "%Y-%m-%d %H:%M:%S")
+  posix_time <- as.POSIXct(iso_datetime, format = "%Y-%m-%d %H:%M:%S")
 
   num_chunks <- ceiling(nrow(input_file_sf) / chunk_size)
   isochrones_list <- list()
 
+  message("Processing ", num_chunks, " chunks...")
   for (i in 1:num_chunks) {
+    message("Processing chunk ", i, " of ", num_chunks)
     start_idx <- (i - 1) * chunk_size + 1
     end_idx <- min(i * chunk_size, nrow(input_file_sf))
     chunk_data <- input_file_sf[start_idx:end_idx, ]
@@ -460,15 +468,15 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25) {
       {
         hereR::isoline(
           poi = chunk_data,
-          range = c(1800, 3600, 7200, 10800),
+          range = iso_ranges,
           datetime = posix_time,
           routing_mode = "fast",
           range_type = "time",
-          transport_mode = "car",
+          transport_mode = transport_mode,
           url_only = FALSE,
           optimize = "balanced",
-          traffic = TRUE,
-          aggregate = FALSE
+          traffic = TRUE,   # We do want traffic to factor in
+          aggregate = FALSE # DO NOT CHANGE
         )
       },
       error = function(e) {
@@ -481,13 +489,14 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25) {
       # Create the file name with the current date and time
       current_datetime <- format(Sys.time(), "%Y%m%d%H%M%S")
 
-      file_name <- paste("data/06-isochrones/isochrones_", current_datetime, "_chunk_", min(chunk_data$id), "_to_", max(chunk_data$id))
+      file_name <- paste(file_path_prefix, current_datetime, "_chunk_", min(chunk_data$id), "_to_", max(chunk_data$id))
 
       # Assuming "arrival" field is originally in character format with both date and time
       # Convert it to a DateTime object
       isochrones$arrival <- as.POSIXct(isochrones$arrival, format = "%Y-%m-%d %H:%M:%S")
 
       # Save the data as a shapefile with the layer name "isochrones"
+      message("Writing chunk ", i, " to file: ", file_name)
       sf::st_write(
         isochrones,
         dsn = file_name,
@@ -504,6 +513,7 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25) {
   # Combine all isochrones from the list into one data frame
   isochrones_data <- do.call(rbind, isochrones_list)
 
+  message("Finished processing all chunks.")
   return(isochrones_data)
 }
 

@@ -52,7 +52,13 @@ nrow(input_file_no_error_rows) * 4
 
 # TODO I need to fix the process_and_save_isochrones function to give it a path to save.
 # Call the `process_and_save_isochrones` function with your input_file
-isochrones_sf <- process_and_save_isochrones(input_file_no_error_rows)
+isochrones_sf <- process_and_save_isochrones(input_file_no_error_rows, 
+                                             chunk_size = 25, 
+                                             iso_datetime = "2023-10-20 09:00:00",
+                                             iso_ranges = c(30*60, 60*60, 120*60, 180*60),
+                                             crs = 4326, 
+                                             transport_mode = "car",
+                                             file_path_prefix = "data/06-isochrones/isochrones_")
 
 # Check the dimensions of the final isochrones_data
 dim(isochrones_sf)
