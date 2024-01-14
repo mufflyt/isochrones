@@ -772,7 +772,7 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
     stop("Input must be a dataframe or a file path to a CSV.")
   }
   
-  df <- df %>% head(5) # for testing
+  df <- df %>% head(1500) # for testing
   
   # Standardize NPI column name
   npi_col <- if ("npi" %in% names(df)) {
@@ -807,9 +807,11 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
     Sys.sleep(1)  # To avoid rate limits in API calls
   }
   
+  get_clinician_data <- memoise(get_clinician_data)
+  
   # Loop through the NPI column and get clinician data
   df_updated <- df %>%
-    dplyr::mutate(row_number = row_number()) %>%
+    #dplyr::mutate(row_number = row_number()) %>%
     dplyr::mutate(clinician_data = purrr::map(!!sym(npi_col), get_clinician_data)) %>%
     tidyr::unnest(clinician_data, names_sep = "_") %>%
     dplyr::distinct(!!sym(npi_col), .keep_all = TRUE)
@@ -817,8 +819,9 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
   # Export NPIs without results to a CSV file
   if (length(no_results_npi) > 0) {
     write.csv(data.frame(NPI = unlist(no_results_npi)), no_results_csv, row.names = FALSE)
-    message("PEOPLE WHO RETIRED ARE GOING TO BE NO RESULTS. /n NPIs without results have been saved to ", no_results_csv)
+    message("PEOPLE WHO RETIRED ARE GOING TO BE NO RESULTS. NPIs without results have been saved to ", no_results_csv)
   }
   
   return(df_updated)
 }
+

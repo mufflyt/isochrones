@@ -159,7 +159,16 @@ year_by_year_nppes_data_validated_npi <- validate_and_remove_invalid_npi(input_d
 #* RETURN THE CONTEMPORARY DEMOGRAPHICS OF THE PHYSICIAN DATA WITH PREFIX OF "CLINICIAN_DATA_" (GENDER, MEDICAL SCHOOL, GRAD YEAR) ARE THE ONLY TIMELESS OPTIONS.  PAST DATA IS NOT SEARCHABLE SO WE WILL NEED TO USE THE POSTICO DATABASE FOR ADDRESS, PRACTICE NAME, ETC.  PEOPLE WHO RETIRED ARE BOING TO BE "NO RESULTS"
 #**************************
 ## Call the retrieve_clinician_data function with an NPI value
-input_data <- ("data/02.5-subspecialists_over_time/year_by_year_nppes_data_validated_npi.csv")
+distinct_year_by_year_nppes_data_validated_npi <- readr::read_csv("data/02.5-subspecialists_over_time/year_by_year_nppes_data_validated_npi.csv") %>% 
+  dplyr::distinct(NPI, .keep_all = TRUE) %>%
+  dplyr::rename (npi = NPI)
+
+dim(distinct_year_by_year_nppes_data_validated_npi)
+
+write_csv(distinct_year_by_year_nppes_data_validated_npi, "data/02.5-subspecialists_over_time/distinct_year_by_year_nppes_data_validated_npi.csv") 
+
+input_data <- ("data/02.5-subspecialists_over_time/distinct_year_by_year_nppes_data_validated_npi.csv")
+
 clinician_data <- retrieve_clinician_data(input_data,
                                           no_results_csv = "data/02.5-subspecialists_over_time/no_results_npi.csv")
 #View(clinician_data)
