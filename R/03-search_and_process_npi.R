@@ -22,6 +22,9 @@ source("R/01-setup.R")
 # 
 # Save Results: The final merged dataset is saved in RDS (R Data Store) format for further analysis or use in other R scripts.
 
+#**************************
+# GETS CURRENT DATA DATA 
+#**************************
 ### Read in file and clean it up
 # File Provenance: "/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/goba/subspecialists_only.csv"
 filtered_subspecialists <- readr::read_csv("data/03-search_and_process_npi/subspecialists_only.csv") %>%
@@ -87,4 +90,4 @@ complete_npi_for_subspecialists <- all_NPI_numbers_we_will_ever_find %>%
   dplyr::distinct(address, .keep_all = TRUE) %>%
   readr::write_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds")
 
-# complete_npi_for_subspecialists <- readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds")
+# complete_npi_for_subspecialists <- readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds") # for testing

@@ -1,4 +1,4 @@
-# Not used locally but on a different machine with a Postico database.  
+# Not used locally but on a different machine with a Postico database.  Here we are trying to get year-specific physicians.  
 
 #######################
 source("R/01-setup.R")
@@ -98,59 +98,17 @@ nppes_data <- nppes_table %>%
 View(nppes_data)
 write_csv(nppes_data, "nppes_data.csv")
 
-#######
-postico_database_obgyns_by_year <- function(year, db_details) {
-  library(DBI)
-  library(RPostgres)
-  library(dplyr)
-  library(stringr)
-  library(readr)
-  
-  # Database connection details
-  db_host <- db_details$host
-  db_port <- db_details$port
-  db_name <- db_details$name
-  db_user <- db_details$user
-  db_password <- db_details$password
-  
-  # Create a database connection
-  db_connection <- dbConnect(
-    RPostgres::Postgres(),
-    dbname = db_name,
-    host = db_host,
-    port = db_port,
-    user = db_user,
-    password = db_password
-  )
-  
-  # Reference the tables using tbl
-  nppes_table_name <- as.character(year)
-  nppes_table <- dplyr::tbl(db_connection, nppes_table_name)
-  nucc_taxonomy_table_name <- "nucc_taxonomy_201"
-  nucc_taxonomy_201 <- dplyr::tbl(db_connection, nucc_taxonomy_table_name)
-  
-  # Fetch and process the data from the database
-  nppes_data <- nppes_table %>%
-    distinct(NPI, .keep_all = TRUE) %>%
-    mutate(`Zip Code` = str_sub(`Zip Code`,1 ,5)) %>%
-    filter(`Primary Specialty` %in% c("GYNECOLOGICAL ONCOLOGY", "OBSTETRICS/GYNECOLOGY")) %>% 
-    #mutate(year = "2023") %>%
-    collect()
-  
-  # Write the processed data to a CSV file
-  #write_csv(nppes_data, paste0("data/02.5-subspecialists_over_time.R/Postico_output_", year, "_nppes_data_filtered.csv"))
-  write_csv(nppes_data, paste0("Postico_output_", year, "_nppes_data_filtered.csv"))
-}
-
-# Example usage
+#**************************
+#* DOWNLOADS PHYSICIAN DATA FROM NPI DATABASE FOR EACH YEAR
+#* THE RESULTS OF POSTICO_DATABASE_OBGYNS_BY_YEAR BELOW WERE BROUGHT IN TO THE LOCAL MACHINE!
+#**************************
 db_details <- list(
   host = "localhost",
   port = 5433,
   name = "template1",
   user = "postgres",
-  password = "fatbastard"
+  password = "????"
 )
-
 
 postico_database_obgyns_by_year(year = 2023, db_details)
 postico_database_obgyns_by_year(year = 2022, db_details)
@@ -164,157 +122,51 @@ postico_database_obgyns_by_year(year = 2015, db_details)
 postico_database_obgyns_by_year(year = 2014, db_details)
 postico_database_obgyns_by_year(year = 2013, db_details)
 
-#####
 
-# # Apply unite to the fetched data
-# nppes_data_collected <- nppes_data %>%
-#   dplyr::mutate(across(c(last, c, d, f, g, h, i, j, k, l, m, n, q, z), .fns = ~stringr::str_remove_all(., "[[\\p{P}][\\p{S}]]"))) %>%
-#   dplyr::filter(stringr::str_detect(Classification.x, fixed("gyn", ignore_case = TRUE))) %>%
-#   dplyr::filter(n == "US") %>%
-#   dplyr::mutate(i = stringr::str_sub(i, 1, 5)) %>%
-#   dplyr::filter(j == "US") %>%
-#   tidyr::unite(address_1, f, g, h, i, sep = ", ", remove = FALSE, na.rm = FALSE) %>%
-#   tidyr::unite(address2, k, l, m, sep = "_", remove = FALSE, na.rm = FALSE) %>%
-#   dplyr::rename(address = address_1) %>%
-#   dplyr::filter(!h %in% c("AE", "AP", "AA", "AS", "GU", "VI", "FM", "MH", "MP", "PW", "UM", "TT")) %>%
-#   dplyr::rename(c("first" = "c", "middle" = "d", "street" = "f", "city" = "g", "state" = "h", "zip1" = "i", "street2" = "k", "city2" = "l",
-#                   "state2" = "m", "gender" = "q", "taxonomy1" = "r", "taxonomy2" = "s")) %>%
-#   dplyr::select(-Grouping.x, -Grouping.y, -Classification.x, - id.y, -j, -n, -id) %>%
-#   dplyr::mutate(middle = stringr::str_remove_all(middle, "[\\p{P}\\p{S}]")) %>%
-#   dplyr::mutate(honorrific = stringr::str_remove_all(honorrific, "[\\p{P}\\p{S}]"))
+#****************************************************************************
+#* CLEAN EACH YEAR OF DATA TO CREATE 'year_by_year_nppes_data_collected'.  WE ONLY BROUGHT IN MINIMAL INFO ABOUT THE PHYSICIANS FROM POSTICO LIKE NAME AND NPI NUMBER.  
+#****************************************************************************
+# Brought over from old Mac with the Postico database.  
+year_by_year_nppes_data_collected <- exploratory::searchAndReadDelimFiles(folder = "/Users/tylermuffly/Dropbox (Personal)/Tannous/data/02.5-subspecialists_over_time", pattern = "*.csv|*.tsv|*.txt|*.text|*.tab", delim = NULL, quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+  readr::type_convert() %>%
+  exploratory::clean_data_frame() %>%
+  mutate(year_1 = list_to_text(str_extract_all(id.new, "[:digit:]+")), .after = ifelse("id.new" %in% names(.), "id.new", last_col())) %>%
+  rename() %>%
+  select(-id.new) %>%
+  arrange(NPI) %>%
+  mutate(`Primary Specialty` = coalesce(`Primary Specialty`, `Primary Speciality`)) %>%
+  mutate(`Last Name` = coalesce(`Last Name`, `Last Namee`)) %>%
+  select(-year, -`Last Namee`, -`Primary Speciality`) %>%
+  rename(year = year_1) %>%
+  group_by(NPI) %>%
+  arrange(year) %>%
+  reorder_cols(year, NPI, `Last Name`, `First Name`, `Middle Name`, Gender, City, State, `Zip Code`, Credential, `Primary Specialty`, `Secondary Specialty`, id) %>%
+  reorder_cols(year, NPI, `Last Name`, `First Name`, `Middle Name`, Gender, City, State, `Zip Code`, `Primary Specialty`, id, Credential, `Secondary Specialty`) %>%
+  select(-Credential, -`Secondary Specialty`) %>%
+  rename(goba_id = id)
 
-#View(nppes_data_collected)
-#This is ready to do geocoding.  
+readr::write_csv(year_by_year_nppes_data_collected, "data/02.5-subspecialists_over_time/year_by_year_nppes_data_collected.csv")
+# nppes_data_collected <- readr::read_csv("data/02.5-subspecialists_over_time/year_by_year_nppes_data_collected.csv")
 
-write_csv(nppes_data_collected, "NPPES_November_filtered_data.csv")
+#**************************
+#* VALIDATE THE NPI NUMBERS
+#**************************
+year_by_year_nppes_data_validated_npi <- validate_and_remove_invalid_npi(input_data = "data/02.5-subspecialists_over_time/year_by_year_nppes_data_collected.csv") %>% 
+  dplyr::filter(npi_is_valid == TRUE) %>%
+  readr::write_csv(., "data/02.5-subspecialists_over_time/year_by_year_nppes_data_validated_npi.csv")
 
-
-######
-#Function 1: validate_and_remove_invalid_npi
-validate_and_remove_invalid_npi <- function(input_data) {
-  
-  if (is.data.frame(input_data)) {
-    # Input is a dataframe
-    df <- input_data
-  } else if (is.character(input_data)) {
-    # Input is a file path to a CSV
-    df <- readr::read_csv(input_data)
-  } else {
-    stop("Input must be a dataframe or a file path to a CSV.")
-  }
-  
-  # Remove rows with missing or empty NPIs
-  df <- df %>%
-    #head(5) %>%. #for testing only
-    dplyr::filter(!is.na(npi) & npi != "")
-  
-  # Add a new column "npi_is_valid" to indicate NPI validity
-  df <- df %>%
-    dplyr::mutate(npi_is_valid = sapply(npi, function(x) {
-      if (is.numeric(x) && nchar(x) == 10) {
-        npi::npi_is_valid(as.character(x))
-      } else {
-        FALSE
-      }
-    })) %>%
-    dplyr::filter(!is.na(npi_is_valid) & npi_is_valid)
-  
-  # Return the valid dataframe with the "npi_is_valid" column
-  return(df)
-}
-
-#####################
-#Function 2: retrieve_clinician_data
-## Output
-df_updated <- NULL
-library(provider)
-library(npi)
-
-validate_and_remove_invalid_npi <- function(input_data) {
-  
-  if (is.data.frame(input_data)) {
-    # Input is a dataframe
-    df <- input_data
-  } else if (is.character(input_data)) {
-    # Input is a file path to a CSV
-    df <- readr::read_csv(input_data)
-  } else {
-    stop("Input must be a dataframe or a file path to a CSV.")
-  }
-  
-  # Remove rows with missing or empty NPIs
-  df <- df %>%
-    #head(5) %>%. #for testing only
-    dplyr::filter(!is.na(npi) & npi != "")
-  
-  # Add a new column "npi_is_valid" to indicate NPI validity
-  df <- df %>%
-    dplyr::mutate(npi_is_valid = sapply(npi, function(x) {
-      if (is.numeric(x) && nchar(x) == 10) {
-        npi::npi_is_valid(as.character(x))
-      } else {
-        FALSE
-      }
-    })) %>%
-    dplyr::filter(!is.na(npi_is_valid) & npi_is_valid)
-  
-  # Return the valid dataframe with the "npi_is_valid" column
-  return(df)
-}
-
-retrieve_clinician_data <- function(input_data) {
-  # Load libraries
-  #remotes::install_github("andrewallenbruce/provider")
-  
-  if (is.data.frame(input_data)) {
-    # Input is a dataframe
-    df <- input_data
-  } else if (is.character(input_data)) {
-    # Input is a file path to a CSV
-    df <- readr::read_csv(input_data)
-  } else {
-    stop("Input must be a dataframe or a file path to a CSV.")
-  }
-  
-  # Clean the NPI numbers
-  df <- validate_and_remove_invalid_npi(df)
-  
-  # Function to retrieve clinician data for a single NPI
-  get_clinician_data <- function(npi) {
-    if (!is.numeric(npi) || nchar(npi) != 10) {
-      cat("Invalid NPI:", npi, "\n")
-      return(NULL)  # Skip this NPI
-    }
-    
-    clinician_info <- provider::clinicians(npi = npi)
-    if (is.null(clinician_info)) {
-      cat("No results for NPI:", npi, "\n")
-    } else {
-      return(clinician_info)  # Print the clinician data as it comes out
-    }
-    Sys.sleep(1)
-  }
-  
-  #df <- df %>% head(5) #test
-  
-  # Loop through the "npi" column and get clinician data
-  df_updated <- df %>%
-    dplyr::mutate(row_number = row_number()) %>%
-    dplyr::mutate(clinician_data = purrr::map(npi, get_clinician_data)) %>%
-    tidyr::unnest(clinician_data, names_sep = "_") %>%
-    dplyr::distinct(npi, .keep_all = TRUE)
-  
-  return(df_updated)
-}
-
-# #
-# # Call the retrieve_clinician_data function with an NPI value
-input_data <- ("NPPES_November_filtered_data.csv")
-clinician_data <- retrieve_clinician_data(input_data)
+#**************************
+#* RETURN THE CONTEMPORARY DEMOGRAPHICS OF THE PHYSICIAN DATA WITH PREFIX OF "CLINICIAN_DATA_" (GENDER, MEDICAL SCHOOL, GRAD YEAR) ARE THE ONLY TIMELESS OPTIONS.  PAST DATA IS NOT SEARCHABLE SO WE WILL NEED TO USE THE POSTICO DATABASE FOR ADDRESS, PRACTICE NAME, ETC.  PEOPLE WHO RETIRED ARE BOING TO BE "NO RESULTS"
+#**************************
+## Call the retrieve_clinician_data function with an NPI value
+input_data <- ("data/02.5-subspecialists_over_time/year_by_year_nppes_data_validated_npi.csv")
+clinician_data <- retrieve_clinician_data(input_data,
+                                          no_results_csv = "data/02.5-subspecialists_over_time/no_results_npi.csv")
+#View(clinician_data)
 
 ################
 ## `complete_npi_for_subspecialists`, WE want to get the zip codes
-complete_npi_for_subspecialists <- readr::read_csv("Desktop/complete_npi_for_subspecialists.csv") %>%
+complete_npi_for_subspecialists <- readr::read_csv("data/03-search_and_process_npi/complete_npi_for_subspecialists.csv") %>%
   as_tibble() %>%
   distinct(NPI, .keep_all = TRUE)
 

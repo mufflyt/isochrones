@@ -38,6 +38,8 @@ library(mapview)
 library(shiny) # creation of GUI, needed to change leaflet layers with dropdowns
 library(htmltools) # added for saving html widget
 devtools::install_github('ramnathv/htmlwidgets')
+remotes::install_github("andrewallenbruce/provider")
+library(provider)
 library(readxl)
 library(leaflet.extras)
 library(leaflet.minicharts)
@@ -633,4 +635,190 @@ download_and_merge_block_groups <- function(year) {
 ##########
 format_pct <- function(x, my_digits = 0) {
   format(x, digits = my_digits, nsmall = my_digits)
+}
+
+
+#########
+postico_database_obgyns_by_year <- function(year, db_details) {
+  # Database connection details
+  db_host <- db_details$host
+  db_port <- db_details$port
+  db_name <- db_details$name
+  db_user <- db_details$user
+  db_password <- db_details$password
+  
+  # Create a database connection
+  # db_connection <- dbConnect(
+  #   RPostgres::Postgres(),
+  #   dbname = db_name,
+  #   host = db_host,
+  #   port = db_port,
+  #   user = db_user,
+  #   password = db_password
+  # )
+  
+  # Reference the tables using tbl
+  nppes_table_name <- as.character(year)
+  nppes_table <- dplyr::tbl(db_connection, nppes_table_name)
+  nucc_taxonomy_table_name <- "nucc_taxonomy_201"
+  nucc_taxonomy_201 <- dplyr::tbl(db_connection, nucc_taxonomy_table_name)
+  
+  # Fetch and process the data from the database
+  nppes_data <- nppes_table %>%
+    distinct(NPI, .keep_all = TRUE) %>%
+    mutate(`Zip Code` = str_sub(`Zip Code`,1 ,5)) %>%
+    filter(`Primary Specialty` %in% c("GYNECOLOGICAL ONCOLOGY", "OBSTETRICS/GYNECOLOGY")) %>% 
+    collect()
+  
+  # Write the processed data to a CSV file
+  #write_csv(nppes_data, paste0("data/02.5-subspecialists_over_time.R/Postico_output_", year, "_nppes_data_filtered.csv"))
+  write_csv(nppes_data, paste0("Postico_output_", year, "_nppes_data_filtered.csv"))
+}
+
+# Example usage
+# db_details <- list(
+#   host = "localhost",
+#   port = 5433,
+#   name = "template1",
+#   user = "postgres",
+#   password = "????"
+# )
+
+#########
+#Function 1: validate_and_remove_invalid_npi
+validate_and_remove_invalid_npi <- function(input_data) {
+  
+  if (is.data.frame(input_data)) {
+    # Input is a dataframe
+    df <- input_data
+  } else if (is.character(input_data)) {
+    # Input is a file path to a CSV
+    df <- readr::read_csv(input_data)
+  } else {
+    stop("Input must be a dataframe or a file path to a CSV.")
+  }
+  
+  # Remove rows with missing or empty NPIs
+  df <- df %>%
+    #head(5) %>%. #for testing only
+    dplyr::filter(!is.na(npi) & npi != "")
+  
+  # Add a new column "npi_is_valid" to indicate NPI validity
+  df <- df %>%
+    dplyr::mutate(npi_is_valid = sapply(npi, function(x) {
+      if (is.numeric(x) && nchar(x) == 10) {
+        npi::npi_is_valid(as.character(x))
+      } else {
+        FALSE
+      }
+    })) %>%
+    dplyr::filter(!is.na(npi_is_valid) & npi_is_valid)
+  
+  # Return the valid dataframe with the "npi_is_valid" column
+  return(df)
+}
+
+############
+validate_and_remove_invalid_npi <- function(input_data) {
+  
+  if (is.data.frame(input_data)) {
+    # Input is a dataframe
+    df <- input_data
+  } else if (is.character(input_data)) {
+    # Input is a file path to a CSV
+    df <- readr::read_csv(input_data)
+  } else {
+    stop("Input must be a dataframe or a file path to a CSV.")
+  }
+  
+  # Standardize NPI column name
+  npi_col <- if ("npi" %in% names(df)) {
+    "npi"
+  } else if ("NPI" %in% names(df)) {
+    "NPI"
+  } else {
+    stop("Dataframe must contain a column named 'npi' or 'NPI'.")
+  }
+  
+  # Remove rows with missing or empty NPIs
+  df <- df %>%
+    dplyr::filter(!is.na(!!sym(npi_col)) & !!sym(npi_col) != "")
+  
+  # Add a new column "npi_is_valid" to indicate NPI validity
+  df <- df %>%
+    dplyr::mutate(npi_is_valid = sapply(!!sym(npi_col), function(x) {
+      if (is.numeric(x) && nchar(x) == 10) {
+        npi::npi_is_valid(as.character(x))
+      } else {
+        FALSE
+      }
+    })) %>%
+    dplyr::filter(!is.na(npi_is_valid) & npi_is_valid)
+  
+  # Return the valid dataframe with the "npi_is_valid" column
+  return(df)
+}
+
+############
+retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi.csv") {
+  message("The data should already have had the NPI numbers validated.")
+  
+  # Load data or read from file
+  if (is.data.frame(input_data)) {
+    df <- input_data
+  } else if (is.character(input_data)) {
+    df <- readr::read_csv(input_data)
+  } else {
+    stop("Input must be a dataframe or a file path to a CSV.")
+  }
+  
+  df <- df %>% head(5) # for testing
+  
+  # Standardize NPI column name
+  npi_col <- if ("npi" %in% names(df)) {
+    "npi"
+  } else if ("NPI" %in% names(df)) {
+    "NPI"
+  } else {
+    stop("Dataframe must contain a column named 'npi' or 'NPI'.")
+  }
+  
+  # Remove duplicate NPIs
+  df <- df %>% dplyr::distinct(!!sym(npi_col), .keep_all = TRUE)
+  
+  # Initialize a list to store NPIs with no results
+  no_results_npi <- vector("list", 0)
+  
+  # Function to retrieve clinician data for a single NPI
+  get_clinician_data <- function(npi) {
+    if (!is.numeric(npi) || nchar(npi) != 10) {
+      cat("Invalid NPI:", npi, "\n")
+      return(NULL)  # Skip this NPI
+    }
+    
+    clinician_info <- provider::clinicians(npi = npi)
+    if (is.null(clinician_info)) {
+      cat("No results for NPI:", npi, "\n")
+      no_results_npi <<- c(no_results_npi, list(npi))  # Add the NPI to the list
+      return(NULL)
+    } else {
+      return(clinician_info)  # Return the clinician data
+    }
+    Sys.sleep(1)  # To avoid rate limits in API calls
+  }
+  
+  # Loop through the NPI column and get clinician data
+  df_updated <- df %>%
+    dplyr::mutate(row_number = row_number()) %>%
+    dplyr::mutate(clinician_data = purrr::map(!!sym(npi_col), get_clinician_data)) %>%
+    tidyr::unnest(clinician_data, names_sep = "_") %>%
+    dplyr::distinct(!!sym(npi_col), .keep_all = TRUE)
+  
+  # Export NPIs without results to a CSV file
+  if (length(no_results_npi) > 0) {
+    write.csv(data.frame(NPI = unlist(no_results_npi)), no_results_csv, row.names = FALSE)
+    message("PEOPLE WHO RETIRED ARE GOING TO BE NO RESULTS. /n NPIs without results have been saved to ", no_results_csv)
+  }
+  
+  return(df_updated)
 }
