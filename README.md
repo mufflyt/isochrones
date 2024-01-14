@@ -224,7 +224,7 @@ git push origin main
 ```
 
 # Postico Database
-We needed a database program to house each of the NPI files from each year due to RAM restrictions.  
+We needed a database program to house each of the NPI files from each year due to RAM restrictions.  Postico is a client for PostgreSQL, and it allows you to execute raw SQL queries, including DDL statements._full_
 <img width="1440" alt="Screenshot 2024-01-13 at 8 25 35 PM" src="https://github.com/mufflyt/isochrones/assets/44621942/86e54895-3358-4ff7-96d6-0e3e9b120a46">
 
 # tyler package
