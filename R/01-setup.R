@@ -772,19 +772,10 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
     stop("Input must be a dataframe or a file path to a CSV.")
   }
   
-  df <- df %>% head(1500) # for testing
-  
-  # Standardize NPI column name
-  npi_col <- if ("npi" %in% names(df)) {
-    "npi"
-  } else if ("NPI" %in% names(df)) {
-    "NPI"
-  } else {
-    stop("Dataframe must contain a column named 'npi' or 'NPI'.")
-  }
+  df <- df %>% head(100) # for testing
   
   # Remove duplicate NPIs
-  df <- df %>% dplyr::distinct(!!sym(npi_col), .keep_all = TRUE)
+  df <- df %>% dplyr::distinct(npi, .keep_all = TRUE)
   
   # Initialize a list to store NPIs with no results
   no_results_npi <- vector("list", 0)
@@ -795,7 +786,7 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
       cat("Invalid NPI:", npi, "\n")
       return(NULL)  # Skip this NPI
     }
-    
+
     clinician_info <- provider::clinicians(npi = npi)
     if (is.null(clinician_info)) {
       cat("No results for NPI:", npi, "\n")
@@ -807,14 +798,12 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
     Sys.sleep(1)  # To avoid rate limits in API calls
   }
   
-  get_clinician_data <- memoise(get_clinician_data)
-  
   # Loop through the NPI column and get clinician data
   df_updated <- df %>%
     #dplyr::mutate(row_number = row_number()) %>%
-    dplyr::mutate(clinician_data = purrr::map(!!sym(npi_col), get_clinician_data)) %>%
+    dplyr::mutate(clinician_data = purrr::map(npi, get_clinician_data)) %>%
     tidyr::unnest(clinician_data, names_sep = "_") %>%
-    dplyr::distinct(!!sym(npi_col), .keep_all = TRUE)
+    dplyr::distinct(npi, .keep_all = TRUE)
   
   # Export NPIs without results to a CSV file
   if (length(no_results_npi) > 0) {
