@@ -6,6 +6,7 @@
 *.dbf
 *.html
 data/07-isochrone-mapping/*
+data/tigris/*
 figures/*
 *.mp4
 .here
