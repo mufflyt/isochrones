@@ -217,9 +217,23 @@ git lfs track "*.dbf" "*.shp"
 git ls-tree -r -t -l HEAD | sort -k 4 -n -r | head -n 10
 git add .gitattributes
 git commit -m "Track large files with Git LFS"
+git push origin main
+```
+
+```r
 git lfs track "bg_shp_joined_intersect_pct.rds"
 git add .gitattributes
 git commit -m "Track bg_shp_joined_intersect_pct.rds with Git LFS"
+git push origin main
+```
+
+```r
+git add .gitattributes
+git add *.shp
+git add *.dbf
+git add *.shx
+git add *.prj
+git commit -m "Reconfigure Git LFS for large files"
 git push origin main
 ```
 
