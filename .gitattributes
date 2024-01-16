@@ -4,3 +4,4 @@ data/07.5-prep-get-block-group-overlap/* filter=lfs diff=lfs merge=lfs -text
 data/02.5[[:space:]]large[[:space:]]file filter=lfs diff=lfs merge=lfs -text
 data/02.5-subspecialists_over_time/year_by_year_nppes_data_validated_npi.csv filter=lfs diff=lfs merge=lfs -text
 data/02.5-subspecialists_over_time/NPPES_November_filtered_data.csv filter=lfs diff=lfs merge=lfs -text
+NPPES_November_filtered_data.csv filter=lfs diff=lfs merge=lfs -text
