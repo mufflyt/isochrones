@@ -2,7 +2,7 @@
 # 
 # 1. **Setting Up Packages**: The code starts by setting a seed for reproducibility and loading numerous R packages. These packages are essential for data manipulation, visualization, and geospatial analysis.
 # 
-# 2. **Setting Up Directories**: It sets the working directory to "~/Dropbox (Personal)/Tannous" using the `here` package. It also defines folders for data, results, figures, and R code using the `here::here()` function. These directories are used to organize and manage data and results.
+# 2. **Setting Up Directories**: It sets the working directory to "~/Dropbox (Personal)/isochrones" using the `here` package. It also defines folders for data, results, figures, and R code using the `here::here()` function. These directories are used to organize and manage data and results.
 # 
 # 3. **Bespoke Functions**: The code defines several custom functions for specific tasks, including:
 #   - `search_by_taxonomy`: A function to search the National Provider Identifier (NPI) Database by taxonomy.
@@ -131,12 +131,6 @@ search_by_taxonomy <- function(taxonomy_to_search) {
 
   return(data)
 }
-
-
-print("Setup is complete!")
-
-
-
 
 ##############################
 ###############################
@@ -522,7 +516,9 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25,
 
 ##############################
 ###############################
-us_fips_list <- tigris::fips_codes %>%
+
+# THIS FUNCTION IS NOW WORKING.  
+us_fips <- tigris::fips_codes %>%
   dplyr::select(state_code, state_name) %>%
   dplyr::distinct(state_code, .keep_all = TRUE) %>%
   dplyr::filter(state_code < 56) %>%
@@ -546,21 +542,12 @@ get_census_data <- function (us_fips_list)
   Sys.sleep(1)
   return(acs_raw)
 }
-asdf <- get_census_data()
-
 
 ######
-
-library(tigris)
-library(sf)
-library(dplyr)
-
-#Entiree USA blockgroups only start at 2019
-years <- c(2019, 2021, 2022, 2023)
-
-for (year in years) {
+#Entire USA national scale block groups only start at 2019
+process_block_groups <- function(years) {
   for (year in years) {
-    block_groups_by_year <- tigris::block_groups(state = NULL, cb = TRUE, year = year) 
+    block_groups_by_year <- tigris::block_groups(state = NULL, cb = TRUE, year = year)
     
     sf_block_groups <- st_as_sf(block_groups_by_year)
     
@@ -568,20 +555,21 @@ for (year in years) {
     sf_block_groups <- st_make_valid(sf_block_groups)
     
     # Transforming the CRS to EPSG:2163 and simplifying the geometry
-    sf_block_groups_transformed <- sf_block_groups %>% 
+    sf_block_groups_transformed <- sf_block_groups %>%
       st_transform(2163) %>%
       st_simplify(preserveTopology = FALSE, dTolerance = 1000)
     
-    shapefile_name <- paste0("block_groups_tigris_", year, ".shp")
+    shapefile_name <- paste0("data/shp/block_groups_tigris_", year, ".shp")
     
-    st_write(sf_block_groups_transformed, dsn = shapefile_name, append=FALSE)
+    st_write(sf_block_groups_transformed, dsn = shapefile_name, append = FALSE)
   }
 }
-######
-library(tigris)
-library(sf)
-library(dplyr)
 
+# Usage example:
+#years_to_process <- c(2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022)
+#process_block_groups(years_to_process)
+
+######
 download_and_merge_block_groups <- function(year) {
   # Specific list of state FIPS codes
   us_fips_list <- c("01", "02", "04", "05", "06", "08", "09", "10", "11", "12",
@@ -814,3 +802,6 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
   return(df_updated)
 }
 
+
+# fin
+print("Setup is complete!")

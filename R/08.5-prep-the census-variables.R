@@ -75,7 +75,7 @@ totals_census_variables_prepped <- census_variables_prepped %>%
 # CHANGED TO A WIDE FORMAT CALCULATE PERCENTAGES
 #************************************
 # Steps to produce branching_point_1
-`branching_point_1`<- exploratory::read_delim_file("/Users/tylermuffly/Dropbox (Personal)/Tannous/data/09-get-census-population/temp_bg.csv", delim = NULL, quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+`branching_point_1`<- exploratory::read_delim_file("data/08.5-prep-the-census-variables/temp_bg.csv", delim = NULL, quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
   readr::type_convert() %>%
   exploratory::clean_data_frame() %>%  # On the Census Demographic Profile they do a "Total races tallied" using "White alone or in combination with one or more races" so I will try that here.
 filter(str_ends(complete_description, fixed(", NOT HISPANIC OR LATINO)")) & str_detect(complete_description, fixed("OR IN COMBINATION WITH ONE OR MORE OTHER RACES"))) %>%
@@ -95,8 +95,8 @@ filter(str_ends(complete_description, fixed(", NOT HISPANIC OR LATINO)")) & str_
   left_join(`temp_bg_1`, by = join_by(`abbreviated` == `abbreviated`, `geoid` == `geoid`)) %>%
   distinct(abbreviated, geoid, .keep_all = TRUE) %>%
   select(-complete_description) %>%
-  mutate(abbreviated = recode(abbreviated, "BLACK" = "race_black_number", "AI/AN" = "race_aian_number", "ASIAN" = "race_asian_number", #"HISPANIC" = "race_hispanic_number", "TWO" = "race_two_number",
-                              "NHPI" = "race_nhpi_number", "WHITE" = "race_white_number", type_convert = TRUE)) %>%
+  mutate(abbreviated = recode(abbreviated, "BLACK" = "race_black_number", "AI/AN" = "race_aian_number", "ASIAN" = "race_asian_number", "NHPI" = "race_nhpi_number", "WHITE" = "race_white_number", type_convert = TRUE)) %>% 
+  #"HISPANIC" = "race_hispanic_number", "TWO" = "race_two_number",
   select(-variable, -population) %>%
   pivot_longer(cols = c(`abbreviated`), values_to = 'value', names_to = c("key"), values_drop_na = TRUE, names_repair = 'unique') %>%
   pivot_wider(names_from = c(value), values_from = c(all_types_of_race_together_population)) %>%
@@ -117,10 +117,10 @@ filter(str_ends(complete_description, fixed(", NOT HISPANIC OR LATINO)")) & str_
     population_black = sum(race_black_number),
     within_white = sum(race_white_number * overlap),
     population_white = sum(race_white_number),
-    #population_two_number = sum(race_two_number),
     population_nhpi = sum(race_nhpi_number),
+    within_nhpi = sum(race_nhpi_number * overlap)#,
+    #population_two_number = sum(race_two_number),
     #population_hispanic = sum(race_hispanic_number),
-    within_nhpi = sum(race_nhpi_number * overlap),
     #within_two_number = sum(race_two_number * overlap),
     #within_hispanic = sum(race_hispanic_number * overlap)
   ) %>%
