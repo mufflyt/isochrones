@@ -37,9 +37,25 @@
 
 
 # Geography
+I am interested in looking at the availability of access to 5,000 OBGYN subspecialists over time (2013 to 2022) in the United States.  The subspecialists include: Female Pelvic Medicine and Reconstructive Surgery/Urogynecology, Gynecologic Oncology, Maternal-Fetal Medicine, and Reproductive Endocrinology and Infertility.  The topic is physician workforce planning, where there is the greatest need for more physicians to serve women 18 years and older.  Patients will be driving by car to create the isochrones.  I do not have access to ArcGIS due to cost and so I would like to create everything using R.  Ideally we would use the “sf” package as “sp” is being deprecated.  I'm hiring because I have too much work to do alone. I would like to start work next week.  
 
-Based on:
-www.github.com/hrecht
+What I am providing:
+1) A github repository with the scripts and the data needed to create the code: www.github.com/mufflyt.  Most of this project is based off of two projects by Hannah Recht.  www.github.com/hrecht
+
+Deliverables:
+1) Source code in R
+2) Scripts that create year-specific isochrones and year-specific physicians and year specific block groups
+3) Gather Census data for each of the years for all the block groups.  
+4) Create a static map of each year (2013 to 2022) plotting the year-specific physicians and year-specific isochrones
+a. Isochrones of different colors for 15 minutes, 30 minutes, 60 minutes, 180 minutes, and 240 minutes
+b. Physicians as dots with different colors based on specialty (sub1)
+c. ACOG Districts outlined with no fill
+d. A compass rose and a scale bar in miles
+e. Legend of isochrones ordered from 15 minutes on top to 240 minutes on bottom
+f. Title at the top center of the map
+g. Saved as a TIFF file
+5) Leaflet map with the same features as above please
+6) Counts of the number of women (Total, White, Black , Asian, American Indian/Alaska Native, Native Hawaiian/Pacific Islander) who are within each of the 15 minutes, 30 minutes, 60 minutes, 180 minutes, and 240 minutes from each subspecialty(Female Pelvic Medicine and Reconstructive Surgery/Urogynecology, Gynecologic Oncology, Maternal-Fetal Medicine, and Reproductive Endocrinology and Infertility.)
 
 Sample Abstract
 
@@ -185,21 +201,22 @@ The bespoke R code generates individual maps for each drive time, visually repre
 •	October 16, 2020
 •	October 15, 2021
 •	October 21, 2022
+
+c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-16 09:00:00",
+  "2016-10-21 09:00:00", "2017-10-20 09:00:00", "2018-10-19 09:00:00",
+  "2019-10-18 09:00:00", "2020-10-16 09:00:00", "2021-10-15 09:00:00",
+  "2022-10-21 09:00:00")
 ```
 
 R code utilizing the hereR package with the isoline library.  The range of isochrones was 30 minutes, 60 minutes, 120 minutes, and 180 minutes.  
 ```r
-hereR::isoline(
-          poi = row_data,
-          range = c(1),
-          datetime = posix_time,
-          routing_mode = "fast",
-          range_type = "time",
-          transport_mode = "car",
-          url_only = FALSE,
-          optimize = "balanced",
-          traffic = TRUE,
-          aggregate = FALSE)
+isochrones_sf <- process_and_save_isochrones(input_file_no_error_rows, 
+                                             chunk_size = 25, 
+                                             iso_datetime = "2023-10-20 09:00:00",
+                                             iso_ranges = c(30*60, 60*60, 120*60, 180*60),
+                                             crs = 4326, 
+                                             transport_mode = "car",
+                                             file_path_prefix = "data/06-isochrones/isochrones_")
 ```
 
 ![image](https://github.com/mufflyt/Geography/assets/44621942/d246f85e-4b77-463e-9cb9-69c0e6623e2e)
