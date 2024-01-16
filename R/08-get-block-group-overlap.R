@@ -16,7 +16,7 @@ block_groups <- sf::st_read(block_groups_file) %>%
 
 # Write processed block groups shapefile
 sf::st_write(block_groups,
-             dsn = "data/08-get-block-group-overlap/simplified_colorado",
+             dsn = "data/08-get-block-group-overlap/simplified_colorado", #ONLY doing COLORADO and not the USA
              layer = "block_groups",
              driver = "ESRI Shapefile",
              quiet = FALSE, append = FALSE)

@@ -52,7 +52,7 @@ nrow(input_file_no_error_rows) * 4
 
 # TODO I need to fix the process_and_save_isochrones function to give it a path to save.
 # Call the `process_and_save_isochrones` function with your input_file
-c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-16 09:00:00",
+iso_datetime_yearly <- c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-16 09:00:00",
   "2016-10-21 09:00:00", "2017-10-20 09:00:00", "2018-10-19 09:00:00",
   "2019-10-18 09:00:00", "2020-10-16 09:00:00", "2021-10-15 09:00:00",
   "2022-10-21 09:00:00")
