@@ -39,8 +39,10 @@
 1) 01-setup: Setup will need to be updated with any changes you make to the bespoke functions.  Teh get_census_data function is not working.  
 2) 02.5-subspecialists_over_time: Year-specific physicians should be contained in "data/02.5-subspecialists_over_time/distinct_year_by_year_nppes_data_validated_npi.csv".  This file was run on a different machine with a Postico database so the file does not need to be run.  
 3) 03-search_and_process_npi.R should not need to be run.  
-4) 04-geocode: We need to geocode all the physicians from "distinct_year_by_year_nppes_data_validated_npi.csv."  I would like to avoid doing too much geocoding as using the hereR package can get expensive, so I would prefer we only code distinct addresses.
-5) 05-geocode-cleaning: This file is a very hacky workaround to parse then match the address parts, and now that we have a unique identifier going in and coming out of the 06-isochrones.R file.  
+4) 04-geocode: We need to geocode all the physicians from "distinct_year_by_year_nppes_data_validated_npi.csv."  I would like to avoid doing too much geocoding as using the hereR package can get expensive, so I would prefer we only code distinct addresses.  There is an error at this line of code that needs help: "merged_data_sp <- as(merged_data, "Spatial")".  
+5) 05-geocode-cleaning: This file is a very hacky workaround to parse then match the address parts, and now that we have a unique identifier going in and coming out of the 06-isochrones.R file.  I get an error in the sanity check section with I get an error:  Error in leaflet::addLegend(., position = "bottomright", colors = district_colors,  :  'colors' and 'labels' must be of the same length
+ In addition: Warning message: Unknown or uninitialised column: `ACOG_District`. 
+
 5) 05-geocode-cleaning: Running this file may not be necessary.
 6) 06-isochrones: Please fix the process_and_save_isochrones function to give it multiple dates (`iso_datetime_yearly`).  
 7) 07-isochrone-mapping: To make year-specific physicians, we must figure out the "subspecialists_lat_long" variable.  
