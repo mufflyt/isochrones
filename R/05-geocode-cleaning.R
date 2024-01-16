@@ -1,5 +1,7 @@
 #This code is part of a data preprocessing and cleaning workflow for geocoded clinician data. It starts by reading in a CSV file named "end_completed_clinician_data_geocoded_addresses_12_8_2023.csv" into the `geocoded_data` data frame. Then, it performs several data transformation steps on this data, including cleaning and formatting the address information. The cleaned data is written to a CSV file named "geocoded_data_to_match_house_number.csv." In the second part of the code, it reads another CSV file named "for_street_matching_with_HERE_results_clinician_data.csv" into the `clinician_data_for_matching` data frame and applies a series of data parsing and cleaning operations using the "postmastr" package to extract and standardize various address components. The result is stored in the `clinician_data_postmastr_parsed` data frame and written to a CSV file named "end_postmastr_clinician_data.csv." The code then performs an inner join between the postmastr processed clinician data and the geocoded data based on specific columns, creating an `inner_join_postmastr_clinician_data` data frame. Finally, it generates ACOG (American College of Obstetricians and Gynecologists) districts using the `tyler` package and stores the result in the `acog_districts_sf` object.
 
+#TODO: Please assess if we need this hacky way to match the geocoded results by a parsed address if we can pass a unique_id variable to create_geocode in order to match the original dataframe with the geocoded output.  
+
 #######################
 source("R/01-setup.R")
 #######################
@@ -15,7 +17,7 @@ geocoded_data_to_match_house_number <- geocoded_data %>%
   mutate(address_cleaned = exploratory::str_remove(address, regex(", United States$", ignore_case = TRUE), remove_extra_space = TRUE), .after = ifelse("address" %in% names(.), "address", last_col())) %>%
   mutate(address_cleaned = exploratory::str_remove_after(address_cleaned, sep = "\\-")) %>%
   mutate(address_cleaned = str_replace(address_cleaned, "([A-Z]{2}) ([0-9]{5})", "\\1, \\2")) %>%
-  readr::write_csv(., "data/geocoded_data_to_match_house_number.csv")
+  readr::write_csv(., "data/05-geocode-cleaning/geocoded_data_to_match_house_number.csv")
 
 
 #**************************
@@ -62,6 +64,7 @@ clinician_data_postmastr_min <- postmastr::pm_state_parse(clinician_data_postmas
 # city <- pm_dictionary(type = "city", locale = "us", filter = c("AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"), case = c("title", "upper", "lower")) %>%
 # write_rds("data/city.rds")
 
+# This is provided in the repository in the ""data/05-geocode-cleaning" path.  
 #This takes a while so a hard copy is stored in data/05-geocode-cleaning
 city <- readr::read_rds("data/05-geocode-cleaning/city.rds")
 
@@ -97,19 +100,26 @@ readr::write_csv(clinician_data_postmastr_parsed, "data/05-geocode-cleaning/end_
 
 # Now do a join between the postmastr file `postmastr_clinician_data.csv` and the geocoded results file `geocoded_data_to_match_house_number`
 
-#**********************************************
-# SENT TO EXPLORATORY WHERE AN INNER JOIN WAS DONE. This part is not documented.  
-# RESULT
-#**********************************************
-inner_join_postmastr_clinician_data <- readr::read_csv("data/05-geocode-cleaning/end_inner_join_postmastr_clinician_data.csv") %>%
-  exploratory::left_join(`ACOG_Districts`, by = join_by(`postmastr.pm.state` == `State_Abbreviations`))
 
-readr::write_csv(inner_join_postmastr_clinician_data, "data/05-geocode-cleaning/end_inner_join_postmastr_clinician_data.csv")
+#**********************************************
+# INNER JOIN BY HOUSE_NUMBER AND STATE
+#**********************************************
+# Provenance from 05-geocode-cleaning.R at the top of the script
+geocoded_data_to_match_house_number <- readr::read_csv("data/05-geocode-cleaning/geocoded_data_to_match_house_number.csv")
+
+# Provenance
+clinician_data_postmastr_parsed <- readr::read_csv("data/05-geocode-cleaning/postmastr_clinician_data.csv")
+
+inner_join_postmastr_clinician_data <- clinician_data_postmastr_parsed %>%
+  rename(house_number = pm.house, street = pm.street) %>%
+  exploratory::left_join(`geocoded_data_to_match_house_number`, by = c("house_number" = "house_number", "pm.state" = "state_code"), exclude_target_columns = TRUE, target_columns = c("country_code", "district", "state", "country"), ignorecase=TRUE) %>%
+  distinct(pm.uid, .keep_all = TRUE) %>%
+  filter(!is.na(score)) 
 
 # Define the number of ACOG districts
 num_acog_districts <- 11
 
-# Create a custom color palette using viridis
+# Create a custom color palette using viridis.  I like using the viridis palette because it is ok for color blind folks.  
 district_colors <- viridis::viridis(num_acog_districts, option = "viridis")
 
 # Generate ACOG districts with geometry borders in sf using tyler::generate_acog_districts_sf()
@@ -119,6 +129,13 @@ acog_districts_sf <- tyler::generate_acog_districts_sf()
 #**********************************************
 # SANITY CHECK
 #**********************************************
+#
+#TODO:  I get an error:  Error in leaflet::addLegend(., position = "bottomright", colors = district_colors,  : 
+# 'colors' and 'labels' must be of the same length
+# In addition: Warning message:
+#   Unknown or uninitialised column: `ACOG_District`. 
+
+
 leaflet::leaflet(data = inner_join_postmastr_clinician_data) %>%
   leaflet::addCircleMarkers(
     data = inner_join_postmastr_clinician_data,

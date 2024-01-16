@@ -228,11 +228,10 @@ search_and_process_npi <- memoise(function(input_file,
 # readr::write_csv(output_result, "results_of_search_and_process_npi.csv")
 
 
-##############################
-###############################
-##########################################################################
-## Geocode
-# Memoized version of create_geocode
+
+#**************************
+#* create_geocode: 04-geocode.R.  GEOCODE THE DATA USING HERE API.  The key is hard coded into the function.  
+#**************************
 create_geocode <- memoise::memoise(function(csv_file) {
   # Set your HERE API key
   api_key <- "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM"

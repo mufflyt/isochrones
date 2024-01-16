@@ -19,7 +19,7 @@ csv_file <- "data/04-geocode/for_street_matching_with_HERE_results_clinician_dat
 
 geocoded_data <- create_geocode(csv_file)
 write_csv(geocoded_data, "data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv")
-# geocoded_data <- readr::read_csv("data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv") #for testing.
+# geocoded_data <- readr::read_csv("data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv") #for testing
 
 
 #**********************************************
@@ -27,6 +27,7 @@ write_csv(geocoded_data, "data/04-geocode/end_completed_clinician_data_geocoded_
 #**********************************************
 mean(geocoded_data$score) #accuracy of the geocode
 
+# Found in the isochrones/ path.  
 state_data <- read_csv("state_data.csv")
 
 # Step 1: Aggregate your data by state_code and subspecialist count
@@ -44,10 +45,13 @@ merged_data <- state_data %>%
 class(us_states$postal)
 class(state_data$state_code)
 
+# TODO:  This throws an error:  Error in as(merged_data, "Spatial") : 
+#no method or default for coercing “tbl_df” to “Spatial”
+
 # Convert merged_data to SpatialPolygonsDataFrame
 merged_data_sp <- as(merged_data, "Spatial") 
 
-#Does not work with sf
+# TODO: Does not work with sf
 # Replace 'geometry' with your actual geometry column name
 # Specify the correct geometry type and CRS
 # merged_data_sf <- st_as_sf(merged_data, wkt = "geometry", crs = "+proj=longlat +datum=WGS84 +no_defs", agr = "constant")
