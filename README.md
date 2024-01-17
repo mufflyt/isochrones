@@ -304,7 +304,7 @@ poi$id <- seq_len(nrow(poi))
 iso = isoline(poi, aggregate = FALSE)
 
 # non-spatial join
-(iso_attr <- st_sf(merge(as.data.frame(poi), iso, by = "id", all = TRUE))).
+(iso_attr <- st_sf(merge(as.data.frame(poi), iso, by = "id", all = TRUE)))
 ```
 
 HERE Geocoding and Search costs $0.83 per 1,000 searches after 30,000 free geocodes per month. Each physician for each year will need to be geocoded. The data for each year (2013-2023) of physicians is located in "02.5-subspecialists_over_time". I would like to keep costs down as I am funding this project out of my own pocket. Could we only geocode unique addresses? Any ideas are appreciated.
