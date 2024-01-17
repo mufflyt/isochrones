@@ -218,7 +218,7 @@ The bespoke R code generates individual maps for each drive time, visually repre
 c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-16 09:00:00",
   "2016-10-21 09:00:00", "2017-10-20 09:00:00", "2018-10-19 09:00:00",
   "2019-10-18 09:00:00", "2020-10-16 09:00:00", "2021-10-15 09:00:00",
-  "2022-10-21 09:00:00")
+  "2022-10-21 09:00:00", "2023-10-20 09:00:00")
 ```
 
 R code utilizing the hereR package with the isoline library.  The range of isochrones was 30 minutes, 60 minutes, 120 minutes, and 180 minutes.  
@@ -291,9 +291,6 @@ I pay the HERE API for geocoding and building isochrones as I do not feel comfor
 ## HERE Geocoding and Search
 HERE Geocoding and Search costs $0.83 per 1,000 searches after 30,000 free geocodes per month.  Each physician for each year will need to be geocoded.  
 
-## HERE Isoline 
-The HERE Isoline Routing costs $5.50 per 1,000 after 2,500 free isoline routings per month.  
-
 We need to find a way to geocode the physician address NPI data created by the `02.5-subspecialists_over_time` function in `data/02.5-subspecialists_over_time`.  Each file is named `Postico_output_year_nppes_data_filtered.csv`.  Consider adding a unique_id variable.   Here is a use case from the author of the hereR package that we implemented for the isoline function: 
 
 ```r
@@ -307,4 +304,17 @@ iso = isoline(poi, aggregate = FALSE)
 (iso_attr <- st_sf(merge(as.data.frame(poi), iso, by = "id", all = TRUE)))
 ```
 
-HERE Geocoding and Search costs $0.83 per 1,000 searches after 30,000 free geocodes per month. Each physician for each year will need to be geocoded. The data for each year (2013-2023) of physicians is located in "02.5-subspecialists_over_time". I would like to keep costs down as I am funding this project out of my own pocket. Could we only geocode unique addresses? Any ideas are appreciated.
+HERE Geocoding and Search costs $0.83 per 1,000 searches after 30,000 free geocodes per month. Each physician for each year will need to be geocoded. The data for each year (2013-2023) of physicians is located in "02.5-subspecialists_over_time". I would like to keep costs down as I am funding this project out of my own pocket. Could we only geocode unique addresses? 
+
+## HERE Isoline 
+The HERE Isoline Routing costs $5.50 per 1,000 after 2,500 free isoline routings per month.  Ioslines are the same thing as isochrones/drive time maps.  Isolines are more expensive in dollars, and we need about four isolines per physician address (30-minute isoline, 60-minute isoline, 120-minute isoline, and 180-minute isoline).  The `process_and_save_isochrones` function takes an argument for the date and I would like to use the same third Monday in November. I like using the HERE API because it allows us to set different dates and traffic for those dates.  So we can do year-matched isochrones. Dates:
+```r
+c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-16 09:00:00",
+  "2016-10-21 09:00:00", "2017-10-20 09:00:00", "2018-10-19 09:00:00",
+  "2019-10-18 09:00:00", "2020-10-16 09:00:00", "2021-10-15 09:00:00",
+  "2022-10-21 09:00:00", "2023-10-20 09:00:00")
+```
+We run the `process_and_save_isochrones` function in chunks of 25 because we were losing the entire searched isochrones when one error hit. We also test for isochrone errors by doing a one-second isochrone first: `test_and_process_isochrones` function.  #TODO:  I need help figuring out how to merge all the chunks of 25 into one file for an entire year of isochrones.  
+
+Output:  I would like the output sf file to be placed in a directory named by the year and then matched back to the original input.  
+
