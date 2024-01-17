@@ -275,7 +275,7 @@ We needed a database program to house each of the NPI files from each year due t
 [tyler_1.1.0.tar.gz](https://github.com/mufflyt/isochrones/files/13914538/tyler_1.1.0.tar.gz)
 
 # Entire Repository
-https://drive.google.com/drive/folders/1l0VURFtAXZwmzSjz1R4OCQ8Tvl6FShZ8?usp=sharing. Here is the repository.
+https://drive.google.com/drive/folders/1l0VURFtAXZwmzSjz1R4OCQ8Tvl6FShZ8?usp=sharing. Here is the repository uploaded on 1/15/2024.
 
 # Exploratory.io
 ```r
@@ -284,3 +284,14 @@ devtools::install_github("exploratory-io/exploratory_func")
 library(exploratory)
 ```
 Exploratory is a graphical wrapper over R.  It is impressive and I use it for a lot of data wrangling.  
+
+# HERE API
+I pay the HERE API for geocoding and for building isochrones as I do not feel comfortable with an osrm instance on Amazon or in a docker file.  I do not understand either, so this is an easy way to geocode and build isochrones.  Costs for a Basic plan:  https://www.here.com/get-started/pricing#storageandtransferrates are reasonable.  
+
+## HERE Geocoding and Search
+HERE Geocoding and Search costs $0.83 per 1,000 searches after 30,000 free geocodes per month.  Each physician for each year will need to be geocoded.  
+
+## HERE Isoline 
+The HERE Isoline Routing costs $5.50 per 1,000 after 2,500 free isoline routings per month.  
+
+We need to figure out a way to 
