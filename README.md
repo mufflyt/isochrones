@@ -283,10 +283,10 @@ install.packages("devtools")
 devtools::install_github("exploratory-io/exploratory_func")
 library(exploratory)
 ```
-Exploratory is a graphical wrapper over R.  It is impressive and I use it for a lot of data wrangling.  
+Exploratory is a graphical wrapper over R.  It is impressive, and I use it for a lot of data wrangling.  
 
 # HERE API
-I pay the HERE API for geocoding and for building isochrones as I do not feel comfortable with an osrm instance on Amazon or in a docker file.  I do not understand either, so this is an easy way to geocode and build isochrones.  Costs for a Basic plan:  https://www.here.com/get-started/pricing#storageandtransferrates are reasonable.  
+I pay the HERE API for geocoding and building isochrones as I do not feel comfortable maintaining an osrm instance on Amazon or in a docker file.  I do not understand either, so this is an easy way to geocode and build isochrones.  Costs for a Basic plan:  https://www.here.com/get-started/pricing#storageandtransferrates are reasonable.  Many thanks to Merlin 
 
 ## HERE Geocoding and Search
 HERE Geocoding and Search costs $0.83 per 1,000 searches after 30,000 free geocodes per month.  Each physician for each year will need to be geocoded.  
@@ -294,4 +294,17 @@ HERE Geocoding and Search costs $0.83 per 1,000 searches after 30,000 free geoco
 ## HERE Isoline 
 The HERE Isoline Routing costs $5.50 per 1,000 after 2,500 free isoline routings per month.  
 
-We need to figure out a way to 
+We need to find a way to geocode the physician address NPI data created by the `02.5-subspecialists_over_time` function in `data/02.5-subspecialists_over_time`.  Each file is named `Postico_output_year_nppes_data_filtered.csv`.  Consider adding a unique_id variable.   Here is a use case from the author of the hereR package that we implemented for the isoline function: 
+
+```r
+# Add IDs (or use row.names if they are the default sequence)
+poi$id <- seq_len(nrow(poi))
+
+# Request isolines, without aggregating
+iso = isoline(poi, aggregate = FALSE)
+
+# non-spatial join
+(iso_attr <- st_sf(merge(as.data.frame(poi), iso, by = "id", all = TRUE))).
+```
+
+HERE Geocoding and Search costs $0.83 per 1,000 searches after 30,000 free geocodes per month. Each physician for each year will need to be geocoded. The data for each year (2013-2023) of physicians is located in "02.5-subspecialists_over_time". I would like to keep costs down as I am funding this project out of my own pocket. Could we only geocode unique addresses? Any ideas are appreciated.
