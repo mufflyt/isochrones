@@ -23,27 +23,61 @@ source("R/01-setup.R")
 # Save Results: The final merged dataset is saved in RDS (R Data Store) format for further analysis or use in other R scripts.
 
 #**************************
-# GETS CURRENT DATA DATA 
+# GETS NPI NUMBERS FOR THOSE WITHOUT NPI NUMBERS 
 #**************************
-### Read in file and clean it up
+### Read in file and filter so you only keep the NPI NAs
 # File Provenance: "/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/goba/subspecialists_only.csv"
-filtered_subspecialists <- readr::read_csv("data/03-search_and_process_npi/subspecialists_only.csv") %>%
+filtered_subspecialists <- readr::read_csv("data/03-search_and_process_npi/unfiltered_subspecialists_only.csv") %>%
   dplyr::rename(first = first_name) %>%
   dplyr::rename(last = last_name) %>%
-  dplyr::filter(is.na(NPI)) %>%
-  readr::write_csv("data/03-search_and_process_npi/filtered_subspecialists_only.csv")
+  dplyr::filter(is.na(NPI_goba)) %>%
+  readr::write_csv("data/03-search_and_process_npi/NA_filtered_subspecialists_only.csv")
 
 #**************************
-#*. RUN THE API FOR MORE DOCTOR DEMOGRAPHICS
-#* GET NPI NUMBERS for those that do not have any in subspecialists.csv, using search_and_process_npi
+#* GET NPI NUMBERS for those that do not have any in subspecialists.csv, using get_NPI_numbers
 #**************************
-input_file <- "data/03-search_and_process_npi/filtered_subspecialists_only.csv"
-output_result <- search_and_process_npi(input_file) #Runs the function to get data from the NPPES website
 
-searched_npi_numbers <- output_result %>%
+# View(readr::read_csv("data/02.5-subspecialists_over_time/Postico_output_2023_nppes_data_filtered.csv"))
+get_NPI_numbers <- function() {
+  file_path <- "data/03-search_and_process_npi/NA_filtered_subspecialists_only.csv"
+  if (!file.exists(file_path)) {
+    stop("File does not exist: ", file_path)
+  }
+  
+  physician_data <- readr::read_csv(file_path)
+  
+  # Correct column names if necessary
+  if ("First Name" %in% names(physician_data) && "Last Name" %in% names(physician_data)) {
+    names(physician_data)[names(physician_data) == "First Name"] <- "first"
+    names(physician_data)[names(physician_data) == "Last Name"] <- "last"
+  }
+  
+  # Save the modified data to a temporary file
+  temp_file <- tempfile(fileext = ".csv")
+  readr::write_csv(physician_data, temp_file)
+  
+  # Pass the path of the temporary file to the search_and_process_npi function
+  npi_results <- search_and_process_npi(temp_file)
+  
+  # Save the output to a specified path
+  output_file_path <- "data/03-search_and_process_npi/output_NA_filtered_subspecialists_only.csv"
+  readr::write_csv(npi_results, output_file_path)
+  
+  # Uncomment the line below to delete the temporary file after processing
+  # unlink(temp_file)
+  
+  cat("Processed and saved NPI data at: ", output_file_path, "\n")
+  
+  return(npi_results)
+}
+
+output_process_physician_data_for_years <- get_NPI_numbers()
+
+
+searched_npi_numbers <- output_process_physician_data_for_years %>%
   dplyr::distinct(npi, .keep_all = TRUE) %>%
   dplyr::mutate(across(c(basic_first_name, basic_last_name, basic_credential),
-                .fns = ~sstringr::tr_remove_all(., "[[\\p{P}][\\p{S}]]"))) %>%
+                .fns = ~stringr::str_remove_all(., "[[\\p{P}][\\p{S}]]"))) %>%
   dplyr::mutate(basic_credential = stringr::str_to_upper(basic_credential)) %>%
   dplyr::filter(stringr::str_detect(basic_credential, "MD|DO")) %>%
   dplyr::mutate(basic_credential = stringr::str_sub(basic_credential,1 ,2)) %>%
@@ -54,7 +88,7 @@ searched_npi_numbers <- output_result %>%
   readr::write_csv("data/03-search_and_process_npi/searched_npi_numbers.csv") ### File with NPI numbers to complete subspecialty.csv file.    We need to merge the results of new NPI numbers in `searched_npi_numbers` with subspecialty.csv
 
 ### Read in the original subspecialty.csv file.  This file is given and is not calculated earlier in the workflow.  
-# File Provenance: "/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/goba/subspecialists_only.csv"
+# File Provenance: "/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/goba/subspecialists_only.csv". 7,097 rows.  
 subspecialists_only <- read_csv("data/03-search_and_process_npi/subspecialists_only.csv") %>%
   mutate(NPI = as.numeric(NPI))
 
@@ -64,17 +98,19 @@ class(subspecialists_only$NPI) == class(searched_npi_numbers$npi)
 all_NPI_numbers_we_will_ever_find <-
   subspecialists_only %>%
   exploratory::left_join(searched_npi_numbers, by =
-                           c("first" = "basic_first_name",
-                             "last" = "basic_last_name"), ignorecase=TRUE) %>%
+                           c("first_name" = "basic_first_name",
+                             "last_name" = "basic_last_name"), ignorecase=TRUE) %>%
   dplyr::mutate(NPI = dplyr::coalesce(NPI, npi)) %>% #Fills in the NPI numbers with NA
-  dplyr::select(-npi, -basic_credential, -basic_sole_proprietor, -basic_gender, - basic_enumeration_date, -basic_last_updated, -basic_status, -basic_name_prefix, -taxonomies_code,  -taxonomies_taxonomy_group, -taxonomies_desc, -taxonomies_state, -taxonomies_license, -taxonomies_primary, -basic_middle_name, -basic_name_suffix, -basic_certification_date) # removes the unneeded rows from `searched_npi_numbers`
+  dplyr::select(-npi, -basic_credential, -basic_sole_proprietor, -basic_gender, - basic_enumeration_date, -basic_last_updated, -basic_status, -basic_name_prefix, -taxonomies_code,  -taxonomies_taxonomy_group, -taxonomies_desc, -taxonomies_state, -taxonomies_license, -taxonomies_primary) # removes the unneeded rows from `searched_npi_numbers`
 
-### Bring together the rows of the taxonomy data and the rows of the goba NPI numbers
+#**************************
+#* Merge rows of `all_taxonomy_search_data` from 02-search_taxonomy and `searched_npi_numbers` from 03-search_and_process_npi 
+#**************************
 taxonomy_plus_NPI <- all_NPI_numbers_we_will_ever_find %>%
   exploratory::bind_rows(all_taxonomy_search_data, id_column_name = "ID", current_df_name = "subspecialists_only",         force_data_type = TRUE) %>%
   dplyr::distinct(NPI, .keep_all = TRUE)
 
-### Merge rows of `all_taxonomy_search_data` from 02-search_taxonomy and `searched_npi_numbers` from 03-search_and_process_npi 
+
 # Brings in the younger subspecialists who have a taxonomy code but not board-certification yet.  Board certification for OBGYN usually takes 2 years after graduating from fellowship.  
 complete_npi_for_subspecialists <- all_NPI_numbers_we_will_ever_find %>%
   exploratory::bind_rows(all_taxonomy_search_data, id_column_name = "ID", current_df_name = "subspecialists_only", force_data_type = TRUE) %>%
