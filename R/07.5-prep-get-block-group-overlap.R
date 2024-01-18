@@ -5,6 +5,9 @@ source("R/01-setup.R")
 
 #This code downloads, transforms, and writes shapefiles for block groups in the USA for multiple years, including 2022, 2021, 2020, and 2019. It then proceeds to download block group data for earlier years (from 2018 to 2008) for the entire USA by merging state-level data, ensuring a comprehensive dataset for block groups spanning these years.
 
+# TODO: Figure out if we can run tidycensus::erase_water on each state 
+# TODO: Rebuild both these functions.  Ugh.  
+
 #block groups are fully formed for the nation from the US Census Bureau via tigris package
 download_transform_write_shapefiles(2022)
 download_transform_write_shapefiles(2021)
