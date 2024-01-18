@@ -162,6 +162,8 @@ year_by_year_nppes_data_validated_npi <- validate_and_remove_invalid_npi(input_d
 distinct_year_by_year_nppes_data_validated_npi <- readr::read_csv("data/02.5-subspecialists_over_time/year_by_year_nppes_data_validated_npi.csv") %>% 
   dplyr::distinct(NPI, .keep_all = TRUE) %>%
   dplyr::rename (npi = NPI) %>%
+  arrange(year, goba_id) %>%
+  #head(101) %>% # FOR TESTING
   write_csv(., "data/02.5-subspecialists_over_time/distinct_year_by_year_nppes_data_validated_npi.csv") 
 
 dim(distinct_year_by_year_nppes_data_validated_npi)[1]
@@ -170,8 +172,12 @@ paste0("There are ", dim(distinct_year_by_year_nppes_data_validated_npi)[1], " u
 
 input_data <- ("data/02.5-subspecialists_over_time/distinct_year_by_year_nppes_data_validated_npi.csv")
 
-clinician_data <- retrieve_clinician_data(input_data,
-                                          no_results_csv = "data/02.5-subspecialists_over_time/no_results_npi.csv")
+# Call the retrieve_clinician_data function
+retrieve_clinician_data(input_data, 
+                        chunk_size = 100, 
+                        output_dir = "data/02.5-subspecialists_over_time/retrieve_clinician_data_chunk_results")
+# TODO: These chunked files will need to be merged together at the end to create a final product.  
+
 #View(clinician_data)
 
 #**************************

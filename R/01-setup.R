@@ -784,7 +784,7 @@ retrieve_clinician_data <- function(input_data, chunk_size = 100, output_dir = "
     } else {
       return(clinician_info)  # Return the clinician data
     }
-    Sys.sleep(1)  # To avoid rate limits in API calls
+    Sys.sleep(0.1)  # To avoid rate limits in API calls
   }
   
   # Process in chunks
@@ -803,11 +803,6 @@ retrieve_clinician_data <- function(input_data, chunk_size = 100, output_dir = "
     message("Chunk results have been saved to ", chunk_output_csv)
   }
 }
-
-# Call the retrieve_clinician_data function
-retrieve_clinician_data(input_data, chunk_size = 100)
-
-
 
 # fin
 print("Setup is complete!")
