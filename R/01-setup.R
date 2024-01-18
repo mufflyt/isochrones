@@ -747,7 +747,12 @@ validate_and_remove_invalid_npi <- function(input_data) {
 }
 
 ############
-retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi.csv") {
+# Load the required libraries at the beginning of your script if you haven't already
+library(tidyverse)
+library(memoise)
+
+# Define the retrieve_clinician_data function with error handling
+retrieve_clinician_data <- function(input_data, chunk_size = 100, output_dir = "data/02.5-subspecialists_over_time/retrieve_clinician_data_chunk_results") {
   message("The data should already have had the NPI numbers validated.")
   
   # Load data or read from file
@@ -759,25 +764,22 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
     stop("Input must be a dataframe or a file path to a CSV.")
   }
   
-  df <- df %>% head(100) # for testing
+  # Create the output directory if it doesn't exist
+  dir.create(output_dir, showWarnings = FALSE)
   
   # Remove duplicate NPIs
-  df <- df %>% dplyr::distinct(npi, .keep_all = TRUE)
-  
-  # Initialize a list to store NPIs with no results
-  no_results_npi <- vector("list", 0)
+  df <- df %>% distinct(npi, .keep_all = TRUE)
   
   # Function to retrieve clinician data for a single NPI
   get_clinician_data <- function(npi) {
-    if (!is.numeric(npi) || nchar(npi) != 10) {
+    if (!is.numeric(npi) || nchar(as.character(npi)) != 10) {
       cat("Invalid NPI:", npi, "\n")
       return(NULL)  # Skip this NPI
     }
-
+    
     clinician_info <- provider::clinicians(npi = npi)
     if (is.null(clinician_info)) {
       cat("No results for NPI:", npi, "\n")
-      no_results_npi <<- c(no_results_npi, list(npi))  # Add the NPI to the list
       return(NULL)
     } else {
       return(clinician_info)  # Return the clinician data
@@ -785,21 +787,26 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
     Sys.sleep(1)  # To avoid rate limits in API calls
   }
   
-  # Loop through the NPI column and get clinician data
-  df_updated <- df %>%
-    #dplyr::mutate(row_number = row_number()) %>%
-    dplyr::mutate(clinician_data = purrr::map(npi, get_clinician_data)) %>%
-    tidyr::unnest(clinician_data, names_sep = "_") %>%
-    dplyr::distinct(npi, .keep_all = TRUE)
-  
-  # Export NPIs without results to a CSV file
-  if (length(no_results_npi) > 0) {
-    write.csv(data.frame(NPI = unlist(no_results_npi)), no_results_csv, row.names = FALSE)
-    message("PEOPLE WHO RETIRED ARE GOING TO BE NO RESULTS. NPIs without results have been saved to ", no_results_csv)
+  # Process in chunks
+  n <- nrow(df)  # Get the total number of rows in the dataframe
+  for (i in seq(1, n, by = chunk_size)) {  # Loop through the data in chunks
+    df_chunk <- df[i:min(i + chunk_size - 1, n), ]  # Extract a chunk of data
+    chunk_results <- df_chunk %>%
+      mutate(clinician_data = purrr::map(.x = npi, .f = get_clinician_data)) %>%
+      unnest(clinician_data, names_sep = "_") %>%
+      distinct(npi, .keep_all = TRUE)  # Process the chunk: retrieve clinician data, unnest, and remove duplicates
+    
+    
+    # Export the chunk results to a CSV file within the specified output directory
+    chunk_output_csv <- file.path(output_dir, paste0("retrieve_clinician_data_chunk_results_", i, ".csv"))
+    write.csv(chunk_results, chunk_output_csv, row.names = FALSE)
+    message("Chunk results have been saved to ", chunk_output_csv)
   }
-  
-  return(df_updated)
 }
+
+# Call the retrieve_clinician_data function
+retrieve_clinician_data(input_data, chunk_size = 100)
+
 
 
 # fin
