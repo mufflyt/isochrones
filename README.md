@@ -241,7 +241,9 @@ isochrones_sf <- process_and_save_isochrones(input_file_no_error_rows,
 We used github LFS (large file storage).  2GB is the largest that LFS can handle.  Do NOT exceed. Upload ONE directory at a time after checking the size.  
 
 ```r
+brew install git-lfs
 git lfs install
+sudo git lfs install --system
 git config http.postBuffer 524288000
 git lfs track "*.dbf" "*.shp"
 git ls-tree -r -t -l HEAD | sort -k 4 -n -r | head -n 10
