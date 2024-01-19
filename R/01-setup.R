@@ -56,6 +56,7 @@ library(ggthemes)
 library(maps)
 library(forcats)
 
+devtools::install_github("paulhendricks/anonymizer")
 devtools::install_github("exploratory-io/exploratory_func")
 library(exploratory)
 
@@ -65,6 +66,10 @@ library(exploratory)
 
 # Store tidycensus data on cache
 options(tigris_use_cache = TRUE)
+options(tigris_class = "sf")
+options(tigris_use_cache = TRUE)
+getOption("tigris_use_cache")
+
 
 Sys.setenv(HERE_API_KEY = "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
 readRenviron("~/.Renviron")
