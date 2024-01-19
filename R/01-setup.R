@@ -747,10 +747,6 @@ validate_and_remove_invalid_npi <- function(input_data) {
 }
 
 ############
-# Load the required libraries at the beginning of your script if you haven't already
-library(tidyverse)
-library(memoise)
-
 # Define the retrieve_clinician_data function with error handling
 retrieve_clinician_data <- function(input_data, chunk_size = 100, output_dir = "data/02.5-subspecialists_over_time/retrieve_clinician_data_chunk_results") {
   message("The data should already have had the NPI numbers validated.")
@@ -777,6 +773,26 @@ retrieve_clinician_data <- function(input_data, chunk_size = 100, output_dir = "
       return(NULL)  # Skip this NPI
     }
     
+    # provider::clinicians()
+    #MATCH INPUT FILE TO NPPES DEMOGRAPHICS BY NPI NUMBER
+    #> $ npi           <chr> "1932365699"
+    #> $ pac           <chr> "0042370496"
+    #> $ enid          <chr> "I20171107000894"
+    #> $ first         <chr> "STEFAN"
+    #> $ middle        <chr> "MICHAEL"
+    #> $ last          <chr> "SMITH"
+    #> $ gender        <fct> Male
+    #> $ school        <chr> "ILLINOIS COLLEGE OF OPTOMETRY AT CHICAGO"
+    #> $ grad_year     <int> 2008
+    #> $ specialty     <chr> "OPTOMETRY"
+    #> $ facility_name <chr> "LEE ANN HOVEN OD PC"
+    #> $ pac_org       <chr> "5193882009"
+    #> $ members_org   <int> 2
+    #> $ address_org   <chr> "1165 S CAMINO DEL RIO SUITE 100"
+    #> $ city_org      <chr> "DURANGO"
+    #> $ state_org     <ord> CO
+    #> $ zip_org       <chr> "81303"
+    #> $ phone_org     <chr> "9702478762"
     clinician_info <- provider::clinicians(npi = npi)
     if (is.null(clinician_info)) {
       cat("No results for NPI:", npi, "\n")
@@ -784,7 +800,7 @@ retrieve_clinician_data <- function(input_data, chunk_size = 100, output_dir = "
     } else {
       return(clinician_info)  # Return the clinician data
     }
-    Sys.sleep(0.1)  # To avoid rate limits in API calls
+    Sys.sleep(1.0)  # To avoid rate limits in API calls
   }
   
   # Process in chunks
