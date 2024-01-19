@@ -56,6 +56,9 @@ library(ggthemes)
 library(maps)
 library(forcats)
 
+devtools::install_github("exploratory-io/exploratory_func")
+library(exploratory)
+
 #Of note this is a personal package with some bespoke functions and data that we will use occasionally.  It is still under development and it is normal for it to give multiple warnings at libary(tyler).
 # devtools::install_github("mufflyt/tyler")
 # library(tyler)
@@ -800,7 +803,7 @@ retrieve_clinician_data <- function(input_data, chunk_size = 100, output_dir = "
     } else {
       return(clinician_info)  # Return the clinician data
     }
-    Sys.sleep(1.0)  # To avoid rate limits in API calls
+    Sys.sleep(2)  # To avoid rate limits in API calls
   }
   
   # Process in chunks
