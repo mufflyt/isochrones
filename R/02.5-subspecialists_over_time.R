@@ -1,13 +1,106 @@
-# Not used locally but on a different machine with a Postico database.  Here we are trying to get year-specific physicians.  
+# Here we are trying to get year-specific physicians.  
 
 #######################
 source("R/01-setup.R")
 #######################
 
+# See code below to do database work.  
+
+#****************************************************************************
+#* CLEAN EACH YEAR OF DATA TO CREATE 'year_by_year_nppes_data_collected'.  WE ONLY BROUGHT IN MINIMAL INFO ABOUT THE PHYSICIANS FROM POSTICO LIKE NAME AND NPI NUMBER.  
+#****************************************************************************
+ 
+year_by_year_nppes_data_collected <- exploratory::searchAndReadDelimFiles(folder = "/Users/tylermuffly/Dropbox (Personal)/Tannous/data/02.5-subspecialists_over_time", pattern = "*.csv|*.tsv|*.txt|*.text|*.tab", delim = NULL, quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+  readr::type_convert() %>%
+  exploratory::clean_data_frame() %>%
+  mutate(year_1 = list_to_text(str_extract_all(id.new, "[:digit:]+")), .after = ifelse("id.new" %in% names(.), "id.new", last_col())) %>%
+  rename() %>%
+  select(-id.new) %>%
+  arrange(NPI) %>%
+  mutate(`Primary Specialty` = coalesce(`Primary Specialty`, `Primary Speciality`)) %>%
+  mutate(`Last Name` = coalesce(`Last Name`, `Last Namee`)) %>%
+  select(-year, -`Last Namee`, -`Primary Speciality`) %>%
+  rename(year = year_1) %>%
+  group_by(NPI) %>%
+  arrange(year) %>%
+  reorder_cols(year, NPI, `Last Name`, `First Name`, `Middle Name`, Gender, City, State, `Zip Code`, Credential, `Primary Specialty`, `Secondary Specialty`, id) %>%
+  reorder_cols(year, NPI, `Last Name`, `First Name`, `Middle Name`, Gender, City, State, `Zip Code`, `Primary Specialty`, id, Credential, `Secondary Specialty`) %>%
+  select(-Credential, -`Secondary Specialty`) %>%
+  rename(goba_id = id) %>%
+  readr::write_csv(., "data/02.5-subspecialists_over_time/year_by_year_nppes_data_collected.csv")
+# year_by_year_nppes_data_collected <- readr::read_csv("data/02.5-subspecialists_over_time/year_by_year_nppes_data_collected.csv") # for testing
+
+#**************************
+#* VALIDATE THE NPI NUMBERS
+#**************************
+year_by_year_nppes_data_validated_npi <- validate_and_remove_invalid_npi(input_data = "data/02.5-subspecialists_over_time/year_by_year_nppes_data_collected.csv") %>% 
+  dplyr::filter(npi_is_valid == TRUE) %>%
+  readr::write_csv(., "data/02.5-subspecialists_over_time/year_by_year_nppes_data_validated_npi.csv")
+#year_by_year_nppes_data_validates_npi <- readr::read_csv("data/02.5-subspecialists_over_time/year_by_year_nppes_data_validated_npi.csv") # for testing
+
+#**************************
+#* RETURN THE CONTEMPORARY DEMOGRAPHICS OF THE PHYSICIAN DATA WITH PREFIX OF "CLINICIAN_DATA_" (GENDER, MEDICAL SCHOOL, GRAD YEAR) ARE THE ONLY TIMELESS OPTIONS.  PAST SUBSPECIALISTS WHO ARE NO LONGER PRACTICING ARE NOT SEARCHABLE VIA CONTEMPORARY NPPES NPI DATABASE SO WE WILL NEED TO USE THE POSTICO DATABASE FOR ADDRESS, PRACTICE NAME, ETC.  PEOPLE WHO RETIRED ARE GOING TO BE "NO RESULTS"
+#**************************
+## Call the retrieve_clinician_data function with an NPI value
+distinct_year_by_year_nppes_data_validated_npi <- readr::read_csv("data/02.5-subspecialists_over_time/year_by_year_nppes_data_validated_npi.csv") %>% 
+  dplyr::distinct(NPI, .keep_all = TRUE) %>%
+  dplyr::rename (npi = NPI) %>%
+  arrange(year, goba_id) %>%
+  #head(101) %>% # FOR TESTING
+  filter(npi > 1124057377) %>%
+  write_csv(., "data/02.5-subspecialists_over_time/distinct_year_by_year_nppes_data_validated_npi.csv") 
+#View(distinct_year_by_year_nppes_data_validated_npi)
+
+dim(distinct_year_by_year_nppes_data_validated_npi)[1]
+
+paste0("There are ", dim(distinct_year_by_year_nppes_data_validated_npi)[1], " unique OBGYNs represented from 2013 to 2023.")
+
+#**************************
+#* BRING IN SUBSPECIALIST DATA WITH NPI NUMBER
+#**************************
+complete_npi_for_subspecialists <- readr::read_csv("data/02.5-subspecialists_over_time/goba_unrestricted.csv") %>%
+  as_tibble() %>%
+  distinct(NPI_goba, .keep_all = TRUE) %>%
+  dplyr::rename(npi = NPI_goba)
+
+#**************************
+#* retrieve_clinician_data FUNCTION FOR GETTING DEMOGRAPHICS BY MATCHING NPI NUMBERS TO THE NPPES DATABASE
+#**************************
+input_data <- ("data/02.5-subspecialists_over_time/goba_unrestricted.csv") 
+
+retrieve_clinician_data(input_data, 
+                        chunk_size = 100, 
+                        output_dir = "data/02.5-subspecialists_over_time/retrieve_clinician_data_chunk_results")
+
+# Files where the NPI number was found during our contemporary/2024 search
+# Merged all files from 02.5-subspecialists_over_time
+retrieve_clinician_data_output <- exploratory::searchAndReadDelimFiles(folder = "/Users/tylermuffly/Dropbox (Personal)/isochrones/data/02.5-subspecialists_over_time/retrieve_clinician_data_chunk_results", pattern = "*.csv|*.tsv|*.txt|*.text|*.tab", delim = NULL, quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+  readr::type_convert() %>%
+  exploratory::clean_data_frame() %>%
+  select(-id, -year, -npi_is_valid, -clinician_data_suffix)
+
+# TODO:  Antijoin between distinct_year_by_year_nppes_data_validated_npi.csv and retrieve_clinician_data_output ot find those who had no results for the NPI number with the API.  
+
+#View(retrieve_clinician_data_output)
+
+
+#**************************
+#* GET THE ZIP CODES FROM GOBA FILE, ALSO HAS SUBSPECIALTY AND NPI
+#**************************
+
+
+class(complete_npi_for_subspecialists$NPI)
+sum(is.na(complete_npi_for_subspecialists))
+
+
+
+
+
 #**************************
 #* WAS NOT RUN LOCALLY!
 #**************************
 
+# Not used locally but on a different machine with a Postico database.  
 ##########################################################################
 db_details <- list(
   host = "localhost",
@@ -123,72 +216,6 @@ postico_database_obgyns_by_year(year = 2014, db_details)
 postico_database_obgyns_by_year(year = 2013, db_details)
 
 
-#****************************************************************************
-#* CLEAN EACH YEAR OF DATA TO CREATE 'year_by_year_nppes_data_collected'.  WE ONLY BROUGHT IN MINIMAL INFO ABOUT THE PHYSICIANS FROM POSTICO LIKE NAME AND NPI NUMBER.  
-#****************************************************************************
- 
-year_by_year_nppes_data_collected <- exploratory::searchAndReadDelimFiles(folder = "/Users/tylermuffly/Dropbox (Personal)/Tannous/data/02.5-subspecialists_over_time", pattern = "*.csv|*.tsv|*.txt|*.text|*.tab", delim = NULL, quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
-  readr::type_convert() %>%
-  exploratory::clean_data_frame() %>%
-  mutate(year_1 = list_to_text(str_extract_all(id.new, "[:digit:]+")), .after = ifelse("id.new" %in% names(.), "id.new", last_col())) %>%
-  rename() %>%
-  select(-id.new) %>%
-  arrange(NPI) %>%
-  mutate(`Primary Specialty` = coalesce(`Primary Specialty`, `Primary Speciality`)) %>%
-  mutate(`Last Name` = coalesce(`Last Name`, `Last Namee`)) %>%
-  select(-year, -`Last Namee`, -`Primary Speciality`) %>%
-  rename(year = year_1) %>%
-  group_by(NPI) %>%
-  arrange(year) %>%
-  reorder_cols(year, NPI, `Last Name`, `First Name`, `Middle Name`, Gender, City, State, `Zip Code`, Credential, `Primary Specialty`, `Secondary Specialty`, id) %>%
-  reorder_cols(year, NPI, `Last Name`, `First Name`, `Middle Name`, Gender, City, State, `Zip Code`, `Primary Specialty`, id, Credential, `Secondary Specialty`) %>%
-  select(-Credential, -`Secondary Specialty`) %>%
-  rename(goba_id = id) %>%
-  readr::write_csv(., "data/02.5-subspecialists_over_time/year_by_year_nppes_data_collected.csv")
-# year_by_year_nppes_data_collected <- readr::read_csv("data/02.5-subspecialists_over_time/year_by_year_nppes_data_collected.csv")
-
-#**************************
-#* VALIDATE THE NPI NUMBERS
-#**************************
-year_by_year_nppes_data_validated_npi <- validate_and_remove_invalid_npi(input_data = "data/02.5-subspecialists_over_time/year_by_year_nppes_data_collected.csv") %>% 
-  dplyr::filter(npi_is_valid == TRUE) %>%
-  readr::write_csv(., "data/02.5-subspecialists_over_time/year_by_year_nppes_data_validated_npi.csv")
-#year_by_year_nppes_data_validates_npi <- readr::read_csv("data/02.5-subspecialists_over_time/year_by_year_nppes_data_validated_npi.csv")
-
-#**************************
-#* RETURN THE CONTEMPORARY DEMOGRAPHICS OF THE PHYSICIAN DATA WITH PREFIX OF "CLINICIAN_DATA_" (GENDER, MEDICAL SCHOOL, GRAD YEAR) ARE THE ONLY TIMELESS OPTIONS.  PAST SUBSPECIALISTS WHO ARE NO LONGER PRACTICING ARE NOT SEARCHABLE VIA CONTEMPORARY NPPES NPI DATABASE SO WE WILL NEED TO USE THE POSTICO DATABASE FOR ADDRESS, PRACTICE NAME, ETC.  PEOPLE WHO RETIRED ARE GOING TO BE "NO RESULTS"
-#**************************
-## Call the retrieve_clinician_data function with an NPI value
-distinct_year_by_year_nppes_data_validated_npi <- readr::read_csv("data/02.5-subspecialists_over_time/year_by_year_nppes_data_validated_npi.csv") %>% 
-  dplyr::distinct(NPI, .keep_all = TRUE) %>%
-  dplyr::rename (npi = NPI) %>%
-  arrange(year, goba_id) %>%
-  #head(101) %>% # FOR TESTING
-  write_csv(., "data/02.5-subspecialists_over_time/distinct_year_by_year_nppes_data_validated_npi.csv") 
-
-dim(distinct_year_by_year_nppes_data_validated_npi)[1]
-
-paste0("There are ", dim(distinct_year_by_year_nppes_data_validated_npi)[1], " unique OBGYNs represented from 2013 to 2023.")
-
-input_data <- ("data/02.5-subspecialists_over_time/distinct_year_by_year_nppes_data_validated_npi.csv")
-
-# Call the retrieve_clinician_data function
-retrieve_clinician_data(input_data, 
-                        chunk_size = 100, 
-                        output_dir = "data/02.5-subspecialists_over_time/retrieve_clinician_data_chunk_results")
-# TODO: These chunked files will need to be merged together at the end to create a final product.  
-
-#View(clinician_data)
-
-#**************************
-#* GET THE ZIP CODES FROM GOBA FILE, ALSO HAS SUBSPECIALTY AND NPI
-#**************************
-complete_npi_for_subspecialists <- readr::read_csv("data/03-search_and_process_npi/complete_npi_for_subspecialists.csv") %>%
-  as_tibble() %>%
-  distinct(NPI, .keep_all = TRUE)
-
-class(complete_npi_for_subspecialists$NPI)
-sum(is.na(complete_npi_for_subspecialists))
 
 ################
 ## left_join
