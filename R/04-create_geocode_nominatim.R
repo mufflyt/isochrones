@@ -63,3 +63,44 @@ us_states <- rnaturalearth::ne_states(country = "United States of America", retu
 
 merged_data <- state_data %>%
   exploratory::left_join(`us_states`, by = join_by(`state` == `postal`), target_columns = c("postal", "geometry"))
+
+
+#**********************************************
+# SANITY CHECK
+#**********************************************
+# Define the number of ACOG districts
+num_acog_districts <- 11
+
+# Create a custom color palette using viridis.  I like using the viridis palette because it is ok for color blind folks.  
+district_colors <- viridis::viridis(num_acog_districts, option = "viridis")
+
+# Generate ACOG districts with geometry borders in sf using tyler::generate_acog_districts_sf()
+acog_districts_sf <- tyler::generate_acog_districts_sf()
+
+leaflet::leaflet(data = geocoded_data) %>%
+  leaflet::addCircleMarkers(
+    data = geocoded_data,
+    lng = ~long,
+    lat = ~lat,
+    radius = 3,         # Adjust the radius as needed
+    stroke = TRUE,      # Add a stroke (outline)
+    weight = 1,         # Adjust the outline weight as needed
+    color = district_colors[as.numeric(geocoded_data$ACOG_District)],   # Set the outline color to black
+    fillOpacity = 0.8#,  # Fill opacity
+    #popup = as.formula(paste0("~", popup_var))  # Popup text based on popup_var argument
+  ) %>%
+  # Add ACOG district boundaries
+  leaflet::addPolygons(
+    data = acog_districts_sf,
+    color = district_colors[as.numeric(geocoded_data$ACOG_District)],      # Boundary color
+    weight = 2,         # Boundary weight
+    fill = TRUE,       # No fill
+    opacity = 0.1,      # Boundary opacity
+    popup = ~acog_districts_sf$ACOG_District)   # Popup text # %>%
+  #Add a legend
+  # leaflet::addLegend(
+  #   position = "bottomright",   # Position of the legend on the map
+  #   colors = district_colors,   # Colors for the legend
+  #   labels = levels(geocoded_data$ACOG_District),   # Labels for legend items
+  #   title = "ACOG Districts"   # Title for the legend
+  # )
