@@ -17,44 +17,38 @@
 set.seed(1978)
 invisible(gc())
 
-library(hereR)
-library(tidyverse)
-library(sf)
-library(progress)
-library(memoise)
-library(easyr)
-library(data.table)
-library(npi)
-library(tidyr)
-library(leaflet)
-library(tigris)
-library(ggplot2)
-library(censusapi)
-library(htmlwidgets)
-library(webshot)
-library(viridis)
-library(wesanderson) # color palettes
-library(mapview)
-library(shiny) # creation of GUI, needed to change leaflet layers with dropdowns
-library(htmltools) # added for saving html widget
-devtools::install_github('ramnathv/htmlwidgets')
-remotes::install_github("andrewallenbruce/provider")
-library(provider)
-library(readxl)
-library(leaflet.extras)
-library(leaflet.minicharts)
-library(formattable)
-library(tidycensus)
-library(rnaturalearth)
-library(purrr)
-library(stringr)
-library(stringi)
-library(humaniformat)
-library(ggplot2)
-library(ggthemes)
-library(maps)
-library(forcats)
-library(tidygeocoder)
+library(censusapi)       # Access US Census Bureau data via API
+library(data.table)      # Extends data frame capabilities for efficient data manipulation
+library(easyr)           # A package for simplifying common R tasks
+library(forcats)         # Tools for working with categorical data
+library(formattable)     # Format data for tables and charts
+library(ggplot2)         # Data visualization package based on the Grammar of Graphics
+library(ggthemes)        # Additional themes for ggplot2
+library(hereR)           # Helps manage file paths and project directories
+library(htmltools)       # Tools for working with HTML widgets
+library(htmlwidgets)     # Create interactive HTML widgets from R
+library(humaniformat)    # Format numbers as human-readable text
+library(leaflet.minicharts)  # Mini bar charts for leaflet maps
+library(mapview)         # Interactive viewing of spatial data
+library(maps)            # Draw maps and add map-based data
+library(memoise)         # Provides memoization functions for caching results
+library(npi)             # Tools for working with National Provider Identifier (NPI) numbers
+library(purrr)           # Functional programming toolkit
+library(provider)        # Access to healthcare provider data
+library(progress)        # Creates progress bars to monitor code execution progress
+library(readxl)          # Read Excel files
+library(rnaturalearth)   # Access Natural Earth data for mapping
+library(sf)              # Provides classes and methods for working with spatial data
+library(shiny)           # Building interactive web applications
+library(stringi)         # String manipulation functions (UTF-8 aware)
+library(stringr)         # String manipulation functions
+library(tidygeocoder)    # Geocoding and reverse geocoding of addresses
+library(tidycensus)      # Access US Census data via API
+library(tidyr)           # Tools for reshaping and tidying data
+library(tigris)          # Access US Census Bureau TIGER/Line data
+library(viridis)         # Color palettes for data visualization
+library(wesanderson)     # Color palettes inspired by Wes Anderson films
+library(webshot)         # Takes screenshots of web pages
 
 devtools::install_github("cysouw/qlcMatrix")
 devtools::install_github("paulhendricks/anonymizer")
@@ -239,56 +233,90 @@ search_and_process_npi <- memoise(function(input_file,
 
 
 #**************************
-#* create_geocode: 04-geocode.R.  GEOCODE THE DATA USING HERE API.  The key is hard coded into the function.  
+#* create_geocode: 04-geocode.R.  GEOCODE THE DATA USING HERE API.  
 #**************************
-create_geocode <- memoise::memoise(function(csv_file) {
-  # Set your HERE API key
-  api_key <- "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM"
-  hereR::set_key(api_key)
-
+# geocoding based on Nominatim
+# Function for geocoding based on Nominatim
+create_geocode_nominatim <- function(csv_file, output_file) {
+  
   # Check if the CSV file exists
   if (!file.exists(csv_file)) {
-    stop("CSV file not found.")
+    stop("Error: CSV file not found.")
   }
-
+  
+  cat("Reading CSV file...\n")
+  
   # Read the CSV file into a data frame
   data <- read.csv(csv_file)
-
+  
   # Check if the data frame contains a column named "address"
   if (!"address" %in% colnames(data)) {
-    stop("The CSV file must have a column named 'address' for geocoding.")
+    stop("Error: The CSV file must have a column named 'address' for geocoding.")
   }
-
-  # Initialize a list to store geocoded results
-  geocoded_results <- list()
-
-  # Initialize progress bar
-  pb <- progress_bar$new(total = nrow(data), format = "[:bar] :percent :elapsed :eta :rate")
-
-  # Loop through each address and geocode it
-  for (i in 1:nrow(data)) {
-    address <- data[i, "address"]
-    result <- hereR::geocode(address)
-    geocoded_results[[i]] <- result
-    cat("Geocoded address ", i, " of ", nrow(data), "\n")
-    pb$tick()  # Increment the progress bar
+  
+  cat("Renaming 'address' column to 'addr'...\n")
+  
+  # We have to rename the 'address' column to 'addr' because of a compatibility issue
+  idx_addr <- which(colnames(data) == 'address')
+  colnames(data)[idx_addr] <- 'addr'
+  
+  cat("Geocoding addresses using Nominatim...\n")
+  
+  # Geocode the addresses using Nominatim
+  res_geoc <- tidygeocoder::geocode(
+    .tbl = data, 
+    method = 'osm',                       # Nominatim geocoding method
+    address = addr,                       # Column containing addresses
+    lat = "lat",                          # Column for latitude
+    long = "long",                        # Column for longitude
+    limit = 1,                            # Maximum results per address
+    return_input = TRUE,                  # Include input data in results
+    progress_bar = TRUE,                 # Show progress bar
+    quiet = FALSE                         # Display geocoding messages
+  )
+  
+  cat("Renaming 'addr' column back to 'address'...\n")
+  
+  # Rename the 'addr' column back to 'address'
+  idx_addr <- which(colnames(res_geoc) == 'addr')
+  colnames(res_geoc)[idx_addr] <- 'address'
+  
+  # Create a list to save two sublists:
+  # - wo_geocode: contains rows with missing 'lat' or 'long' values
+  # - geocode: contains geocoded data with 'lat' and 'long'
+  lst_out <- list()
+  
+  idx_nan <- which(is.na(res_geoc$lat) | is.na(res_geoc$long))
+  if (length(idx_nan) > 0) {
+    cat("Appending rows without geocode to 'wo_geocode'...\n")
+    # Append rows without geocode to 'wo_geocode'
+    lst_out[['wo_geocode']] <- res_geoc[idx_nan, , drop = FALSE]
+    
+    cat("Removing rows without geocode from the main result...\n")
+    # Remove these rows from the main result
+    res_geoc <- res_geoc[-idx_nan, , drop = FALSE]
+  } else {
+    lst_out[['wo_geocode']] <- 'There are no missing values'
   }
+  
+  if (nrow(res_geoc) > 0) {
+    cat("Saving the geocoded data to an output CSV file...\n")
+    # Save the geocoded data to an output file
+    write.csv(res_geoc, file = output_file, row.names = FALSE)
+    
+    cat("Converting to an 'sf' object with coordinates...\n")
+    # Convert to an 'sf' object with coordinates
+    res_geoc_sf <- sf::st_as_sf(res_geoc, coords = c('long', 'lat'), crs = 4326)
+    lst_out[['geocode']] <- res_geoc_sf
+  } else {
+    lst_out[['geocode']] <- 'The tidygeocoder::geocode() function returned only NA values'
+  }
+  
+  cat("Geocoding process completed.\n")
+  
+  return(lst_out)
+}
 
-  # Combine all geocoded results into one sf object
-  geocoded <- do.call(rbind, geocoded_results)
-
-  # Add the geocoded information to the original data frame
-  data$latitude <- geocoded$latitude
-  data$longitude <- geocoded$longitude
-
-  # Write the updated data frame with geocoded information back to a CSV file
-  write.csv(data, csv_file, row.names = FALSE)
-  cat("Updated CSV file with geocoded information.\n")
-
-  cat("Geocoding complete.\n")
-
-  return(geocoded)
-})
 
 ##############################
 ###############################
