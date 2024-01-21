@@ -49,13 +49,14 @@ library(rnaturalearth)
 library(purrr)
 library(stringr)
 library(stringi)
-library(exploratory)
 library(humaniformat)
 library(ggplot2)
 library(ggthemes)
 library(maps)
 library(forcats)
+library(tidygeocoder)
 
+devtools::install_github("cysouw/qlcMatrix")
 devtools::install_github("paulhendricks/anonymizer")
 devtools::install_github("exploratory-io/exploratory_func")
 library(exploratory)
@@ -776,31 +777,11 @@ retrieve_clinician_data <- function(input_data, chunk_size = 100, output_dir = "
   
   # Function to retrieve clinician data for a single NPI
   get_clinician_data <- function(npi) {
-    if (!is.numeric(npi) || nchar(as.character(npi)) != 10) {
+    if (is.na(npi) || !is.numeric(npi) || nchar(as.character(npi)) != 10) {
       cat("Invalid NPI:", npi, "\n")
       return(NULL)  # Skip this NPI
     }
     
-    # provider::clinicians()
-    #MATCH INPUT FILE TO NPPES DEMOGRAPHICS BY NPI NUMBER
-    #> $ npi           <chr> "1932365699"
-    #> $ pac           <chr> "0042370496"
-    #> $ enid          <chr> "I20171107000894"
-    #> $ first         <chr> "STEFAN"
-    #> $ middle        <chr> "MICHAEL"
-    #> $ last          <chr> "SMITH"
-    #> $ gender        <fct> Male
-    #> $ school        <chr> "ILLINOIS COLLEGE OF OPTOMETRY AT CHICAGO"
-    #> $ grad_year     <int> 2008
-    #> $ specialty     <chr> "OPTOMETRY"
-    #> $ facility_name <chr> "LEE ANN HOVEN OD PC"
-    #> $ pac_org       <chr> "5193882009"
-    #> $ members_org   <int> 2
-    #> $ address_org   <chr> "1165 S CAMINO DEL RIO SUITE 100"
-    #> $ city_org      <chr> "DURANGO"
-    #> $ state_org     <ord> CO
-    #> $ zip_org       <chr> "81303"
-    #> $ phone_org     <chr> "9702478762"
     clinician_info <- provider::clinicians(npi = npi)
     if (is.null(clinician_info)) {
       cat("No results for NPI:", npi, "\n")
@@ -820,13 +801,17 @@ retrieve_clinician_data <- function(input_data, chunk_size = 100, output_dir = "
       unnest(clinician_data, names_sep = "_") %>%
       distinct(npi, .keep_all = TRUE)  # Process the chunk: retrieve clinician data, unnest, and remove duplicates
     
-    
     # Export the chunk results to a CSV file within the specified output directory
     chunk_output_csv <- file.path(output_dir, paste0("retrieve_clinician_data_chunk_results_", i, ".csv"))
     write.csv(chunk_results, chunk_output_csv, row.names = FALSE)
     message("Chunk results have been saved to ", chunk_output_csv)
   }
 }
+
+# retrieve_clinician_data(input_data, 
+#                         chunk_size = 100, 
+#                         output_dir = "data/02.5-subspecialists_over_time/retrieve_clinician_data_chunk_results")
+
 
 # fin
 print("Setup is complete!")
