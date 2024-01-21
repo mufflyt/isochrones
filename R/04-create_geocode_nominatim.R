@@ -10,6 +10,8 @@
 source("R/01-setup.R")
 #######################
 
+# Huge thanks to Lampros for this work.  
+
 #Provenance: GOBA file.  
 readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds") %>%
   tidyr::unite(address, city, state, zip, sep = ", ", remove = FALSE, na.rm = FALSE) %>%
@@ -18,83 +20,12 @@ readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspeciali
 
 a$address
 
-
-# geocoding based on Nominatim
-create_geocode_nominatim <- function(csv_file, output_file) {
-
-  # Check if the CSV file exists
-  if (!file.exists(csv_file)) {
-    stop("CSV file not found.")
-  }
-  
-  # Read the CSV file into a data frame
-  data <- read.csv(csv_file)
-  
-  # Check if the data frame contains a column named "address"
-  if (!"address" %in% colnames(data)) {
-    stop("The CSV file must have a column named 'address' for geocoding.")
-  }
-  
-  # We have to rename the 'address' column to 'addr' because for some reason we receive the error:
-  # "Error: Do not use other address component parameters with the single line 'address' parameter"
-  idx_addr = which(colnames(data) == 'address')
-  colnames(data)[idx_addr] = 'addr'
-  
-  res_geoc = tidygeocoder::geocode(
-    .tbl = data, 
-    method = 'osm',                       # uses: Nominatim, url:  https://nominatim.org  
-    address = addr,
-    lat = "lat",                          # the name of the latitude column
-    long = "long",                        # the name of the longitude column
-    limit = 1,                            # maximum number of results to return per input address
-    return_input = TRUE,
-    progress_bar = TRUE,
-    quiet = FALSE
-  )
-  
-  # use the same column name as before
-  idx_addr = which(colnames(res_geoc) == 'addr')
-  colnames(res_geoc)[idx_addr] = 'address'
-
-  # create a list to save 2 sublists:
-  # - wo_geocode: will be either NULL or will include the rows where the 'lat', 'long' did not have values (NA's)
-  # - geocode: will be either NULL or will include an 'sf' object with the additional columns 'lat', 'long'
-  lst_out = list()
-  
-  idx_nan = which(is.na(res_geoc$lat) | is.na(res_geoc$long))
-  if (length(idx_nan) > 0) {
-    
-    # appned the without geocode observations to the list
-    lst_out[['wo_geocode']] = res_geoc[idx_nan, , drop = F]
-    
-    # overwrite the previous tibble object
-    res_geoc = res_geoc[-idx_nan, , drop = F]
-  } else {
-    lst_out[['wo_geocode']] = 'There are no missing values'
-  }
-  
-  if (nrow(res_geoc) > 0) {
-    
-    # Save the geocoded data to an output file
-    write.csv(res_geoc, file = output_file, row.names = FALSE)
-    
-    # convert to an 'sf' object
-    res_geoc_sf = sf::st_as_sf(res_geoc, coords = c('long', 'lat'), crs = 4326)
-    lst_out[['geocode']] = res_geoc_sf
-  }  else {
-    lst_out[['geocode']] = 'The tidygeocoder::geocode() function returned only NA values'
-  }
-
-  return(lst_out)
-}
-
 # For testing
-#read_csv("data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv") %>% head(10) %>%
- # write_csv("data/04-geocode/SHORT_for_street_matching_with_HERE_results_clinician_data.csv")
+#read_csv("data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv") %>% head(10) %>% write_csv("data/04-geocode/SHORT_for_street_matching_with_HERE_results_clinician_data.csv")
 
 # Example usage:
-csv_file <- "data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv"
-output_file <- "data/04-geocode/geocoded_addresses.csv"
+csv_file <- "data/04-geocode/SHORT_for_street_matching_with_HERE_results_clinician_data.csv"
+output_file <- "data/SHORT_04-geocode/geocoded_addresses.csv"
 geocoded_data <- create_geocode_nominatim(csv_file, output_file)
 # str(geocoded_data)
 

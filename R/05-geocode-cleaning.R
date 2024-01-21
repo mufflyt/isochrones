@@ -10,7 +10,7 @@ source("R/01-setup.R")
 #* STEP A TO CLINICIAN_DATA TO GEOCODED_DATA 
 #**************************
 # 
-# Get data formatted the same so we can match it better.
+# Get data formatted the same so we can match it more simply
 geocoded_data <- read_csv("data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv")
 
 geocoded_data_to_match_house_number <- geocoded_data %>%
@@ -129,12 +129,6 @@ acog_districts_sf <- tyler::generate_acog_districts_sf()
 #**********************************************
 # SANITY CHECK
 #**********************************************
-#
-#TODO:  I get an error:  Error in leaflet::addLegend(., position = "bottomright", colors = district_colors,  : 
-# 'colors' and 'labels' must be of the same length
-# In addition: Warning message:
-#   Unknown or uninitialised column: `ACOG_District`. 
-
 
 leaflet::leaflet(data = inner_join_postmastr_clinician_data) %>%
   leaflet::addCircleMarkers(

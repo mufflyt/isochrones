@@ -7,10 +7,10 @@ source("R/01-setup.R")
 # See code below to do database work.  
 
 #****************************************************************************
-#* CLEAN EACH YEAR OF DATA TO CREATE 'year_by_year_nppes_data_collected'.  WE ONLY BROUGHT IN MINIMAL INFO ABOUT THE PHYSICIANS FROM POSTICO LIKE NAME AND NPI NUMBER.  
+#* CLEAN EACH YEAR OF DATA TO CREATE 'year_by_year_nppes_data_collected'.  WE ONLY BROUGHT IN MINIMAL INFO ABOUT THE PHYSICIANS FROM THE POSTICO DATABASE LIKE NAME AND NPI NUMBER.  
 #****************************************************************************
  
-year_by_year_nppes_data_collected <- exploratory::searchAndReadDelimFiles(folder = "data/02.5-subspecialists_over_time", pattern = "*.csv|*.tsv|*.txt|*.text|*.tab", delim = ",", # I had to manually specify the delimiter.  
+year_by_year_nppes_data_collected <- exploratory::searchAndReadDelimFiles(folder = "data/02.5-subspecialists_over_time", pattern = "*.csv|*.tsv|*.txt|*.text|*.tab", delim = ",", # I had to manually specify the delimiter here.  
 quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
   readr::type_convert() %>%
   exploratory::clean_data_frame() %>%
@@ -40,15 +40,15 @@ year_by_year_nppes_data_validated_npi <- validate_and_remove_invalid_npi(input_d
 #year_by_year_nppes_data_validates_npi <- readr::read_csv("data/02.5-subspecialists_over_time/year_by_year_nppes_data_validated_npi.csv") # for testing
 
 #**************************
-#* RETURN THE CONTEMPORARY DEMOGRAPHICS OF THE PHYSICIAN DATA WITH PREFIX OF "CLINICIAN_DATA_" (GENDER, MEDICAL SCHOOL, GRAD YEAR) ARE THE ONLY TIMELESS OPTIONS.  PAST SUBSPECIALISTS WHO ARE NO LONGER PRACTICING ARE NOT SEARCHABLE VIA CONTEMPORARY NPPES NPI DATABASE SO WE WILL NEED TO USE THE POSTICO DATABASE FOR ADDRESS, PRACTICE NAME, ETC.  PEOPLE WHO RETIRED ARE GOING TO BE "NO RESULTS"
+#* RETURN THE CONTEMPORARY DEMOGRAPHICS OF THE PHYSICIAN DATA WITH PREFIX OF "CLINICIAN_DATA_" (GENDER, MEDICAL SCHOOL, GRAD YEAR) ARE THE ONLY TIMELESS VARIABLES.  PAST SUBSPECIALISTS WHO ARE NO LONGER PRACTICING ARE NOT SEARCHABLE VIA CONTEMPORARY NPPES NPI DATABASE SO WE WILL NEED TO USE THE POSTICO DATABASE FOR ADDRESS, PRACTICE NAME, ETC.  PEOPLE WHO RETIRED ARE GOING TO BE "NO RESULTS"
 #**************************
 ## Call the retrieve_clinician_data function with an NPI value
 distinct_year_by_year_nppes_data_validated_npi <- readr::read_csv("data/02.5-subspecialists_over_time/year_by_year_nppes_data_validated_npi.csv") %>% 
   dplyr::distinct(NPI, .keep_all = TRUE) %>%
-  dplyr::rename (npi = NPI) %>%
+  #plyr::rename (npi = NPI) %>%
   arrange(year, goba_id) %>%
   #head(101) %>% # FOR TESTING
-  filter(npi > 1124057377) %>%
+  #filter(npi > 1124057377) %>% # FOR RESTARTING and using part of the other data
   write_csv(., "data/02.5-subspecialists_over_time/distinct_year_by_year_nppes_data_validated_npi.csv") 
 #View(distinct_year_by_year_nppes_data_validated_npi)
 
@@ -57,7 +57,7 @@ dim(distinct_year_by_year_nppes_data_validated_npi)[1]
 paste0("There are ", dim(distinct_year_by_year_nppes_data_validated_npi)[1], " unique OBGYNs represented from 2013 to 2023.")
 
 #**************************
-#* BRING IN SUBSPECIALIST DATA WITH NPI NUMBER
+#* BRING IN SUBSPECIALIST DATA WITH NPI NUMBER FROM GOBA
 #**************************
 complete_npi_for_subspecialists <- readr::read_csv("data/02.5-subspecialists_over_time/goba_unrestricted.csv") %>%
   as_tibble() %>%
