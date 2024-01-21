@@ -290,6 +290,8 @@ Exploratory is a graphical wrapper over R.  It is impressive, and I use it for a
 # NPPES API
 `search_and_process_npi' is a function that searches the name and returns the NPI number.  I need to run this function for every year of physician data created by `postico_database_obgyns_by_year(year = 2023, db_details)` in `02.5-subspecialists_over_time`.  I need to read in the physician files `data/02.5-subspecialists_over_time/Postico_output_**year**_nppes_data_filtered.csv` apply the `search_and_process_npi' function and then save the output with a new column called "year" with the year of the data in the column.  
 
+# Geocoding 
+Thank you to Lampros for this review.  https://superface.ai/blog/geocoding-apis-comparison-1 is a great article.  
 
 # HERE API
 I pay the HERE API for geocoding and building isochrones as I feel uncomfortable given my limited knowledge base maintaining an osrm instance on Amazon or in a docker file.  I do not understand either, so this is an easy way to geocode and build isochrones.  Costs for a Basic plan:  https://www.here.com/get-started/pricing#storageandtransferrates are reasonable.  Many thanks to Merlin 
