@@ -42,6 +42,7 @@ library(sf)              # Provides classes and methods for working with spatial
 library(shiny)           # Building interactive web applications
 library(stringi)         # String manipulation functions (UTF-8 aware)
 library(stringr)         # String manipulation functions
+library(tidyverse)
 library(tidygeocoder)    # Geocoding and reverse geocoding of addresses
 library(tidycensus)      # Access US Census data via API
 library(tidyr)           # Tools for reshaping and tidying data
