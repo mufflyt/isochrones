@@ -8,12 +8,13 @@ source("R/01-setup.R")
 
 ##### To do the actual gathering of the isochrones: `process_and_save_isochrones`.  We do this in chunks of 25 because we were losing the entire searched isochrones when one error hit.  There is a 1:1 relationship between isochrones and rows in the `input_file` so to match exactly on row we need no errors.  Lastly, we save as a shapefile so that we can keep the MULTIPOLYGON geometry setting for the sf object making it easier to work with the spatial data in the future for plotting, etc.  I struggled because outputing the data as a dataframe was not easy to write it back to a MULTIPOLYGON.
 
-input_file <- readr::read_csv("data/05-geocode-cleaning/end_inner_join_postmastr_clinician_data.csv") %>%
+input_file <- #readr::read_csv("data/05-geocode-cleaning/end_inner_join_postmastr_clinician_data.csv") %>%
+  readr::read_csv("data/04-geocode/end_geocoded_data_nominatim.csv") %>%
   dplyr::mutate(id = row_number()) %>% # creates a unique identifier number
-  dplyr::filter(postmastr.name.x != "Hye In Park, MD") %>% # for testing
-  dplyr::distinct(here.address, .keep_all = TRUE) %>%
+  #dplyr::filter(postmastr.name.x != "Hye In Park, MD") %>% # for testing
+  dplyr::distinct(address, .keep_all = TRUE) #%>%
   # dplyr::mutate (id = seq_len(nrow(.))) %>% # creates a unique identifier number
-  dplyr::filter(postmastr.pm.state == "CO" & postmastr.pm.city == "AURORA") # For testing with a small sample
+  #dplyr::filter(state == "Colorado" & city == "Aurora") # For testing with a small sample
 
 #**********************************************
 # TESTING ISOCHRONES WITH A ONE SECOND ISOCHRONE
@@ -52,33 +53,77 @@ nrow(input_file_no_error_rows) * 4
 
 # TODO I need to fix the process_and_save_isochrones function to give it a path to save.
 # Call the `process_and_save_isochrones` function with your input_file
-iso_datetime_yearly <- c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-16 09:00:00",
-  "2016-10-21 09:00:00", "2017-10-20 09:00:00", "2018-10-19 09:00:00",
-  "2019-10-18 09:00:00", "2020-10-16 09:00:00", "2021-10-15 09:00:00",
-  "2022-10-21 09:00:00")
+iso_datetime_yearly <-
+  c(
+    "2013-10-18 09:00:00",
+    "2014-10-17 09:00:00",
+    "2015-10-16 09:00:00",
+    "2016-10-21 09:00:00",
+    "2017-10-20 09:00:00",
+    "2018-10-19 09:00:00",
+    "2019-10-18 09:00:00",
+    "2020-10-16 09:00:00",
+    "2021-10-15 09:00:00",
+    "2022-10-21 09:00:00"
+  )
 
-
-isochrones_sf <- process_and_save_isochrones(input_file_no_error_rows, 
-                                             chunk_size = 25, 
-                                             iso_datetime = "2023-10-20 09:00:00",
-                                             iso_ranges = c(30*60, 60*60, 120*60, 180*60),
-                                             crs = 4326, 
-                                             transport_mode = "car",
-                                             file_path_prefix = "data/06-isochrones/isochrones_")
+isochrones_sf <- process_and_save_isochrones(
+  input_file = input_file_no_error_rows,
+  chunk_size = 25,
+  iso_datetime = "2023-10-20 09:00:00",
+  iso_ranges = c(30 * 60, 60 *
+                   60, 120 * 60, 180 * 60),
+  crs = 4326,
+  transport_mode = "car",
+  file_path_prefix = "data/06-isochrones/isochrones_"
+)
 
 # Check the dimensions of the final isochrones_data
 dim(isochrones_sf)
 class(isochrones_sf)
 
-isochrones_df <- sf::st_read("data/06-isochrones/isochrones_ 20231223111020 _chunk_ 1 _to_ 4/isochrones.shp") %>%
+# Merge the original dataframe called "input_file_no_error_rows" and "isochrones_sf" by 'id' column
+merged_data <- input_file_no_error_rows %>%
+  left_join(isochrones_sf, by = "id") %>%
+  mutate(range = range/60L)
+
+# Define a function to generate range descriptions
+generate_range_description <- function(range) {
+  if (range >= 0 && range <= 30) {
+    return("0-29 minutes")
+  } else if (range > 30 && range <= 60) {
+    return("30-59 minutes")
+  } else if (range > 60 && range <= 120) {
+    return("60-119 minutes")
+  } else if (range > 120 && range <= 180) {
+    return("120-179 minutes")
+  } else {
+    return("180+ minutes")
+  }
+}
+
+# Apply the function to create the range_description column
+merged_data$range_description <- sapply(merged_data$range, generate_range_description)
+
+
+# Ensure merged_data is an sf object by setting its geometry column. 
+# This assumes that isochrones_sf had a geometry column named 'geometry'.
+# If the geometry column has a different name, replace 'geometry' with the correct column name.
+merged_data_sf <- st_as_sf(merged_data, sf_column_name = "geometry") %>%
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering in the leaflet map later on.
+
+# Optionally, write the merged sf object to a CSV file
+write_csv(st_drop_geometry(merged_data_sf), "data/06-isochrones/end_isochrones_merged_data.csv")
+
+# If you need to save the spatial data with geometry, consider using st_write to save as a shapefile or GeoJSON
+st_write(merged_data_sf, "data/06-isochrones/merged_data_sf.shp", append = FALSE)
 
 # Clip the isochrones to the USA border.
 usa_borders <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf") %>%
   sf::st_set_crs(4326) %>%
   select(name, iso_a2, woe_id, woe_label, woe_name, latitude, longitude, postal)
 
-isochrones_df <- isochrones_df %>%
+isochrones_df <- merged_data_sf %>%
   sf::st_set_crs(4326)
 
 invisible(gc())
@@ -105,8 +150,8 @@ end_isochrones_sf_clipped <- sf::st_read("data/06-isochrones/end_isochrones_sf_c
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering.
 
 # Create a basic Leaflet map
-map <- leaflet() %>%
-  addTiles() # Add the default map tiles
+map <- leaflet::leaflet() %>%
+  leaflet::addTiles() # Add the default map tiles
 
 # Define a cooler color palette (e.g., "viridis")
 cool_palette <- viridis::magma(length(end_isochrones_sf_clipped$range))
@@ -119,5 +164,5 @@ map <- map %>%
     fillOpacity = 0.5,
     weight = 1,
     color = "black",
-    popup = ~paste("ID: ", id, "<br>Range: ", range, " seconds")
+    popup = ~paste("NPI: ", NPI, "<br>Range: ", rng_dsc, "<br>Date: ", departr)
   ); map
