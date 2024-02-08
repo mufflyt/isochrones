@@ -28,6 +28,7 @@ library(hereR)           # Helps manage file paths and project directories
 library(htmltools)       # Tools for working with HTML widgets
 library(htmlwidgets)     # Create interactive HTML widgets from R
 library(humaniformat)    # Format numbers as human-readable text
+library(leaflet)
 library(leaflet.minicharts)  # Mini bar charts for leaflet maps
 library(mapview)         # Interactive viewing of spatial data
 library(maps)            # Draw maps and add map-based data
@@ -405,9 +406,10 @@ create_and_save_physician_dot_map <- function(physician_data, jitter_range = 0.0
 ###############################
 #***************
 test_and_process_isochrones <- function(input_file) {
+  input_file
   input_file <- input_file %>%
-    mutate(id = row_number()) %>%
-    filter(postmastr.name.x != "Hye In Park, MD")
+    mutate(id = row_number())# %>%
+    #filter(postmastr.name.x != "Hye In Park, MD")
 
   input_file$lat <- as.numeric(input_file$lat)
   input_file$long <- as.numeric(input_file$long)
