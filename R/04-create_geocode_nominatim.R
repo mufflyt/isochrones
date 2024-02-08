@@ -15,8 +15,8 @@ source("R/01-setup.R")
 #Provenance: GOBA file.  
 readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds") %>%
   tidyr::unite(address, city, state, zip, sep = ", ", remove = FALSE, na.rm = FALSE) %>%
-  #head(10) %>% #for testing.
-  readr::write_csv(., "data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv") -> a
+  head(10) %>% #for testing.
+  readr::write_csv(., "data/04-geocode/for_geocoding_with_nominatim__results_clinician_data.csv") -> a
 
 a$address
 
@@ -24,17 +24,18 @@ a$address
 #read_csv("data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv") %>% head(10) %>% write_csv("data/04-geocode/SHORT_for_street_matching_with_HERE_results_clinician_data.csv")
 
 # Example usage:
-csv_file <- "data/04-geocode/SHORT_for_street_matching_with_HERE_results_clinician_data.csv"
-output_file <- "data/SHORT_04-geocode/geocoded_addresses.csv"
-geocoded_data <- create_geocode_nominatim(csv_file, output_file)
+csv_file <- "data/04-geocode/for_geocoding_with_nominatim__results_clinician_data.csv"
+output_file <- "data/04-geocode/end_geocoded_data_nominatim.csv"
+create_geocode_nominatim(csv_file, output_file)
 # str(geocoded_data)
+geocoded_data <- readr::read_csv(output_file)
 
 #**********************************************
 # SANITY CHECK
 #**********************************************
 # Convert the list to a data frame
 # Extract the 'geocode' component from the list
-geocoded_data_geocode <- geocoded_data$geocode
+geocoded_data_geocode <- geocoded_data
 
 # Check if it's not "There are no missing values"
 if (!is.character(geocoded_data_geocode)) {
@@ -76,6 +77,7 @@ district_colors <- viridis::viridis(num_acog_districts, option = "viridis")
 
 # Generate ACOG districts with geometry borders in sf using tyler::generate_acog_districts_sf()
 acog_districts_sf <- tyler::generate_acog_districts_sf()
+
 
 leaflet::leaflet(data = geocoded_data) %>%
   leaflet::addCircleMarkers(
