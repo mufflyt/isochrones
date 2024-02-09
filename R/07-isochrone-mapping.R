@@ -8,21 +8,23 @@ ACOG_Districts <- tyler::ACOG_Districts
 
 # Assuming subspecialists_lat_long and isochrones are both sf dataframes
 # First, create a copy of subspecialists_lat_long with the point geometries
-subspecialists_lat_long <- read_csv("data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv") %>%
-  mutate(id = 1:n()) %>%
-  mutate(postal_code = stringr::str_sub(postal_code, 1, 5)) %>%
-  mutate(access = exploratory::str_remove(access, regex("^POINT \\(", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
-  mutate(access = exploratory::str_remove(access, regex("\\)$", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
-  separate(access, into = c("long", "lat"), sep = "\\s+", convert = TRUE) %>%
-  left_join(`ACOG_Districts`, by = join_by(`state_code` == `State_Abbreviations`)) %>%
-  select(-id, -rank, -type, -district, -state) %>%
-  filter(country %in% c("United States", "Puerto Rico")) %>%
-  mutate(postal_code = str_sub(postal_code, 1, 5)) %>%
-  rename(zip = postal_code) %>%
-  mutate(across(c(lat, long), parse_number)) %>%
-  filter(!is.na(lat)) %>%
-  mutate(as.factor(ACOG_District)) %>%
-  distinct(address, .keep_all = TRUE)
+subspecialists_lat_long <- read_csv("data/04-geocode/end_geocoded_data_nominatim.csv") %>%
+  left_join(`ACOG_Districts`, by = join_by(`state` == `State`)) 
+ 
+  # mutate(id = 1:n()) %>%
+  # mutate(postal_code = stringr::str_sub(postal_code, 1, 5)) %>%
+  # mutate(access = exploratory::str_remove(access, regex("^POINT \\(", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
+  # mutate(access = exploratory::str_remove(access, regex("\\)$", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
+  # separate(access, into = c("long", "lat"), sep = "\\s+", convert = TRUE) %>%
+  # left_join(`ACOG_Districts`, by = join_by(`state_code` == `State_Abbreviations`)) %>%
+  # select(-id, -rank, -type, -district, -state) %>%
+  # filter(country %in% c("United States", "Puerto Rico")) %>%
+  # mutate(postal_code = str_sub(postal_code, 1, 5)) %>%
+  # rename(zip = postal_code) %>%
+  # mutate(across(c(lat, long), parse_number)) %>%
+  # filter(!is.na(lat)) %>%
+  # mutate(as.factor(ACOG_District)) %>%
+  # distinct(address, .keep_all = TRUE)
 
 #**********************************************
 # SANITY CHECK ON THE POINTS
@@ -92,65 +94,69 @@ ggplot() +
 ##########################################################################
 # Perform a spatial join using st_join
 # Make sure both data frames are in the same CRS
-sf::st_crs(subspecialists_lat_long_copy) <- sf::st_crs(end_isochrones_sf_clipped)
+# sf::st_crs(subspecialists_lat_long_copy) <- sf::st_crs(end_isochrones_sf_clipped)
+# 
+# # Make the geometry valid
+# subspecialists_lat_long_copy <- sf::st_make_valid(subspecialists_lat_long_copy)
+# end_isochrones_sf_clipped <- sf::st_make_valid(end_isochrones_sf_clipped)
+# #subspecialists_lat_long_copy <- sf::st_simplify(subspecialists_lat_long_copy, preserveTopology = TRUE, dTolerance =1000) #dTolerance is in meters
+# #end_isochrones_sf_clipped <- sf::st_simplify(end_isochrones_sf_clipped, preserveTopology = TRUE, dTolerance = 1000) #dTolerance is in meters
+# 
+# 
+# # Set the correct CRS for your data
+# subspecialists_lat_long_copy <- sf::st_set_crs(subspecialists_lat_long_copy, 4326)  # Assuming EPSG 4326 (WGS 84) for lat/lon
 
-# Make the geometry valid
-subspecialists_lat_long_copy <- sf::st_make_valid(subspecialists_lat_long_copy)
-end_isochrones_sf_clipped <- sf::st_make_valid(end_isochrones_sf_clipped)
-subspecialists_lat_long_copy <- sf::st_simplify(subspecialists_lat_long_copy, preserveTopology = TRUE, dTolerance =1000) #dTolerance is in meters
-end_isochrones_sf_clipped <- sf::st_simplify(end_isochrones_sf_clipped, preserveTopology = TRUE, dTolerance = 1000) #dTolerance is in meters
-
-
-# Set the correct CRS for your data
-subspecialists_lat_long_copy <- sf::st_set_crs(subspecialists_lat_long_copy, 4326)  # Assuming EPSG 4326 (WGS 84) for lat/lon
-
-result <- sf::st_join(end_isochrones_sf_clipped, subspecialists_lat_long_copy, left = FALSE, suffix = c("_subspecialists_lat_long", "_isochrones")) # 'left' argument set to FALSE means you are retaining the isochrone polygons that intersect with the points in subspecialists_lat_long
-
-result <- result %>%
-  # arrange(`id`, `rank`, `range`) %>%
-  # group_by(address) %>%
-  # distinct(range, .keep_all = TRUE) %>%
-  # arrange(rank)
-  dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering.
-
-write_csv(result, "data/result.csv")
-
-# Filter out feature 188562 from the result
-filtered_result <- result %>%
-  filter(row_number != 188562)
-
-sf::st_write(result,
-             dsn = "data/07-isochrone-mapping",
-             layer = "results_simplified_validated_isochrones",
-             driver = "ESRI Shapefile",
-             quiet = FALSE, 
-             append = FALSE)
-
-plot(result[1])
-rm(filtered_result)
-invisible(gc())
+# result <- sf::st_join(end_isochrones_sf_clipped, subspecialists_lat_long_copy, left = FALSE, suffix = c("_subspecialists_lat_long", "_isochrones")) # 'left' argument set to FALSE means you are retaining the isochrone polygons that intersect with the points in subspecialists_lat_long
+# 
+# result <- result %>%
+#   # arrange(`id`, `rank`, `range`) %>%
+#   # group_by(address) %>%
+#   # distinct(range, .keep_all = TRUE) %>%
+#   # arrange(rank)
+#   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering.
+# 
+# write_csv(result, "data/result.csv")
+# 
+# # Ensure unique field names
+# names(result)[names(result) %in% duplicate_names] <- paste0(duplicate_names, "_2")
+# result <- clean_names(result)
+# 
+# # Write the shapefile
+# sf::st_write(result,
+#              dsn = "data/07-isochrone-mapping",
+#              layer = "results_simplified_validated_isochrones",
+#              driver = "ESRI Shapefile",
+#              abbreviate = FALSE,
+#              quiet = FALSE, 
+#              append = FALSE)
+# 
+# 
+# plot(result[1])
+# rm(filtered_result)
+# invisible(gc())
 
 #*******************************
 # SANITY CHECK
 #******************************* 
-end_isochrones_sf_clipped$range <- as.factor(end_isochrones_sf_clipped$range)
-color_palette <- viridis::magma(length(unique(end_isochrones_sf_clipped$range)))
+end_isochrones_sf_clipped$range <- as.factor(end_isochrones_sf_clipped$rng_dsc)
+color_palette <- viridis::magma(length(unique(end_isochrones_sf_clipped$rng_dsc)))
+
 isochrone_map <- leaflet() %>%
   addProviderTiles("CartoDB.Positron", group = "Greyscale") %>%
-  addProviderTiles(providers$CartoDB.Positron, group = "Thunderforest") %>%
+  addProviderTiles("CartoDB.Positron", group = "Thunderforest") %>%
   addProviderTiles("Esri.WorldStreetMap", group = "ESRI") %>%
 
   addPolygons(
     data = end_isochrones_sf_clipped,
     fillColor = ~color_palette[match(range, unique(end_isochrones_sf_clipped$range))],
     # Use of color palette
-    fillOpacity = 0.1,
+    fillOpacity = 0.4,
     weight = 0.5,
     smoothFactor = 0.5,
     stroke = TRUE,
     color = "black",
     opacity = 0.2,
-    popup = ~paste0("<strong>Isochrone:</strong> ", range, " minutes <br />"),
+    popup = ~paste0("<strong>Isochrone:</strong> ", range, " <br />"),
     group = "Isochrones"
   ) %>%
   
@@ -158,10 +164,10 @@ isochrone_map <- leaflet() %>%
     data = subspecialists_lat_long_copy,
     radius = 2,
     fill = T,
-    fillOpacity = 0.1,
+    fillOpacity = 0.4,
     color = "#1f77b4",
     popup = ~paste0("<strong>Address:</strong> ", address, "<br />",
-                    "<strong>Location:</strong> ", city, ", ", state_code)#,
+                    "<strong>Location:</strong> ", city, ", ", state)#,
     # group = "Obstetrician/Gynecologist Subspecialist"
   ) %>%
   
@@ -169,11 +175,11 @@ isochrone_map <- leaflet() %>%
     data = end_isochrones_sf_clipped,
     position = "bottomright",
     colors = color_palette,
-    labels = unique(end_isochrones_sf_clipped$range),  # Corrected to use drive_time
+    labels = unique(end_isochrones_sf_clipped$rng_dsc),  # Corrected to use drive_time
     title = "Drive Time (minutes)",
-    opacity = 0.3
+    opacity = 0.6
   ) %>%
-  setView(lng = -105, lat = 39, zoom = 6); isochrone_map
+  setView(lng = -105, lat = 39, zoom = 4); isochrone_map
 
 timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
 

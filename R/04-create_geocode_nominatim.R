@@ -78,7 +78,6 @@ district_colors <- viridis::viridis(num_acog_districts, option = "viridis")
 # Generate ACOG districts with geometry borders in sf using tyler::generate_acog_districts_sf()
 acog_districts_sf <- tyler::generate_acog_districts_sf()
 
-
 leaflet::leaflet(data = geocoded_data) %>%
   leaflet::addCircleMarkers(
     data = geocoded_data,
