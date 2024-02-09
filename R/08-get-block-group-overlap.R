@@ -5,8 +5,9 @@ source("R/01-setup.R")
 
 # Define file paths
 # The shp directory has general use files.  
-block_groups_file <- "data/shp/block-groups/colorado/" # Colorado is a smaller state for the toy example.  
-#block_groups_file <- "data/07.5-prep-get-block-group=overlap" #For full project 
+# block_groups_file <- "data/shp/block-groups/colorado/" # Colorado is a smaller state for the toy example.  
+# TODO:  we will need to figure out how to get the correct yearly block group here.  
+block_groups_file <- "data/07.5-prep-get-block-group-overlap/block_groups_tigris_2022.shp" #For full project 
 
 # Read, transform, and process block groups shapefile in one chain
 block_groups <- sf::st_read(block_groups_file) %>%
@@ -16,14 +17,19 @@ block_groups <- sf::st_read(block_groups_file) %>%
 
 # Write processed block groups shapefile
 sf::st_write(block_groups,
-             dsn = "data/08-get-block-group-overlap/simplified_colorado", #ONLY doing COLORADO and not the USA
+             dsn = "data/08-get-block-group-overlap/simplified", 
+             #ONLY doing COLORADO and not the USA
              layer = "block_groups",
              driver = "ESRI Shapefile",
              quiet = FALSE, append = FALSE)
 
+# Pull in the isochrones shapefile
 # TODO: How to clip water out of the isochrones?  Rstudio crashes with a national file.  Maybe tigris::erase_water in 07.5?
-
-isochrones <- sf::st_read(dsn = "data/07-isochrone-mapping")
+# isochrones <- sf::st_read(dsn = "data/07-isochrone-mapping")
+isochrones <- sf::st_read(
+  dsn = "data/06-isochrones/end_isochrones_sf_clipped/isochrones.shp") %>%
+  dplyr::arrange(desc(rank)) %>% #This is IMPORTANT for the layering. 
+  rename(drive_time = range)
 
 isochrones <- isochrones %>%
   sf::st_transform(2163) %>%
@@ -34,19 +40,82 @@ isochrones <- isochrones %>%
 isochrones_joined <- sf::st_union(isochrones)
 isochrones_joined <- sf::st_sf(iso_id = 1, geometry = isochrones_joined) %>%
 	sf::st_transform(2163)
-
+plot(isochrones_joined)
 ### Single Isochrone Coverage Map
 #Make another quick reference map to make sure you have just one single isochrones feature. Remember before you could see all the overlapping shapes.
 
 isochrones_joined_map <- isochrones_joined %>%
   sf::st_transform(4326)
 
-# List of unique drive times for which you want to create plots and shapefiles
-drive_times <- unique(isochrones$range)
+# # List of unique drive times for which you want to create plots and shapefiles
+# drive_times <- unique(isochrones$drive_time)
+# 
+# create_individual_isochrone_plots <- function(isochrones, drive_times) {
+#   cat("\033[34mInstructions:\033[0m\n")
+#   cat("\033[34mTo use this function, follow the example code below:\033[0m\n")
+#   cat("\n")
+#   cat("\033[34m# Load isochrone data:\033[0m\n")
+#   cat("\033[34misochrones <- readRDS(\"path_to_isochrones.rds\")\n")
+#   cat("\n")
+#   cat("\033[34m# List of unique drive times for which you want to create plots and shapefiles:\033[0m\n")
+#   cat("\033[34mdrive_times <- unique(isochrones$drive_time)\n")
+#   cat("\n")
+#   cat("\033[34m# Create individual isochrone maps and shapefiles:\033[0m\n")
+#   cat("\033[34mcreate_individual_isochrone_plots(isochrones, drive_times)\n")
+#   
+#   message("Creating individual isochrone plots and shapefiles...")
+#   
+#   html_files <- list()
+#   shapefiles <- list()
+#   
+#   for (time in drive_times) {
+#     message(paste("Processing isochrones for", time, "minutes..."))
+#     
+#     isochrones_filtered <- dplyr::filter(isochrones, drive_time == time)
+#     isochrones_combined <- sf::st_union(isochrones_filtered)
+#     isochrones_sf <- dplyr::tibble(iso_id = 1, geometry = isochrones_combined) %>% 
+#       sf::st_sf()
+#     isochrones_sf <- sf::st_transform(isochrones_sf, crs = 4326)
+#     
+#     colors <- grDevices::rainbow(length(drive_times))
+#     index <- which(drive_times == time)
+#     
+#     my_map <- tyler::create_base_map("")
+#     
+#     message(paste("Creating a Leaflet map of isochrones for", time, "minutes..."))
+#     isochrone_map <- my_map %>% 
+#       leaflet::addProviderTiles("CartoDB.Voyager") %>% 
+#       leaflet::addPolygons(data = isochrones_sf, 
+#                            fillColor = colors[index], 
+#                            fillOpacity = 1, 
+#                            weight = 0.5, 
+#                            smoothFactor = 0.2, 
+#                            stroke = TRUE, 
+#                            color = "black")
+#     output_file <- paste0("figures/isochrone_maps/isochrone_map_", time, "_minutes.html")
+#     htmlwidgets::saveWidget(isochrone_map, file = output_file)
+#     message(paste("Saved isochrone map for", time, "minutes as:", output_file))
+#     html_files[[time]] <- output_file
+#     
+#     output_shapefile <- paste0("data/08-get-block-group-overlap/isochrone_files/isochrones_", time, "_minutes.shp")
+#     sf::st_write(isochrones_sf, output_shapefile, append = FALSE)
+#     message(paste("Saved shapefile for", time, "minutes as:", output_shapefile))
+#     shapefiles[[time]] <- output_shapefile
+#     
+#     message(paste("Processed isochrones for", time, "minutes."))
+#   }
+#   
+#   message("Individual isochrone plots and shapefiles creation completed.")
+#   
+#   return(list(html_files = html_files, shapefiles = shapefiles))
+# }
 
-isochrones <- isochrones %>%
-  rename("drive_time" ="range")
-tyler::create_individual_isochrone_plots(isochrones, drive_times) # TODO: only gives one map, needs to return multiple 
+
+# isochrones <- isochrones %>%
+#   rename("drive_time" ="range")
+# create_individual_isochrone_plots(isochrones, drive_times) # TODO: only gives one map, needs to return multiple 
+# 
+
 
 ### Filter GYN Oncologists with `st_intersects`
 #Important note: for computations in sf we should use a planar projection, [not a lat/long projection](https://r-spatial.github.io/sf/articles/sf6.html#although-coordinates-are-longitudelatitude-xxx-assumes-that-they-are-planar) like we'd use for making Leaflet maps. We'll use projection ESPG [2163](https://epsg.io/2163).Now calculate the percent overlap between each block group and the isochrones.
@@ -63,10 +132,11 @@ intersect <- sf::st_intersection(block_groups, isochrones_joined) %>%
 
 block_groups <- left_join(block_groups, intersect, by = "GEOID")
 
-block_groups <- block_groups %>%
-	# If missing it's because it didn't overlap, so 0
-	mutate(intersect_area = ifelse(is.na(intersect_area), 0, intersect_area),
-		overlap = as.numeric(intersect_area/bg_area))
+block_groups <- block_groups %>% 
+  mutate(
+    intersect_area = ifelse(is.na(intersect_area), 0, intersect_area),  # Assign 0 to NA intersect_area values
+    overlap = as.numeric(intersect_area / bg_area)  # Calculate overlap as a proportion
+  )
 
 # Summary of the overlap percents.  It calculates a summary of the overlap values in the block_groups data frame using the summary function.
 summary(block_groups$overlap)

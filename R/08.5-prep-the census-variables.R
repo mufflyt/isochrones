@@ -139,6 +139,28 @@ filter(str_ends(complete_description, fixed(", NOT HISPANIC OR LATINO)")) & str_
 
 read_csv("data/08.5-prep-the-census-variables/demographics_bg.csv")
 abc
+#TODO:  This is broken:  within_total
+
+# Generate descriptions for each column in abc with thousandths commas
+descriptions <- c(
+  paste0("within_total: ", format(abc[[1]], big.mark = ",", scientific = FALSE), ". This column represents the total population count within the specified areas of interest, considering all races and ethnicities."),
+  paste0("population_total: ", format(abc[[2]], big.mark = ",", scientific = FALSE), ". This column represents the total population count for the entire dataset, irrespective of the areas of interest or race/ethnicity."),
+  paste0("within_black: ", format(abc[[3]], big.mark = ",", scientific = FALSE), ". This column represents the population count within the specified areas belonging to the Black or African American racial group."),
+  paste0("population_black: ", format(abc[[4]], big.mark = ",", scientific = FALSE), ". This column represents the total population count for the Black or African American racial group in the entire dataset."),
+  paste0("within_white: ", format(abc[[5]], big.mark = ",", scientific = FALSE), ". This column represents the population count within the specified areas belonging to the White racial group."),
+  paste0("population_white: ", format(abc[[6]], big.mark = ",", scientific = FALSE), ". This column represents the total population count for the White racial group in the entire dataset."),
+  paste0("within_nhpi: ", format(abc[[7]], big.mark = ",", scientific = FALSE), ". This column represents the population count within the specified areas belonging to the Native Hawaiian and Other Pacific Islander (NHPI) racial group."),
+  paste0("population_nhpi: ", format(abc[[8]], big.mark = ",", scientific = FALSE), ". This column represents the total population count for the NHPI racial group in the entire dataset."),
+  paste0("within_total_pct: ", format(abc[[9]], big.mark = ",", scientific = FALSE), ". This column represents the percentage of the total population within the specified areas relative to the total population in the dataset."),
+  paste0("within_black_pct: ", format(abc[[10]], big.mark = ",", scientific = FALSE), ". This column represents the percentage of the Black or African American population within the specified areas relative to the total Black or African American population in the dataset."),
+  paste0("within_white_pct: ", format(abc[[11]], big.mark = ",", scientific = FALSE), ". This column represents the percentage of the White population within the specified areas relative to the total White population in the dataset."),
+  paste0("within_nhpi_pct: ", format(abc[[12]], big.mark = ",", scientific = FALSE), ". This column represents the percentage of the NHPI population within the specified areas relative to the total NHPI population in the dataset.")
+)
+
+# Print the descriptions
+for (desc in descriptions) {
+  cat(desc, "\n\n")
+}
 
 #************************************
 # GET THE ACS CENSUS VARIABLES
