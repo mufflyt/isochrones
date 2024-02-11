@@ -51,6 +51,7 @@ library(tigris)          # Access US Census Bureau TIGER/Line data
 library(viridis)         # Color palettes for data visualization
 library(wesanderson)     # Color palettes inspired by Wes Anderson films
 library(webshot)         # Takes screenshots of web pages
+library(rnaturalearth)
 
 devtools::install_github("cysouw/qlcMatrix")
 devtools::install_github("paulhendricks/anonymizer")
