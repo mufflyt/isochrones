@@ -12,9 +12,9 @@ input_file <- #readr::read_csv("data/05-geocode-cleaning/end_inner_join_postmast
   readr::read_csv("data/04-geocode/end_geocoded_data_nominatim.csv") %>%
   dplyr::mutate(id = row_number()) %>% # creates a unique identifier number
   #dplyr::filter(postmastr.name.x != "Hye In Park, MD") %>% # for testing
-  dplyr::distinct(address, .keep_all = TRUE) #%>%
+  dplyr::distinct(address, .keep_all = TRUE) %>%
   # dplyr::mutate (id = seq_len(nrow(.))) %>% # creates a unique identifier number
-  #dplyr::filter(state == "Colorado" & city == "Aurora") # For testing with a small sample
+  dplyr::filter(State == "Colorado" & city == "Aurora") # For testing with a small sample
 
 #**********************************************
 # TESTING ISOCHRONES WITH A ONE SECOND ISOCHRONE
@@ -64,15 +64,18 @@ iso_datetime_yearly <-
     "2019-10-18 09:00:00",
     "2020-10-16 09:00:00",
     "2021-10-15 09:00:00",
-    "2022-10-21 09:00:00"
+    "2022-10-21 09:00:00",
+    "2023-10-20 09:00:00"
   )
 
 isochrones_sf <- process_and_save_isochrones(
   input_file = input_file_no_error_rows,
   chunk_size = 25,
   iso_datetime = "2023-10-20 09:00:00",
-  iso_ranges = c(30 * 60, 60 *
-                   60, 120 * 60, 180 * 60),
+  iso_ranges = c(30 * 60, 
+                 60 * 60, 
+                 120 * 60, 
+                 180 * 60),
   crs = 4326,
   transport_mode = "car",
   file_path_prefix = "data/06-isochrones/isochrones_"
@@ -81,11 +84,43 @@ isochrones_sf <- process_and_save_isochrones(
 # Check the dimensions of the final isochrones_data
 dim(isochrones_sf)
 class(isochrones_sf)
+glimpse(isochrones_sf)
+class(isochrones_sf$id)
+dim(input_file_no_error_rows)
+class(input_file_no_error_rows)
+glimpse(input_file_no_error_rows)
+input_file_no_error_rows$id <- as.numeric(input_file_no_error_rows$id)
+class(input_file_no_error_rows$id)
 
-# Merge the original dataframe called "input_file_no_error_rows" and "isochrones_sf" by 'id' column
+# Create the master key data frame
+master_key <- data.frame(input_file_no_error_rows_id = unique(input_file_no_error_rows$id),
+                         isochrones_sf_id = seq_len(nrow(isochrones_sf))) %>%
+  distinct(input_file_no_error_rows_id, .keep_all = TRUE) %>%
+  rename("id" = "input_file_no_error_rows_id"); master_key
+
+# write_csv(input_file_no_error_rows, "data/06-isochrones/input_file_no_error_rows.csv")
+# write_csv(isochrones_sf, "data/06-isochrones/isochrones_sf.csv")
+# write_csv(master_key, "data/06-isochrones/master_key.csv")
+
+# Merge based on the corresponding IDs in the master key
 merged_data <- input_file_no_error_rows %>%
-  left_join(isochrones_sf, by = "id") %>%
+  left_join(master_key, by = c("id" = "id")) %>%
+  left_join(isochrones_sf, by = c("isochrones_sf_id" = "id"))
+
+# Clean up the merged data (optional)
+merged_data <- merged_data[, !(names(merged_data) %in% c("id.x", "id.y"))] # Remove duplicate ID columns
+
+merged_data <- merged_data %>%
   mutate(range = range/60L)
+#View(merged_data)
+
+# Check the merged data
+glimpse(merged_data)
+class(merged_data)
+write_csv(merged_data, "data/06-isochrones/end_merged_data_isochrones_input_file.csv")
+
+# Write the resulting sf object to a shapefile
+#st_write(merged_sf, "data/06-isochrones/merged_sf.shp")
 
 # Define a function to generate range descriptions
 generate_range_description <- function(range) {
@@ -105,26 +140,25 @@ generate_range_description <- function(range) {
 # Apply the function to create the range_description column
 merged_data$range_description <- sapply(merged_data$range, generate_range_description)
 
-
-# Ensure merged_data is an sf object by setting its geometry column. 
-# This assumes that isochrones_sf had a geometry column named 'geometry'.
-# If the geometry column has a different name, replace 'geometry' with the correct column name.
-merged_data_sf <- st_as_sf(merged_data, sf_column_name = "geometry") %>%
-  dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering in the leaflet map later on.
-
-# Optionally, write the merged sf object to a CSV file
-write_csv(st_drop_geometry(merged_data_sf), "data/06-isochrones/end_isochrones_merged_data.csv")
-
 # If you need to save the spatial data with geometry, consider using st_write to save as a shapefile or GeoJSON
-st_write(merged_data_sf, "data/06-isochrones/merged_data_sf.shp", append = FALSE)
+# Convert the geometries to POLYGON
+st_write(merged_data, "data/06-isochrones/merged_data_sf.shp", append = FALSE)
 
 # Clip the isochrones to the USA border.
 usa_borders <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf") %>%
   sf::st_set_crs(4326) %>%
   select(name, iso_a2, woe_id, woe_label, woe_name, latitude, longitude, postal)
 
-isochrones_df <- merged_data_sf %>%
-  sf::st_set_crs(4326)
+# Convert geometry column to WKT format
+merged_data$wkt_geometry <- sf::st_as_text(merged_data$geometry)
+
+# Remove the original geometry column
+merged_data <- dplyr::select(merged_data, -geometry)
+
+# Convert your merged_data to sf object
+isochrones_df <- st_as_sf(merged_data, 
+                           wkt = "wkt_geometry",  # Specify the column containing WKT (well-known text ) geometry
+                           crs = 4326)           # Specify the coordinate reference system (CRS), here using EPSG:4326
 
 invisible(gc())
 isochrones_sf_clipped <- sf::st_intersection(isochrones_df, usa_borders) %>%
@@ -164,5 +198,5 @@ map <- map %>%
     fillOpacity = 0.5,
     weight = 1,
     color = "black",
-    popup = ~paste("NPI: ", NPI, "<br>Range: ", rng_dsc, "<br>Date: ", departr)
+    popup = ~paste("NPI: ", NPI, "<br>Range: ", range, "<br>Date: ", departr)
   ); map
