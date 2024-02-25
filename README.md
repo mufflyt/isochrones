@@ -326,3 +326,64 @@ We run the `process_and_save_isochrones` function in chunks of 25 because we wer
 
 Output:  I would like the output sf file to be placed in a directory named by the year and then matched back to the original input.  
 
+# Very helpful e-mail from Dr. Unterfinger
+The issue mentioned about an ID in the hereR response has has been raised by others:
+https://github.com/munterfi/hereR/issues/153
+
+One potential solution I had considered is the option to specify an ID column in the request to hereR. This would tell the package to use this ID column from the input data.frame and append these IDs to the response. However, there are a few issues with this approach. Firstly, it results in the duplication of information. Secondly, the package would need to check the suitability of the column for use as an ID (e.g. duplicate IDs), which I think should not be the responsibility of the package.
+
+The hereR package sends the requests asynchronously to the Here API and considers the rate limits in the case of a freemium plan. Although the responses from the API will not be received in the same order, the package guarantees that the responses are returned in the same order as the the rows in the input sf data.frame (or sfc column). Therefore, joining the output with the input based on the length should be straightforward and error-free, as long as the input data isn't altered between the request and the response from the package:
+
+# Add IDs (or use row.names if they are the default sequence)
+poi$id <- seq_len(nrow(poi))
+
+# Request isolines, without aggregating
+iso = isoline(poi, aggregate = FALSE)
+#> Sending 8 request(s) with 1 RPS to: 'https://isoline.router.hereapi.com/v8/isolines?...'
+#> Received 8 response(s) with total size: 82.9 Kb
+
+# non-spatial join
+(iso_attr <- st_sf(merge(as.data.frame(poi), iso,  by = "id", all = TRUE)))
+
+The request for the 5000 physicians will take some time, especially if you are using a freemium account (the rate limit there is 1 request per second). It might help to send the queries in smaller batches, e.g. 100 rows per request. This does not make it any faster, but the intermediate results can be joined and saved and would not be lost in the event of a network interruption or other errors. Try something like this:
+
+library(hereR)
+library(sf)
+library(dplyr)
+set_verbose(TRUE)
+
+
+process_batch <- function(batch, start_idx) {
+  iso <- isoline(batch, aggregate = FALSE)
+  iso$id <- iso$id + start_idx
+  iso_attr <- st_sf(merge(as.data.frame(batch) |> select(-geometry), iso, by = "id", all = TRUE))
+  return(iso_attr)
+}
+
+batch_start <- 1 # in case of error, set last successful batch nr
+batch_size <- 2
+poi$id <- seq_len(nrow(poi))
+batches <- split(poi, ceiling(seq_len(nrow(poi)) / batch_size))
+
+# initialize an empty sf data frame for the results
+all_results <- st_sf(geometry = st_sfc(crs = st_crs(4326)), stringsAsFactors = FALSE)
+
+# process batches
+for (batch_count in seq(1, length(batches))) {
+  message("Processing batch ", batch_count)
+  result <- process_batch(batches[[batch_count]], (batch_count - 1) * batch_size)
+  all_results <- rbind(all_results, result)
+
+  # save intermediate results to a GeoPackage
+  st_write(result, "iso.gpkg", append = TRUE)
+
+  batch_count <- batch_count + 1
+  Sys.sleep(2) # avoid hitting rate limit between batches
+}
+
+# final results
+print(all_results)
+
+
+Best,
+Merlin
