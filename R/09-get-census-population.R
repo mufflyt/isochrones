@@ -20,13 +20,25 @@ us_fips_list <- tigris::fips_codes %>%
 #************************************
 # GET THE ACS CENSUS VARIABLES
 #************************************
-#* ???????????????????????????????????????????????????????????????????
 all_census_data <- tyler::get_census_data(us_fips_list = us_fips_list)
+#write_csv(all_census_data, "data/09-get-census-population/all_census_data.csv")
+all_census_data <- read_csv("data/09-get-census-population/all_census_data.csv")
 
+# > all_census_data
+# A tibble: 217,329 × 24
+ #   state county tract block_group NAME  B01001_001E B01001_026E B01001_033E B01001_034E B01001_035E B01001_036E
+ #   <chr> <chr>  <chr>       <dbl> <chr>       <dbl>       <dbl>       <dbl>       <dbl>       <dbl>       <dbl> 
+ # 1 01   039    9620…           2 Bloc…         884         543           0          31           9          10        
+ # 2 01  039    9618…           2 Bloc…        1395         777           0          27          23          44
+
+#************************************
+# CLEANS THE ACS CENSUS VARIABLES
+#************************************
+#*
+#* #total female population
 demographics_bg <- all_census_data %>%
   dplyr::rename(name = NAME,
-         population = B01001_026E,
-         #total female population
+         population = B01001_026E, #total female population
          fips_state = state) %>%
   dplyr::mutate(fips_block_group = paste0(
     fips_state,
@@ -35,40 +47,49 @@ demographics_bg <- all_census_data %>%
     block_group
   ),) %>%
   dplyr::arrange(fips_state) %>%
-  dplyr::select(fips_block_group, name, population)
+  dplyr::select(fips_block_group, name, population); demographics_bg
+
+write_csv(demographics_bg, "data/09-get-census-population/demographics_bg.csv") #Census Block Group Code
 
 # This is what we used in Exploratory.io for demographics_bg_raw.  
-# demographicsbgraw <- getcensusdata(vintage = 2020, variables = totalscensusvariablesprepped$name, #censusvariablesprepped$name, usfips_list = "08") %>% as.data.frame()
-
 head(demographics_bg)
  
 # And finally! Multiply the population of each block group by its overlap percent to calculate population within and not within ???45???-minutes of a gynecologic oncologist.
 #
 # First, make a flat non-sf dataframe with the overlap information and join to population. Then multiply and summarize. This is the easiest part of the project.
+intersect_block_group_cleaned_file <- "data/08-get-block-group-overlap/intersect_block_group_cleaned_180minutes.csv"
+intersect_block_group_cleaned <- read_csv(intersect_block_group_cleaned_file) %>%
+  arrange(GEOID) %>%
+  select(-LSAD, -AWATER)
 
-bg_overlap <- block_groups %>% dplyr::select(geoid = GEOID, overlap) %>%
+bg_overlap <- intersect_block_group_cleaned %>% dplyr::select(GEOID, overlap, intersect_drive_time) %>%
 	sf::st_drop_geometry()
-bg_overlap <- as.data.frame(bg_overlap)
-write.csv(bg_overlap, "data/09-get-census-population/block-group-isochrone-overlap.csv", na = "", row.names = F)
-write_rds(bg_overlap, "data/09-get-census-population/bg_overlap.rds")
 
-write_rds(demographics_bg, "data/09-get-census-population/demographics_bg.rds") #Census Block Group Code
+write_csv(bg_overlap, "data/09-get-census-population/block-group-isochrone-overlap.csv")
 
-class(bg_overlap$geoid) == class(demographics_bg$fips_block_group)
+class(bg_overlap$GEOID) == class(demographics_bg$fips_block_group)
 
-# Join data
-bg <- left_join(bg_overlap, demographics_bg, by = c("geoid" = "fips_block_group"))
-bg
+# Join data of block group overlap and Census bureau demographics
+bg <- left_join(bg_overlap, demographics_bg, by = c("GEOID" = "fips_block_group")); bg
+write_csv(bg, "data/09-get-census-population/bg.csv")
 
 # Calculate!
-state_sums <- bg %>% select(geoid, overlap, population) %>%
-	summarize(within_total = sum(population * overlap, na.rm = TRUE),
-						population_total = sum(population, na.rm = TRUE)) %>%
+state_sums <- bg %>% select(GEOID, overlap, population, intersect_drive_time) %>%
+	summarize(population_total = sum(population, na.rm = TRUE),
+	          within_total = sum(population * overlap, na.rm = TRUE),
+	          intersect_drive_time = intersect_drive_time) %>%
 	mutate(within_total_pct = within_total/population_total) %>%
-	ungroup()
+	ungroup() %>%
+  distinct(population_total, .keep_all = TRUE); state_sums
 
-head(state_sums)
-within_total_pct <- round(state_sums[[3]]*100, 2)
-n_population <- format(round(state_sums[[1]], 0), big.mark = ",")
+within_total_pct <- round(state_sums[[4]]*100, 2); within_total_pct
+n_population <- format(round(state_sums[[2]], 0), big.mark = ","); n_population
+intersect_drive_time <- state_sums$intersect_drive_time; intersect_drive_time
 
-paste0(within_total_pct, "% (N = ", n_population, ") of US female residents live within ??45?? minutes of a gynecologic oncologist, while the remaining", 100L - within_total_pct, "% live further away.")
+paste0(within_total_pct, "% (N = ", n_population, ") of US total female residents live within ", intersect_drive_time," minutes of a gynecologic oncologist, while the remaining ", 100L - within_total_pct, "% live further away.")
+
+
+# Create the Graph called "Many Arkansas, Mississippi Residents Live Far From Stroke Care"
+# https://kffhealthnews.org/news/article/appalachia-mississippi-delta-stroke-treatment-advanced-care-rural-access/
+# Recreate with GYN Oncologists within a 30-minute drive, a 60-minute drive, a 120-minute drive, a 180-minute drive.  Horizontal bar chart.  
+
