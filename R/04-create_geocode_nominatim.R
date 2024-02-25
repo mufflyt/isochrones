@@ -15,7 +15,7 @@ source("R/01-setup.R")
 #Provenance: GOBA file.  
 readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds") %>%
   tidyr::unite(address, city, state, zip, sep = ", ", remove = FALSE, na.rm = FALSE) %>%
-  head(10) %>% #for testing.
+  #head(10) %>% #for testing.
   readr::write_csv(., "data/04-geocode/for_geocoding_with_nominatim__results_clinician_data.csv") -> a
 
 a$address
@@ -26,9 +26,17 @@ a$address
 # Example usage:
 csv_file <- "data/04-geocode/for_geocoding_with_nominatim__results_clinician_data.csv"
 output_file <- "data/04-geocode/end_geocoded_data_nominatim.csv"
+ACOG_Districts <- tyler::ACOG_Districts
+
+#**********************************************
+# GEOCODING FUNCTION
+#**********************************************
 create_geocode_nominatim(csv_file, output_file)
 # str(geocoded_data)
-geocoded_data <- readr::read_csv(output_file)
+geocoded_data <- readr::read_csv(output_file) %>%
+  rename ("State" = "state") %>%
+  left_join(ACOG_Districts, by = "State") %>%
+  write_csv(output_file)
 
 #**********************************************
 # SANITY CHECK
@@ -55,15 +63,15 @@ state_data <- read_csv("state_data.csv")
 
 # Step 1: Aggregate your data by state_code and subspecialist count
 state_data <- geocoded_data_geocode %>%
-  group_by(state) %>%
-  summarize(count = n())
+  group_by(State) %>%
+  summarize(count = n()) %>%
+  arrange(desc(count)); state_data
 
 # Step 2: Get the GeoJSON data for U.S. states from 'rnaturalearth'
-us_states <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf") %>%
-  as.data.frame()
+us_states <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf") 
 
 merged_data <- state_data %>%
-  exploratory::left_join(`us_states`, by = join_by(`state` == `postal`), target_columns = c("postal", "geometry"))
+  exploratory::left_join(`us_states`, by = join_by(`State` == `postal`), target_columns = c("postal", "geometry"))
 
 
 #**********************************************
@@ -79,6 +87,13 @@ district_colors <- viridis::viridis(num_acog_districts, option = "viridis")
 acog_districts_sf <- tyler::generate_acog_districts_sf()
 
 leaflet::leaflet(data = geocoded_data) %>%
+  leaflet::addPolygons(
+    data = acog_districts_sf,
+    color = district_colors[as.numeric(geocoded_data$ACOG_District)],      # Boundary color
+    weight = 2,         # Boundary weight
+    fill = TRUE,       # No fill
+    opacity = 0.1,      # Boundary opacity
+    popup = ~acog_districts_sf$ACOG_District) %>%
   leaflet::addCircleMarkers(
     data = geocoded_data,
     lng = ~long,
@@ -87,17 +102,11 @@ leaflet::leaflet(data = geocoded_data) %>%
     stroke = TRUE,      # Add a stroke (outline)
     weight = 1,         # Adjust the outline weight as needed
     color = district_colors[as.numeric(geocoded_data$ACOG_District)],   # Set the outline color to black
-    fillOpacity = 0.8#,  # Fill opacity
-    #popup = as.formula(paste0("~", popup_var))  # Popup text based on popup_var argument
-  ) %>%
+    fillOpacity = 0.8,  # Fill opacity
+    popup = ~address)  # Popup text based on popup_var argument
+   
   # Add ACOG district boundaries
-  leaflet::addPolygons(
-    data = acog_districts_sf,
-    color = district_colors[as.numeric(geocoded_data$ACOG_District)],      # Boundary color
-    weight = 2,         # Boundary weight
-    fill = TRUE,       # No fill
-    opacity = 0.1,      # Boundary opacity
-    popup = ~acog_districts_sf$ACOG_District)   # Popup text # %>%
+   # Popup text # %>%
   #Add a legend
   # leaflet::addLegend(
   #   position = "bottomright",   # Position of the legend on the map
