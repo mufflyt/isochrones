@@ -87,6 +87,8 @@ searched_npi_numbers <- output_process_physician_data_for_years %>%
   dplyr::mutate(npi = as.numeric(npi)) %>%
   readr::write_csv("data/03-search_and_process_npi/searched_npi_numbers.csv") ### File with NPI numbers to complete subspecialty.csv file.    We need to merge the results of new NPI numbers in `searched_npi_numbers` with subspecialty.csv
 
+# searched_npi_numbers <- readr::read_csv("data/03-search_and_process_npi/searched_npi_numbers.csv") #for testing
+
 ### Read in the original subspecialty.csv file.  This file is given and is not calculated earlier in the workflow.  
 # File Provenance: "/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/goba/subspecialists_only.csv". 7,097 rows.  
 subspecialists_only <- read_csv("data/03-search_and_process_npi/subspecialists_only.csv") %>%
