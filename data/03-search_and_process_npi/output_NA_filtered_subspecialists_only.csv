@@ -1,0 +1,4 @@
+npi,basic_first_name,basic_last_name,basic_credential,basic_sole_proprietor,basic_gender,basic_enumeration_date,basic_last_updated,basic_status,basic_name_prefix,taxonomies_code,taxonomies_taxonomy_group,taxonomies_desc,taxonomies_state,taxonomies_license,taxonomies_primary
+1366752107,CAROLINA,SUELDO,M.D.,NO,F,2010-10-14,2019-02-25,A,Dr.,207V00000X,,Obstetrics & Gynecology,FL,ME123211,FALSE
+1366752107,CAROLINA,SUELDO,M.D.,NO,F,2010-10-14,2019-02-25,A,Dr.,207V00000X,,Obstetrics & Gynecology,CT,051012,FALSE
+1366752107,CAROLINA,SUELDO,M.D.,NO,F,2010-10-14,2019-02-25,A,Dr.,207VE0102X,,"Obstetrics & Gynecology, Reproductive Endocrinology",CA,A113893,TRUE
