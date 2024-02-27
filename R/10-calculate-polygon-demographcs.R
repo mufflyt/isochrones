@@ -101,13 +101,13 @@ state_sums <- bg %>%
           race_asian_pct = race_asian_pct,
           race_nhpi_pct = race_nhpi_pct,
           race_other_pct = race_other_pct) %>%
-  mutate(race_white_pct = race_white_number/race_universe_number) %>%
-  mutate(race_black_pct = race_black_number/race_universe_number) %>%
-  mutate(race_aian_pct = race_aian_number/race_universe_number) %>%
-  mutate(race_asian_pct = race_asian_number/race_universe_number) %>%
-  mutate(race_nhpi_pct = race_nhpi_number/race_universe_number) %>%
-  mutate(race_other_pct = race_other_number/race_universe_number) %>%
-  mutate(within_total_pct = within_total / population_total) %>%
+  # mutate(race_white_pct = race_white_number/race_universe_number) %>%
+  # mutate(race_black_pct = race_black_number/race_universe_number) %>%
+  # mutate(race_aian_pct = race_aian_number/race_universe_number) %>%
+  # mutate(race_asian_pct = race_asian_number/race_universe_number) %>%
+  # mutate(race_nhpi_pct = race_nhpi_number/race_universe_number) %>%
+  # mutate(race_other_pct = race_other_number/race_universe_number) %>%
+  # mutate(within_total_pct = within_total / population_total) %>%
   ungroup() %>%
   distinct(population_total, .keep_all = TRUE) %>%
   select(state_code, ends_with("_pct"), certification_type, everything()) %>%
