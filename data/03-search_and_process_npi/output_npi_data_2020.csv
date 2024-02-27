@@ -1,0 +1,3 @@
+npi,basic_first_name,basic_last_name,basic_middle_name,basic_credential,basic_sole_proprietor,basic_gender,basic_enumeration_date,basic_last_updated,basic_certification_date,basic_status,taxonomies_code,taxonomies_taxonomy_group,taxonomies_desc,taxonomies_state,taxonomies_license,taxonomies_primary,basic_name_prefix,basic_name_suffix,year
+1003000423,JENNIFER,VELOTTA,A,M.D.,NO,F,2007-08-29,2021-05-28,2021-05-28,A,207V00000X,,Obstetrics & Gynecology,OH,35.096673,TRUE,NA,NA,2020
+1003002627,SAMATHA,KADIYALA,KRISHNA,M.D.,NO,F,2007-09-18,2016-06-06,NA,A,207V00000X,,Obstetrics & Gynecology,TX,N4502,TRUE,Dr.,--,2020
