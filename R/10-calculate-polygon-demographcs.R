@@ -12,7 +12,8 @@ state_fips <- state_fips %>% select(fips_state, state_code)
 
 demographics <- read_csv("data/08.75-acs/acs-block-group-demographics.csv")
 bg_overlap <-       read_csv("data/09-get-census-population/block-group-isochrone-overlap.csv") %>%
-  rename(geoid = GEOID)
+  rename(geoid = GEOID) %>%
+  mutate(certification_type = "Gynecologic Oncology")
 
 ###########################################################################
 # Join files
@@ -38,38 +39,89 @@ bg <- left_join(bg_overlap, demographics, by = c("geoid" = "fips_block_group")) 
 # write_csv(bg, "data/10-calculate-polygon-demographics/bg.csv")
 
 colnames(bg)
-bg <- bg %>% select(fips_state, state_code, geoid, everything())
+bg <- bg %>% select(fips_state, state_code, geoid, certification_type, everything())
 
 ###########################################################################
 # Calculate population in/out of isochrones by state
 ###########################################################################
 summary(bg$overlap)
-state_sums <- bg %>% 
-  # select(state_code, geoid, #overlap_all, overlap_c, 
-  #                           population, race_black_number, race_white_number) %>%
-  # pivot_longer(cols = starts_with("overlap_"), names_to = "certification_type", values_to = "overlap") %>%
-  group_by(state_code, certification_type) %>%
-  summarize(within_total = sum(population * overlap),
-            population_total = sum(population),
-            within_black = sum(race_black_number * overlap),
-            population_black = sum(race_black_number),
-            within_white = sum(race_white_number * overlap),
-            population_white = sum(race_white_number)) %>%
-  mutate(within_total_pct = within_total/population_total,
-         within_black_pct = within_black/population_black,
-         within_white_pct = within_white/population_white) %>%
-  select(state_code, certification_type, ends_with("_pct"), everything()) %>%
+
+# state_sums <- bg %>%
+#   select(state_code, geoid, #overlap_all, overlap_c,
+#                              population, race_black_number, race_white_number) %>%
+#   pivot_longer(cols = starts_with("overlap_"), names_to = "certification_type", values_to = "overlap") %>%
+#   group_by(state_code, certification_type) %>%
+#   summarize(within_total = sum(population * overlap),
+#             population_total = sum(population),
+#             within_black = sum(race_black_number * overlap),
+#             population_black = sum(race_black_number),
+#             within_white = sum(race_white_number * overlap),
+#             population_white = sum(race_white_number)) %>%
+#   mutate(within_total_pct = within_total/population_total,
+#          within_black_pct = within_black/population_black,
+#          within_white_pct = within_white/population_white) %>%
+#   select(state_code, certification_type, ends_with("_pct"), everything()) %>%
+#   ungroup() %>%
+#   mutate(certification_type = case_when(
+#     certification_type == "overlap_all" ~ "any",
+#     certification_type == "overlap_c" ~ "compthromb"
+#   ))
+
+names(bg)
+
+state_sums <- bg %>%
+  # Had to throw this in.  Not sure if it is the right thing to do.  
+  filter(!is.na(population) & !is.na(overlap)) %>%
+  group_by(state_code) %>%
+  #select(geoid, overlap, population, intersect_drive_time, certification_type) %>%
+  reframe(population_total = sum(population, na.rm = TRUE),
+            within_total = sum(population * overlap, na.rm = TRUE),
+            intersect_drive_time = intersect_drive_time,
+            certification_type = certification_type, 
+          intersect_drive_time = intersect_drive_time,
+          certification_type = certification_type,
+          year = year,
+          fips_state = fips_state,
+          state_code = state_code,
+          #geoid = geoid,
+          overlap = overlap,
+          #fips_county = fips_county,
+          #fips_tract = fips_tract,
+          #name = name,
+          #population = population,
+          race_white_number = race_white_number,
+          race_black_number = race_black_number,
+          race_aian_number = race_aian_number,
+          race_asian_number = race_asian_number,
+          race_nhpi_number = race_nhpi_number,
+          race_other_number = race_other_number,
+          race_white_pct = race_white_pct,
+          race_black_pct = race_black_pct,
+          race_aian_pct = race_aian_pct,
+          race_asian_pct = race_asian_pct,
+          race_nhpi_pct = race_nhpi_pct,
+          race_other_pct = race_other_pct) %>%
+  mutate(race_white_pct = race_white_number/race_universe_number) %>%
+  mutate(race_black_pct = race_black_number/race_universe_number) %>%
+  mutate(race_aian_pct = race_aian_number/race_universe_number) %>%
+  mutate(race_asian_pct = race_asian_number/race_universe_number) %>%
+  mutate(race_nhpi_pct = race_nhpi_number/race_universe_number) %>%
+  mutate(race_other_pct = race_other_number/race_universe_number) %>%
+  mutate(within_total_pct = within_total / population_total) %>%
   ungroup() %>%
-  mutate(certification_type = case_when(
-    certification_type == "overlap_all" ~ "any",
-    certification_type == "overlap_c" ~ "compthromb"
-  ))
+  distinct(population_total, .keep_all = TRUE) %>%
+  select(state_code, ends_with("_pct"), certification_type, everything()) %>%
+  ungroup(); state_sums
+
+View(state_sums)
+
+
 
 
 # Make table for use in story, charts
 # Ridiculous pivoting but it works
-state_table <- state_sums %>% select(state_code, certification_type, 
-                                     within_total_pct, within_black_pct, within_white_pct) %>%
+state_table <- state_sums %>% 
+  select(state_code, certification_type, within_total_pct, within_black_pct, within_white_pct) %>%
   pivot_wider(names_from = certification_type, values_from = starts_with("within"), names_prefix = "type_") %>%
   pivot_longer(-state_code, names_sep = "_pct_type_", 
                names_to = c("race", "certification_type"), values_to = "within_pct") %>%
