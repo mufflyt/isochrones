@@ -19,11 +19,14 @@ invisible(gc())
 
 library(censusapi)       # Access US Census Bureau data via API
 library(data.table)      # Extends data frame capabilities for efficient data manipulation
+library (DiagrammeR)
+library(DiagrammeRsvg)
 library(easyr)           # A package for simplifying common R tasks
 library(forcats)         # Tools for working with categorical data
 library(formattable)     # Format data for tables and charts
 library(ggplot2)         # Data visualization package based on the Grammar of Graphics
 library(ggthemes)        # Additional themes for ggplot2
+library(glue)
 library(hereR)           # Helps manage file paths and project directories
 library(htmltools)       # Tools for working with HTML widgets
 library(htmlwidgets)     # Create interactive HTML widgets from R
