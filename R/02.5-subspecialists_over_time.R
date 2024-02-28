@@ -9,7 +9,6 @@ source("R/01-setup.R")
 #****************************************************************************
 #* CLEAN EACH YEAR OF DATA TO CREATE 'year_by_year_nppes_data_collected'.  WE ONLY BROUGHT IN MINIMAL INFO ABOUT THE PHYSICIANS FROM THE POSTICO DATABASE LIKE NAME AND NPI NUMBER.  
 #****************************************************************************
- 
 year_by_year_nppes_data_collected <- exploratory::searchAndReadDelimFiles(folder = "data/02.5-subspecialists_over_time/Postico", pattern = "*.csv|*.tsv|*.txt|*.text|*.tab", delim = ",", # I had to manually specify the delimiter here.  
 quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
   readr::type_convert() %>%
@@ -28,7 +27,36 @@ quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "
   select(-Credential, -`Secondary Specialty`) %>%
   rename(goba_id = id) %>%
   readr::write_csv(., "data/02.5-subspecialists_over_time/end_year_by_year_nppes_data_collected.csv")
+dim(year_by_year_nppes_data_collected)[1]
 # year_by_year_nppes_data_collected <- readr::read_csv("data/02.5-subspecialists_over_time/end_year_by_year_nppes_data_collected.csv") # for testing
+
+# > year_by_year_nppes_data_collected
+# # A tibble: 323,193 × 11
+# # Groups:   NPI [49,232]
+# year        NPI `Last Name` `First Name` `Middle Name` Gender City  State `Zip Code` `Primary Specialty` goba_id
+# <chr>     <dbl> <chr>       <chr>        <chr>         <chr>  <chr> <chr> <chr>      <chr>                 <dbl>
+#   1 2013     1.00e9 VELOTTA     JENNIFER     A             F      MENT… OH    44060      OBSTETRICS/GYNECOL…      31
+# 2 2013     1.00e9 KADIYALA    SAMATHA      K             F      LAKE… TX    77566      OBSTETRICS/GYNECOL…     156
+# 3 2013     1.00e9 PALASZEWSKI DAWN         NA            F      TAMPA FL    33612      OBSTETRICS/GYNECOL…     200
+# 4 2013     1.00e9 HOMAN       ZENA         K             F      FARGO ND    58103      OBSTETRICS/GYNECOL…     256
+# 5 2013     1.00e9 EASTERLIN   MARIE        NA            F      SAIN… GA    31522      OBSTETRICS/GYNECOL…     564
+# 6 2013     1.00e9 CHANG       EMILY        CHIA CHUN     F      BRITT IA    50423      OBSTETRICS/GYNECOL…     680
+# 7 2013     1.00e9 MALLEK      GREGORY      W             M      SALEM OR    97301      OBSTETRICS/GYNECOL…     723
+# 8 2013     1.00e9 FAKIH       MONA         Y             F      DETR… MI    48201      OBSTETRICS/GYNECOL…     900
+# 9 2013     1.00e9 COTWRIGHT   ANTONIA      NA            F      REDO… CA    90277      OBSTETRICS/GYNECOL…    1046
+# 10 2013     1.00e9 YUZEFOVICH  MICHAEL      NA            M      ALEX… VA    22306      OBSTETRICS/GYNECOL…    1164
+
+# Calculate the needed values
+total_physicians <- nrow(year_by_year_nppes_data_collected)
+start_year <- min(year_by_year_nppes_data_collected$year)
+end_year <- max(year_by_year_nppes_data_collected$year)
+unique_physicians <- year_by_year_nppes_data_collected %>%
+  distinct(NPI) %>%
+  nrow()
+
+# Use glue to create the message with formatted numbers
+glue::glue("There are {format(total_physicians, big.mark = ',')} general OBGYN physicians from {start_year} to {end_year}. But there were only {format(unique_physicians, big.mark = ',')} unique physicians by NPI number in the dataset.")
+
 
 #**************************
 #* VALIDATE THE NPI NUMBERS
@@ -36,24 +64,45 @@ quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "
 year_by_year_nppes_data_validated_npi <- validate_and_remove_invalid_npi(input_data = "data/02.5-subspecialists_over_time/end_year_by_year_nppes_data_collected.csv") %>% 
   dplyr::filter(npi_is_valid == TRUE) %>% 
   readr::write_csv(., "data/02.5-subspecialists_over_time/end_year_by_year_nppes_data_validated_npi.csv")
+dim(year_by_year_nppes_data_validated_npi)[1]
 #year_by_year_nppes_data_validates_npi <- readr::read_csv("data/02.5-subspecialists_over_time/end_year_by_year_nppes_data_validated_npi.csv") # for testing
+paste0("There are ", dim(year_by_year_nppes_data_validated_npi)[1], " validated non-unique NPI numbers from 2013 to 2023.")
+
+
+# > year_by_year_nppes_data_validated_npi
+# # A tibble: 323,193 × 12
+# year       NPI `Last Name` `First Name` `Middle Name` Gender City  State `Zip Code` `Primary Specialty` goba_id
+# <dbl>     <dbl> <chr>       <chr>        <chr>         <chr>  <chr> <chr> <chr>      <chr>                 <dbl>
+#   1  2013    1.00e9 VELOTTA     JENNIFER     A             F      MENT… OH    44060      OBSTETRICS/GYNECOL…      31
+# 2  2013    1.00e9 KADIYALA    SAMATHA      K             F      LAKE… TX    77566      OBSTETRICS/GYNECOL…     156
+# 3  2013    1.00e9 PALASZEWSKI DAWN         NA            F      TAMPA FL    33612      OBSTETRICS/GYNECOL…     200
 
 #**************************
-#* RETURN THE CONTEMPORARY DEMOGRAPHICS OF THE PHYSICIAN DATA WITH PREFIX OF "CLINICIAN_DATA_" (GENDER, MEDICAL SCHOOL, GRAD YEAR) ARE THE ONLY TIMELESS VARIABLES.  PAST SUBSPECIALISTS WHO ARE NO LONGER PRACTICING ARE NOT SEARCHABLE VIA CONTEMPORARY NPPES NPI DATABASE SO WE WILL NEED TO USE THE POSTICO DATABASE FOR ADDRESS, PRACTICE NAME, ETC.  PEOPLE WHO RETIRED ARE GOING TO BE "NO RESULTS"
+#* RETURN THE CONTEMPORARY DEMOGRAPHICS OF THE PHYSICIAN DATA WITH PREFIX OF "CLINICIAN_DATA_" (GENDER, MEDICAL SCHOOL, GRAD YEAR) ARE THE ONLY TIMELESS VARIABLES.  PAST SUBSPECIALISTS WHO ARE NO LONGER PRACTICING ARE NOT SEARCHABLE VIA CONTEMPORARY NPPES NPI DATABASE SO WE WILL NEED TO USE THE POSTICO PAST NPI DATABASE FOR ADDRESS, PRACTICE NAME, ETC.  PEOPLE WHO RETIRED ARE GOING TO BE "NO RESULTS"
 #**************************
 ## Call the retrieve_clinician_data function with an NPI value
 distinct_year_by_year_nppes_data_validated_npi <- readr::read_csv("data/02.5-subspecialists_over_time/end_year_by_year_nppes_data_validated_npi.csv") %>% 
   dplyr::distinct(NPI, .keep_all = TRUE) %>%
-  #plyr::rename (npi = NPI) %>%
   arrange(year, goba_id) %>%
   #head(101) %>% # FOR TESTING
-  #filter(npi > 1124057377) %>% # FOR RESTARTING and using part of the other data
   write_csv(., "data/02.5-subspecialists_over_time/end_distinct_year_by_year_nppes_data_validated_npi.csv") 
 #View(distinct_year_by_year_nppes_data_validated_npi)
-
 dim(distinct_year_by_year_nppes_data_validated_npi)[1]
 
-paste0("There are ", dim(distinct_year_by_year_nppes_data_validated_npi)[1], " unique OBGYNs represented from 2013 to 2023.")
+# Calculate the start and end year
+start_year <- min(distinct_year_by_year_nppes_data_validated_npi$year)
+end_year <- max(distinct_year_by_year_nppes_data_validated_npi$year)
+# Get the number of unique OBGYNs
+num_unique_obgyns <- nrow(distinct_year_by_year_nppes_data_validated_npi)
+glue("There are {format(num_unique_obgyns, big.mark = ',')} unique OBGYNs represented from {start_year} to {end_year}.")
+
+# > distinct_year_by_year_nppes_data_validated_npi
+# # A tibble: 49,232 × 12
+# year       NPI `Last Name` `First Name` `Middle Name` Gender City  State `Zip Code` `Primary Specialty` goba_id
+# <dbl>     <dbl> <chr>       <chr>        <chr>         <chr>  <chr> <chr> <chr>      <chr>                 <dbl>
+#   1  2013    1.00e9 VELOTTA     JENNIFER     A             F      MENT… OH    44060      OBSTETRICS/GYNECOL…      31
+# 2  2013    1.00e9 KADIYALA    SAMATHA      K             F      LAKE… TX    77566      OBSTETRICS/GYNECOL…     156
+# 3  2013    1.00e9 PALASZEWSKI DAWN         NA            F      TAMPA FL    33612      OBSTETRICS/GYNECOL…     200
 
 #**************************
 #* BRING IN SUBSPECIALIST DATA WITH NPI NUMBER FROM GOBA
@@ -62,13 +111,28 @@ complete_npi_for_subspecialists <- readr::read_csv("data/02.5-subspecialists_ove
   as_tibble() %>%
   #distinct(NPI_goba, .keep_all = TRUE) %>%
   #dplyr::rename(npi = NPI_goba) %>%
-  filter(!is.na(npi))
-
-complete_npi_for_subspecialists_cleaned <- complete_npi_for_subspecialists %>%
+  filter(!is.na(npi)) %>%
   readr::write_csv(., "data/02.5-subspecialists_over_time/goba_unrestricted_cleaned.csv") 
 
+# Calculate the start and end year from the dataset
+start_year <- min(year(complete_npi_for_subspecialists$sub1startDate))
+end_year <- max(year(complete_npi_for_subspecialists$sub1startDate))
+
+# Get the number of unique OBGYNs with NPI numbers
+num_unique_obgyns_with_npi <- nrow(complete_npi_for_subspecialists)
+
+# Create sentences using glue
+glue("The dataframe contains information about {num_unique_obgyns_with_npi} unique OBGYN subspecialists with NPI numbers.")
+glue("The data includes physicians who were board certified to practice their subspecialty in {start_year} to {end_year}.")
+
+# Exclude territories and Washington, DC # Identify non-states
+states <- complete_npi_for_subspecialists$state_goba[complete_npi_for_subspecialists$state_goba %in% state.name]
+non_states <- non_states[!is.na(non_states)]
+glue("Subspecialist OBGYNS are present in {length(unique(states))} states plus {paste(unique(non_states), collapse = ', ')}.")
+
+
 #**************************
-#* retrieve_clinician_data FUNCTION FOR GETTING DEMOGRAPHICS BY MATCHING NPI NUMBERS TO THE NPPES DATABASE
+#* retrieve_clinician_data FUNCTION FOR GETTING DEMOGRAPHICS BY MATCHING NPI NUMBERS TO THE NPPES DATABASE.  GETS DEMOGRAPHICS USING THE NPPES API VIA PROVIDER::CLINICIANS FUNCTION.  
 #**************************
 input_data <- ("data/02.5-subspecialists_over_time/goba_unrestricted_cleaned.csv") 
 
@@ -81,11 +145,115 @@ retrieve_clinician_data(input_data,
 retrieve_clinician_data_output <- exploratory::searchAndReadDelimFiles(folder = "data/02.5-subspecialists_over_time/retrieve_clinician_data_chunk_results", pattern = "*.csv|*.tsv|*.txt|*.text|*.tab", delim = NULL, quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
   readr::type_convert() %>%
   exploratory::clean_data_frame() %>%
+  distinct(npi, .keep_all = TRUE) %>%
   select(-id, -year, -npi_is_valid, -clinician_data_suffix)
+
+# Specific column names from the NPPES data starting with "clinician_data_"
+filtered_columns <- grep("^clinician_data_", names(retrieve_clinician_data_output), value = TRUE); filtered_columns
+
+paste0("There are ", dim(retrieve_clinician_data_output)[1], " unique subspecialist OBGYNs WITH NPI NUMBERS and timeless DEMOGRAPHIC DATA represented from 2013 to 2023.")
+
+
+
+# Calculate the number of females
+num_females <- sum(retrieve_clinician_data_output$clinician_data_gender == "Female", na.rm = TRUE)
+# Calculate the proportion of females
+proportion_females <- (num_females / nrow(retrieve_clinician_data_output)) * 100
+
+# Create the sentence with the formatted values
+glue("There are {format(num_females, big.mark = ',')} female physicians in the dataset, making up {sprintf('%.1f', proportion_females)}% of the total.")
+
+# Get the number of unique OBGYNs with NPI numbers
+num_unique_obgyns_with_npi <- nrow(retrieve_clinician_data_output)
+
+# Create the message with formatted number of OBGYNs and dynamic year range
+glue("There are {format(num_unique_obgyns_with_npi, big.mark = ',')} unique OBGYNs WITH NPI NUMBERS represented.")
+
+# > retrieve_clinician_data_output
+# # A tibble: 6,519 × 63
+# id.new               npi sub1  city_goba state_goba   lat  long userid startDate  sub1startDate clinicallyActive
+# <chr>              <dbl> <chr> <chr>     <chr>      <dbl> <dbl>  <dbl> <date>     <date>        <chr>           
+#   1 retrieve_clinici… 1.05e9 MFM   Atlanta   Georgia     33.7 -84.4 9.03e6 2016-11-11 2021-04-16    Yes             
+# 2 retrieve_clinici… 1.53e9 FPM   Miramar   Florida     26.0 -80.3 9.03e6 2017-01-13 2021-04-23    Yes             
+# 3 retrieve_clinici… 1.38e9 MFM   Buffalo   New York    43.0 -78.8 9.03e6 2016-12-09 2022-04-08    Yes 
 
 # TODO:  Antijoin between end_distinct_year_by_year_nppes_data_validated_npi.csv and retrieve_clinician_data_output ot find those who had no results for the NPI number with the API.  
 
 #View(retrieve_clinician_data_output)
+
+# c("Load raw data of all generalists for all years", year_by_year_nppes_data_collected, #Previous years NPI files, Postico files
+#   "Validate NPI numbers", distinct_year_by_year_nppes_data_validated_npi, #Number of individual physicians
+#   "Narrow to subspecialists only", complete_npi_for_subspecialists, 
+#   "NPPES Demographics present for subspecialists", retrieve_clinician_data_output,
+#   "Finalize output")
+
+all_docs <- nrow(year_by_year_nppes_data_collected %>% distinct(NPI)); all_docs
+subspecialists <- nrow(complete_npi_for_subspecialists); subspecialists
+excluded_bc_generalists <- all_docs - subspecialists; excluded_bc_generalists
+non_onc_subspecialists <- nrow(complete_npi_for_subspecialists %>% filter(sub1 != "ONC"))
+
+# Set the values which will go into each label.
+a1 <- paste0('Number of of all OBGYNs \n for all years, n = ', format(all_docs, big.mark = ",", scientific = FALSE)) 
+b1 <- ''
+c1 <- ''
+d1 <- paste0('Number of Gynecologic\n Oncologists included\n for analysis,\n n = ', format(nrow(complete_npi_for_subspecialists %>% filter(sub1 == "ONC")), big.mark = ",", scientific = FALSE))
+e1 <- paste0('Number of Gynecologic\n Oncologists with \nNPPES Demographics,\n n = ', format(nrow(onc_with_demographics), big.mark = ",", scientific = FALSE))
+a2 <- ''
+b2 <- paste0('Excluded because\n General OBGYN,\n n = ', format(excluded_bc_generalists, big.mark = ","))
+c2 <- paste0('Non-Gynecologic\n Oncology Subspecialist\n n = ', format(non_onc_subspecialists, big.mark = ","))
+d2 <- ''
+e2 <- ''
+
+
+#Create a node dataframe
+ndf <- create_node_df(
+  n = 10,
+  label = c(a1, b1, c1, d1, e1, #Column 1
+            a2, b2, c2, d2, e2), #Column 2
+  style = c('solid', 'invis', 'invis', 'solid', 'solid', #Column 1
+            'invis', 'solid', 'solid', 'invis', 'invis'), #Column 2
+  shape = c('box', 'point', 'point', 'box', 'box', #Column 1 
+            'plaintext', 'box', 'box', 'point', 'point'), #Column 2
+  width = c(3, 0.001, 0.001, 3, 3, #Column 1
+            2, 2.5, 2.5, 0.001, 0.001), #Column 2
+  height = c(1, 0.001, 0.001, 1, 1, #Column 1
+             1, 1, 1, 0.001, 0.001), #Column 2
+  fontsize = c(rep(14, 10)),
+  fontname = c(rep('Helvetica', 10)),
+  penwidth = 1.5,
+  fixedsize = 'true')
+
+#Create an edge dataframe
+edf <- create_edge_df(
+  from = c(1, 2, 3, 4, #Column 1
+           6, 7, 8, 9, #Column 2
+           2, 3 #Horizontals
+  ),
+  to = c(2, 3, 4, 5, #Column 1
+         7, 8, 9, 10, #Column 2
+         7, 8 #Horizontals
+  ),
+  arrowhead = c('none', 'none', 'normal', 'normal', #Column 1
+                'none', 'none', 'none', 'none', #Column 2
+                'normal', 'normal' #Horizontals
+  ),
+  color = c('black', 'black', 'black', 'black', #Column 1
+            '#00000000', '#00000000', '#00000000', '#00000000', #Column 2
+            'black', 'black' #Horizontals
+  ),
+  constraint = c(rep('true', 8), #Columns
+                 rep('false', 2) #Horizontals
+  )
+)
+
+g <- DiagrammeR::create_graph(ndf,
+                              edf,
+                              attr_theme = NULL)
+
+
+DiagrammeR::render_graph(g)
+export_graph(g, file_name = "data/02.5-subspecialists_over_time/flowchart.png")
+
 
 #**************************
 #* WAS NOT RUN LOCALLY!
