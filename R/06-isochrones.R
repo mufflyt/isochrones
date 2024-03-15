@@ -11,10 +11,11 @@ source("R/01-setup.R")
 input_file <- #readr::read_csv("data/05-geocode-cleaning/end_inner_join_postmastr_clinician_data.csv") %>%
   readr::read_csv("data/04-geocode/end_geocoded_data_nominatim.csv") %>%
   dplyr::mutate(id = row_number()) %>% # creates a unique identifier number
-  #dplyr::filter(postmastr.name.x != "Hye In Park, MD") %>% # for testing
   dplyr::distinct(address, .keep_all = TRUE) %>%
+  dplyr::filter(!is.na(lat) & !is.na(long)) %>% # Exclude rows where lat or long is NA
+  dplyr::filter(sub1 == "ONC") %>%
   # dplyr::mutate (id = seq_len(nrow(.))) %>% # creates a unique identifier number
-  dplyr::filter(State == "Colorado" & city == "Aurora") # For testing with a small sample
+  dplyr::filter(State == "Colorado")# & city_goba == "Aurora") # For testing with a small sample
 
 #**********************************************
 # TESTING ISOCHRONES WITH A ONE SECOND ISOCHRONE
@@ -29,9 +30,6 @@ error_rows <- c()
 # filter out rows with errors.
 input_file_no_error_rows <- input_file %>%
   dplyr::filter(!id %in% error_rows)
-
-# Number of rows of unique physician points * 4 (number of isochrones)
-nrow(input_file_no_error_rows) * 4 
 
 #**************************
 #* HERE API CREATES ISOCHRONES
@@ -138,7 +136,7 @@ generate_range_description <- function(range) {
 }
 
 # Apply the function to create the range_description column
-merged_data$range_description <- sapply(merged_data$range, generate_range_description)
+merged_data$range_description <- sapply(merged_data$range, generate_range_description); merged_data$range_description 
 
 # If you need to save the spatial data with geometry, consider using st_write to save as a shapefile or GeoJSON
 # Convert the geometries to POLYGON
@@ -164,6 +162,11 @@ invisible(gc())
 isochrones_sf_clipped <- sf::st_intersection(isochrones_df, usa_borders) %>%
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering.
 rm(isochrones_df)
+
+
+# Truncate column names to 10 characters
+names(isochrones_sf_clipped) <- substr(names(isochrones_sf_clipped), 1, 10)
+anyDuplicated(names(isochrones_sf_clipped))
 
 isochrones_sf_clipped <- sf::st_make_valid(isochrones_sf_clipped)
 invalid <- st_is_valid(isochrones_sf_clipped, reasons = TRUE)

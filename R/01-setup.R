@@ -243,6 +243,8 @@ search_and_process_npi <- memoise(function(input_file,
 #**************************
 # geocoding based on Nominatim
 # Function for geocoding based on Nominatim
+
+
 create_geocode_nominatim <- function(csv_file, output_file) {
   
   # Check if the CSV file exists

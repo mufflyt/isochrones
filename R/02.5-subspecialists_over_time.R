@@ -57,6 +57,35 @@ unique_physicians <- year_by_year_nppes_data_collected %>%
 # Use glue to create the message with formatted numbers
 glue::glue("There are {format(total_physicians, big.mark = ',')} general OBGYN physicians from {start_year} to {end_year}. But there were only {format(unique_physicians, big.mark = ',')} unique physicians by NPI number in the dataset.")
 
+# Group the data by NPI and count the number of unique years for each physician
+physician_years <- year_by_year_nppes_data_collected %>%
+  group_by(NPI) %>%
+  summarise(years_present = n_distinct(year))
+
+# Count the number of physicians for each number of years present
+physician_counts <- physician_years %>%
+  group_by(years_present) %>%
+  summarise(physician_count = n())
+
+# Calculate the percentage of physicians for each number of years present
+total_physicians <- n_distinct(year_by_year_nppes_data_collected$NPI)
+physician_counts <- physician_counts %>%
+  mutate(percentage = (physician_count / total_physicians) * 100)
+
+# Group by NPI and count the number of unique years each physician appears
+year_counts <- year_by_year_nppes_data_collected %>%
+  group_by(NPI) %>%
+  summarize(year_count = n_distinct(year)) %>%
+  pull(year_count)
+
+# Count the number of physicians who appear in every year
+num_physicians_all_years <- sum(year_counts == max(year_counts))
+
+# Calculate the percentage of physicians who appear in every year
+percent_all_years <- (num_physicians_all_years / unique_physicians) * 100
+
+print(physician_counts)
+glue::glue("There were {format(num_physicians_all_years, big.mark = ',')} physicians ({round(percent_all_years, 1)}% of the total physicians) were present in every year from 2013 to 2023.")
 
 #**************************
 #* VALIDATE THE NPI NUMBERS

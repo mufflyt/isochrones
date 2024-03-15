@@ -10,6 +10,15 @@
 source("R/01-setup.R")
 #######################
 
+states <- c("Alaska", "Alabama", "American Samoa", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", 
+            "Delaware", "District of Columbia", "Florida", "Georgia", "Guam", "Hawaii", "Idaho", "Illinois", 
+            "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", 
+            "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", "New Hampshire", 
+            "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota", "Northern Mariana Islands", 
+            "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Puerto Rico", "Rhode Island", "South Carolina", 
+            "South Dakota", "Tennessee", "Texas", "U.S. Virgin Islands", "Utah", "Vermont", "Virginia", "Washington", 
+            "West Virginia", "Wisconsin", "Wyoming")
+  
 # Huge thanks to Lampros for this work.  
 
 #Provenance: GOBA file.  
@@ -18,13 +27,17 @@ source("R/01-setup.R")
 asdf <- readr::read_csv("data/02.5-subspecialists_over_time/goba_unrestricted_cleaned.csv")
 names(asdf)
 
-
+#TODO make specific to the year of the data.  
 readr::read_csv("data/02.5-subspecialists_over_time/goba_unrestricted_cleaned.csv") %>%
-  tidyr::unite(address, `Organization legal namePhysicianCompare`, `Provider First Line Business Practice Location Address.y`, city_goba, state_goba, `Provider Business Practice Location Address Postal Code.y`, sep = ", ", remove = FALSE, na.rm = TRUE) %>%
-  head(50) %>% #for testing.
+  tidyr::unite(address, `Provider First Line Business Practice Location Address.y`, city_goba, state_goba, `Provider Business Practice Location Address Postal Code.y`, sep = ", ", remove = FALSE, na.rm = TRUE) %>%
+  select(-lat, -long) %>%
+  distinct(address, .keep_all = TRUE) %>%
+  #head(100) %>% #for testing.
   readr::write_csv(., "data/04-geocode/for_geocoding_with_nominatim__results_clinician_data.csv") -> a
 
 a$address
+#View(a)
+nrow(a)
 
 # Example usage:
 csv_file <- "data/04-geocode/for_geocoding_with_nominatim__results_clinician_data.csv"
@@ -35,7 +48,7 @@ ACOG_Districts <- tyler::ACOG_Districts
 # GEOCODING FUNCTION
 #**********************************************
 simple_create_geocode_nominatim <- function(csv_file, output_file) {
-  csv_file <- "data/04-geocode/for_geocoding_with_nominatim__results_clinician_data.csv"
+  #csv_file <- "data/04-geocode/for_geocoding_with_nominatim__results_clinician_data.csv" #for testing
   # Check if the CSV file exists
   if (!file.exists(csv_file)) {
     stop("Error: CSV file not found.")
@@ -45,7 +58,7 @@ simple_create_geocode_nominatim <- function(csv_file, output_file) {
   
   # Read the CSV file into a data frame
   data <- read.csv(csv_file)
-  
+
   # Check if the data frame contains a column named "address"
   if (!"address" %in% colnames(data)) {
     stop("Error: The CSV file must have a column named 'address' for geocoding.")
@@ -60,8 +73,8 @@ simple_create_geocode_nominatim <- function(csv_file, output_file) {
     .tbl = data, 
     method = 'osm',                       
     address = 'address',                       
-    lat = "lat",                          
-    long = "long",                        
+    lat = lat,                          
+    long = long,                        
     limit = 1,                            
     return_input = TRUE,                  
     progress_bar = TRUE,                 
@@ -71,22 +84,41 @@ simple_create_geocode_nominatim <- function(csv_file, output_file) {
   cat(sprintf("Geocoded %d addresses.\n", nrow(res_geoc)))
   
   # Save the geocoded data to an output CSV file
-  write.csv(res_geoc, file = output_file, row.names = FALSE)
+  write_csv(res_geoc, file = output_file)
   
   cat(sprintf("Saved the geocoded data to %s.\n", output_file))
   
   return(invisible(res_geoc))
 }
 
+#df <- simple_create_geocode_nominatim(csv_file, output_file)
+#write_csv(df, "data/04-geocode/raw_geocode_df.csv")
+df <- read_csv(output_file)
 
-df <- simple_create_geocode_nominatim(csv_file, output_file)
+# Read the original CSV data
+original_data <- read_csv(csv_file)
 
+# Filter rows based on State column
+unmatched <- read_csv(csv_file) %>%
+  rename ("State" = "state_goba") %>%
+  filter(State %nin% states); unmatched
 
-str(geocoded_data)
-geocoded_data <- readr::read_csv(output_file) %>%
-  rename ("State" = "state") %>%
-  left_join(ACOG_Districts, by = "State") %>%
-  write_csv(output_file)
+paste0("There are ", nrow(unmatched), " rows that were not able to be geocoded.  Mainly because they have NA for the state and are out of the country.")
+
+# Left join the original CSV data with the geocoded data based on the "address" column
+joined_data <- original_data %>%
+  dplyr::left_join(dplyr::select(df, address, lat, long), by = "address") %>%
+  dplyr::rename ("State" = "state_goba") %>%
+  dplyr::left_join(ACOG_Districts, by = "State") %>%
+  readr::write_csv(output_file)
+
+# Find data where the state column is a US state.  
+joined_data <- joined_data %>%
+  filter(State %in% states); joined_data
+
+paste0("There were ", nrow(joined_data), "observations where the state column matched a US state name.")
+
+read_csv(csv_file)
 
 #**********************************************
 # QUALITY CHECK
@@ -96,21 +128,39 @@ geocoded_data <- readr::read_csv(output_file) %>%
 input_lat_long <- read_csv(csv_file) %>%
   distinct(npi, .keep_all = TRUE) 
 
+paste0("There were ", nrow(input_lat_long), " distinct NPI numbers represented in the data BEFORE it was geocoded.")
+
 input_addresses <- input_lat_long; nrow(input_addresses) 
-#6,655
 
 output_lat_long <- read_csv(output_file) %>%
-  distinct(NPI, .keep_all = TRUE)
-#3811
+  distinct(npi, .keep_all = TRUE)
 
+paste0("There were ", nrow(output_lat_long), " distinct NPI numbers represented in the data AFTER it was geocoded.")
+
+
+##### Missing lat and longitude 
 output_rows_with_missing_coords <- output_lat_long %>%
   filter(is.na(lat) | is.na(long)); nrow(output_rows_with_missing_coords) 
+
+paste0("There were ", nrow(output_rows_with_missing_coords), " observations with NA in the latitude of longitude."); glimpse(output_rows_with_missing_coords)
+
+# Combine city_goba and State into a single column
+output_rows_with_missing_coords <- output_rows_with_missing_coords %>%
+  mutate(location = paste(city_goba, State, sep = ", "))
+
+# Geocode the locations
+geocoded_data <- output_rows_with_missing_coords %>%
+  mutate(geocoded = geocode(location, method = "osm")) %>%
+  unnest(cols = c(geocoded))
+
+# Check the resulting dataframe
+glimpse(geocoded_data)
 
 # Compare the number of rows in the input and output datasets
 nrow(input_addresses)
 nrow(output_lat_long)
 
-missing_addresses <- anti_join(input_addresses, output_lat_long, by = c("npi"="NPI"))
+missing_addresses <- anti_join(input_addresses, output_lat_long, by = c("npi"="npi"))
 glimpse(missing_addresses)
 
 #**********************************************
@@ -118,7 +168,8 @@ glimpse(missing_addresses)
 #**********************************************
 # Convert the list to a data frame
 # Extract the 'geocode' component from the list
-geocoded_data_geocode <- geocoded_data
+geocoded_data_geocode <- joined_data
+geocoded_data <- joined_data
 
 # Check if it's not "There are no missing values"
 if (!is.character(geocoded_data_geocode)) {
@@ -146,7 +197,7 @@ state_data <- geocoded_data_geocode %>%
 us_states <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf") 
 
 merged_data <- state_data %>%
-  exploratory::left_join(`us_states`, by = join_by(`State` == `postal`), target_columns = c("postal", "geometry"))
+  exploratory::left_join(`us_states`, by = join_by(`State` == `name`), target_columns = c("name", "geometry"))
 
 
 #**********************************************
@@ -195,29 +246,33 @@ csv_file <- "data/02.5-subspecialists_over_time/goba_unrestricted_cleaned.csv"
 output_file <- "data/04-geocode/end_geocoded_data_nominatim.csv"
 
 # Calculate the required values
-input_addresses <- read_csv(csv_file) %>% nrow(.); input_addresses. #6,655
-output_lat_long <- read_csv(output_file) %>%                        #3,811
+input_addresses <- read_csv(csv_file) %>% 
+  filter(sub1 == "ONC") %>%
+  nrow(.); input_addresses 
+
+unique_addresses <- readr::read_csv("data/04-geocode/for_geocoding_with_nominatim__results_clinician_data.csv") %>%
+  filter(sub1 == "ONC") %>%
+  distinct(address) %>%
+  nrow(.); unique_addresses 
+
+output_lat_long <- read_csv(output_file) %>%                    
   filter(!is.na(lat) | !is.na(long)) %>%
-  nrow(.)
+  filter(sub1 == "ONC") %>%
+  distinct(address) %>%
+  nrow(.); output_lat_long
 
-# Filter the rows where either lat or long is missing
-rows_with_missing_coords <- output_lat_long %>%
-  filter(is.na(lat) | is.na(long))
+unique_address_excluded <- unique_addresses - output_lat_long
 
-View(read_csv(output_file))
-
-No_match <- read_csv(output_file) %>%                        #3,811
-  filter(is.na(lat) | is.na(long))
-
+# Flow chart of the geocoding process
 # Set the values for each label
-a1 <- paste0('Number of all OBGYNs\nfor all years, n = ', format(all_docs, big.mark = ","))
+a1 <- paste0('Number of\n Gynecologic Oncologists\n to be Geocoded,\n n = ', format(input_addresses, big.mark = ","))
 b1 <- ''
 c1 <- ''
-d1 <- paste0('Number of Gynecologic\nOncologists included\nfor analysis, n = ', format(subspecialists, big.mark = ","))
-e1 <- paste0('Number of Gynecologic\nOncologists with\nNPPES Demographics,\nn = ', format(nrow(onc_with_demographics), big.mark = ","))
+d1 <- paste0('Number of Unique Gynecologic\nOncologist Addresses,\n n = ', format(unique_addresses, big.mark = ","))
+e1 <- paste0('Unique Addresses Geocoded,\nn = ', format(output_lat_long, big.mark = ","))
 a2 <- ''
-b2 <- paste0('Excluded because\nGeneral OBGYN,\nn = ', format(excluded_bc_generalists, big.mark = ","))
-c2 <- paste0('Non-Gynecologic\nOncology Subspecialist\nn = ', format(non_onc_subspecialists, big.mark = ","))
+b2 <- paste0('Using address, city, state\n with tidygeocoder')
+c2 <- paste0('Excluded because\nUnable to Geocode,\nn = ', format(unique_address_excluded, big.mark = ","))
 d2 <- ''
 e2 <- ''
 
@@ -237,11 +292,11 @@ ndf <- create_node_df(
 
 # Create an edge dataframe
 edf <- create_edge_df(
-  from = c(1, 2, 3, 4, 6, 7, 8, 9, 2, 3),
-  to = c(2, 3, 4, 5, 7, 8, 9, 10, 7, 8),
-  arrowhead = c('none', 'none', 'normal', 'normal', 'none', 'none', 'none', 'none', 'normal', 'normal'),
+  from = c(1, 2, 3, 4, 6, 7, 8, 9, 2),  # Include c2 in the 'from' values
+  to = c(2, 3, 4, 5, 7, 8, 9, 10, 8),     # Include c2 in the 'to' values
+  arrowhead = c('none', 'none', 'normal', 'normal', 'none', 'none', 'none', 'none', 'normal'),  # Adjusted the arrowhead values
   color = rep(c('black', '#00000000'), each = 4),
-  constraint = c(rep('true', 8), rep('false', 2))
+  constraint = c(rep('true', 8), rep('false', 1))  # Adjusted the constraint length
 )
 
 # Create the graph
@@ -249,4 +304,4 @@ g <- DiagrammeR::create_graph(ndf, edf, attr_theme = NULL)
 
 # Render and export the graph
 DiagrammeR::render_graph(g)
-export_graph(g, file_name = "data/02.5-subspecialists_over_time/flowchart.png")
+export_graph(g, file_name = "data/04-geocode/geocode_flowchart.png")
