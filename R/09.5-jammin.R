@@ -1,3 +1,35 @@
+# Reading and Preparing Data
+
+# 1. Census Data Loading: The script begins by loading demographic data for census block groups from a CSV file. 
+# This dataset (census_data_by_bg) likely contains detailed demographic information by block group, 
+# including population counts and potentially other socioeconomic indicators.
+
+# 2. Overlap Data Loading and NA Imputation: Next, it loads data describing the overlap between block groups 
+# and drive-time isochrones to healthcare services. The impute_na function call (though not directly executable 
+# in the given form and should be replaced with if_else(is.na(overlap), 0, overlap)) is intended to replace NA 
+# values in the overlap column with 0, indicating no overlap for those entries.
+
+# Calculating Overlaps
+
+# 3. Merging Data: The script then merges the census data with the overlap data on the common identifier 
+# (fips_block_group = GEOID). This step aligns each block group’s demographic data with its accessibility 
+# to healthcare services measured by the overlap with isochrones.
+
+# 4. Adjusting Demographics by Overlap: It proceeds to adjust demographic numbers and percentages within each 
+# block group based on the overlap proportion. For columns ending with _number, it multiplies the demographic 
+# counts by the overlap to estimate the portion of each demographic category within the accessible area. 
+# Similarly, for columns ending with _pct, it adjusts the percentage figures based on the overlap, though this 
+# operation might not be meaningful as the percentages are recalculated from the adjusted counts rather than 
+# directly modified by overlap.
+
+# Summarizing Data
+
+# 5. Aggregating Adjusted Data: Finally, the script attempts to aggregate the adjusted data to calculate total 
+# and within-accessible-area figures for the entire dataset. This includes total populations, as well as specific 
+# demographic totals (e.g., for black, white, NHPI populations) and their respective counts within the isochrones’ 
+# overlap. This step is crucial for understanding the broader accessibility patterns across demographic groups.
+
+
 #######################
 source("R/01-setup.R")
 #######################
