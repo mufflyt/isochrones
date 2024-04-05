@@ -1,3 +1,17 @@
+# The non-commented code focuses on analyzing the accessibility of obstetrics and gynecology (OBGYN) specialists for the female population in the United States, leveraging demographic data from the American Community Survey (ACS). Here’s a condensed summary of its operations:
+#
+# 2. **Retrieval of Census Data**: The script uses a custom function to fetch census data for a list of state FIPS codes. This step gathers detailed demographic information across various geographic levels, such as states, counties, tracts, and block groups.
+#
+# 3. **Data Cleaning and Transformation**: Following data retrieval, it undergoes processing to rename columns, compute the total female population, and generate a unique identifier for each block group (GEOID) by concatenating state, county, and tract codes.
+#
+# 4. **Overlap Calculation with Isochrones**: It calculates the overlap between census block groups and predefined isochrones to assess the accessibility of OBGYN specialists. This involves reading a CSV file with overlap data, selecting pertinent columns, and preparing this data for analysis.
+#
+# 5. **Data Joining and Analysis**: The script merges demographic data with overlap information, facilitating an assessment of healthcare accessibility. This combined data allows for the computation of both the absolute and relative female population within specified distances from a gynecologic oncologist.
+#
+# 6. **Summary and Output**: The concluding steps summarize the dataset to emphasize the proportion of the U.S. female population within reach of gynecologic oncologists. It generates a textual summary of these findings, highlighting healthcare accessibility disparities and supporting planning efforts.
+#
+# This script presents a detailed method for assessing healthcare accessibility using geographic and demographic data, focusing on data manipulation, geographical analysis, and summarization to yield insightful conclusions.
+
 #######################
 source("R/01-setup.R")
 #######################

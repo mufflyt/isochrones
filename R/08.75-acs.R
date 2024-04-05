@@ -1,3 +1,15 @@
+# The script `08.75-ACS.R` is structured to retrieve and process demographic data from the American Community Survey (ACS) via the U.S. Census API. Here's a streamlined overview:
+#
+# 1. **Setup and Preparation**: It begins by sourcing an initial setup script (`01-setup.R`). The script then uses the `tigris` package to obtain FIPS codes for U.S. states, applying filters to exclude codes above 55, thus focusing on state codes.
+#
+# 2. **ACS Data Retrieval Function**: Defines `get_acs_data`, a function designed to pull ACS data for specified FIPS codes, a given vintage year, and selected variables. This process iterates through each FIPS code, querying the Census API for block group data within the states of interest. The gathered data is combined, marked with the vintage year, saved as a CSV file, and returned.
+#
+# 3. **Example Usage and Initial Data Processing**: The script demonstrates using `get_acs_data` with Colorado (FIPS code 08), fetching 2021 vintage data for predetermined demographic variables. After fetching, the data is saved to a CSV file. Subsequently, the dataset undergoes processing to rename variables, compute additional demographics (like racial group percentages), and adjust FIPS codes for precise geographic identification.
+#
+# 4. **Data Cleaning and Summarization**: It concludes with organizing the `demographics_bg` dataframe by block group FIPS codes and saving this cleaned and structured demographic data into a CSV file.
+#
+# This script essentially prepares demographic data from the ACS for analysis, showcasing a tidyverse-based methodology for data handling and storage.
+
 #######################
 source("R/01-setup.R")
 #######################
