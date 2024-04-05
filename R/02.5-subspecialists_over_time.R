@@ -55,7 +55,7 @@ unique_physicians <- year_by_year_nppes_data_collected %>%
   nrow()
 
 # Use glue to create the message with formatted numbers
-glue::glue("There are {format(total_physicians, big.mark = ',')} general OBGYN physicians from {start_year} to {end_year}. But there were only {format(unique_physicians, big.mark = ',')} unique physicians by NPI number in the dataset.")
+glue::glue("There are {format(total_physicians, big.mark = ',')} general and GO OBGYN physicians from {start_year} to {end_year}. But there were only {format(unique_physicians, big.mark = ',')} unique physicians by NPI number in the dataset.")
 
 # Group the data by NPI and count the number of unique years for each physician
 physician_years <- year_by_year_nppes_data_collected %>%
@@ -85,7 +85,7 @@ num_physicians_all_years <- sum(year_counts == max(year_counts))
 percent_all_years <- (num_physicians_all_years / unique_physicians) * 100
 
 print(physician_counts)
-glue::glue("There were {format(num_physicians_all_years, big.mark = ',')} physicians ({round(percent_all_years, 1)}% of the total physicians) were present in every year from 2013 to 2023.")
+glue::glue("There were {format(num_physicians_all_years, big.mark = ',')} OBGYN and GO physicians ({round(percent_all_years, 1)}% of the total physicians) were present in every year from 2013 to 2023.")
 
 #**************************
 #* VALIDATE THE NPI NUMBERS
@@ -152,11 +152,11 @@ num_unique_obgyns_with_npi <- nrow(complete_npi_for_subspecialists)
 
 # Create sentences using glue
 glue("The dataframe contains information about {num_unique_obgyns_with_npi} unique OBGYN subspecialists with NPI numbers.")
-glue("The data includes physicians who were board certified to practice their subspecialty in {start_year} to {end_year}.")
+glue("The data includes physicians who were board certified to practice their subspecialty in {start_year} to {end_year} and were practicing from 2013 to 2023.")
 
 # Exclude territories and Washington, DC # Identify non-states
 states <- complete_npi_for_subspecialists$state_goba[complete_npi_for_subspecialists$state_goba %in% state.name]
-non_states <- non_states[!is.na(non_states)]
+#non_states <- non_states[!is.na(non_states)]
 glue("Subspecialist OBGYNS are present in {length(unique(states))} states plus {paste(unique(non_states), collapse = ', ')}.")
 
 
@@ -176,6 +176,8 @@ retrieve_clinician_data_output <- exploratory::searchAndReadDelimFiles(folder = 
   exploratory::clean_data_frame() %>%
   distinct(npi, .keep_all = TRUE) %>%
   select(-id, -year, -npi_is_valid, -clinician_data_suffix)
+
+write_rds(retrieve_clinician_data_output, "data/02.5-subspecialists_over_time/end_retrieve_clinician_data_chunk_results.rds")
 
 # Specific column names from the NPPES data starting with "clinician_data_"
 filtered_columns <- grep("^clinician_data_", names(retrieve_clinician_data_output), value = TRUE); filtered_columns
@@ -198,13 +200,80 @@ num_unique_obgyns_with_npi <- nrow(retrieve_clinician_data_output)
 # Create the message with formatted number of OBGYNs and dynamic year range
 glue("There are {format(num_unique_obgyns_with_npi, big.mark = ',')} unique OBGYNs WITH NPI NUMBERS represented.")
 
-# > retrieve_clinician_data_output
-# # A tibble: 6,519 × 63
-# id.new               npi sub1  city_goba state_goba   lat  long userid startDate  sub1startDate clinicallyActive
-# <chr>              <dbl> <chr> <chr>     <chr>      <dbl> <dbl>  <dbl> <date>     <date>        <chr>           
-#   1 retrieve_clinici… 1.05e9 MFM   Atlanta   Georgia     33.7 -84.4 9.03e6 2016-11-11 2021-04-16    Yes             
-# 2 retrieve_clinici… 1.53e9 FPM   Miramar   Florida     26.0 -80.3 9.03e6 2017-01-13 2021-04-23    Yes             
-# 3 retrieve_clinici… 1.38e9 MFM   Buffalo   New York    43.0 -78.8 9.03e6 2016-12-09 2022-04-08    Yes 
+#**************************
+#* GYN ONC Specific look at the data
+#**************************
+#retrieve_clinician_data_output <- read_rds("data/02.5-subspecialists_over_time/end_retrieve_clinician_data_chunk_results.rds")
+# Brought over from old Mac with the Postico database.  
+gyn_onc_over_the_years <- readr::read_csv("data/02.5-subspecialists_over_time/end_year_by_year_nppes_data_collected.csv") %>%
+  filter(`Primary Specialty` == "GYNECOLOGICAL ONCOLOGY") 
+
+write_csv(gyn_onc_over_the_years, "data/02.5-subspecialists_over_time/gyn_onc_over_the_years.csv")
+
+# Calculate initial count of gynecologic oncologists at the beginning of the study (2013)
+initial_count <- gyn_onc_over_the_years %>%
+  filter(year == 2013) %>%
+  distinct(NPI) %>%
+  nrow(); initial_count
+
+# Calculate total count of gynecologic oncologists by the end of the study (2023)
+total_count <- gyn_onc_over_the_years %>%
+  filter(year == 2023) %>%
+  distinct(NPI) %>%
+  nrow(); total_count
+
+# Calculate the added count over the study period
+# Assuming every new NPI after 2013 is an addition
+added_count <- gyn_onc_over_the_years %>%
+  distinct(NPI) %>%
+  nrow() - initial_count; added_count
+
+# The difference in years covered in the study
+study_years_diff <- max(gyn_onc_over_the_years$year) - min(gyn_onc_over_the_years$year); study_years_diff
+
+# Print the results
+cat("Initial count of gynecologic oncologists in 2013:", initial_count, "\n")
+cat("Total count of gynecologic oncologists by 2023:", total_count, "\n")
+cat("Added count over the study period:", added_count, "\n")
+cat("Difference in years covered in the study:", study_years_diff, "\n")
+
+# Assuming gyn_onc_over_the_years has been previously defined and filtered for GYNECOLOGICAL ONCOLOGY as shown
+
+# Get unique NPIs for 2013
+npi_2013 <- gyn_onc_over_the_years %>%
+  filter(year == 2013) %>%
+  distinct(NPI) %>%
+  pull(NPI)
+
+# Get unique NPIs for 2023
+npi_2023 <- gyn_onc_over_the_years %>%
+  filter(year == 2022) %>%
+  distinct(NPI) %>%
+  pull(NPI)
+
+# Calculate retired gynecologic oncologists
+# These are NPIs present in 2013 but not in 2023
+retired_count <- setdiff(npi_2013, npi_2023) %>%
+  length()
+
+# Print the result
+cat("Number of gynecologic oncologists no longer clinically active/retired from 2013 to 2023:", retired_count, "\n")
+
+# Assuming gyn_onc_over_the_years has been previously defined and filtered for GYNECOLOGICAL ONCOLOGY as shown
+# Create a table of the last year each NPI appears, assuming retirement if not present in 2023
+retirement_table <- gyn_onc_over_the_years %>%
+  group_by(NPI) %>%
+  summarise(Name = paste(`First Name`, `Last Name`, City, State),
+            LastYear = max(year),
+            .groups = 'drop') %>%
+  filter(LastYear < 2022) %>%
+  arrange(desc(LastYear)) %>%
+  distinct(NPI, .keep_all = TRUE)
+
+# Print the table
+print(retirement_table)
+
+
 
 # TODO:  Antijoin between end_distinct_year_by_year_nppes_data_validated_npi.csv and retrieve_clinician_data_output ot find those who had no results for the NPI number with the API.  
 

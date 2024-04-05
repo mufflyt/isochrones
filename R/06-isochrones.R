@@ -15,7 +15,7 @@ input_file <- #readr::read_csv("data/05-geocode-cleaning/end_inner_join_postmast
   dplyr::filter(!is.na(lat) & !is.na(long)) %>% # Exclude rows where lat or long is NA
   dplyr::filter(sub1 == "ONC") %>%
   # dplyr::mutate (id = seq_len(nrow(.))) %>% # creates a unique identifier number
-  dplyr::filter(State == "Colorado")# & city_goba == "Aurora") # For testing with a small sample
+  dplyr::filter(state_goba == "Colorado")# & city_goba == "Aurora") # For testing with a small sample
 
 #**********************************************
 # TESTING ISOCHRONES WITH A ONE SECOND ISOCHRONE
@@ -103,7 +103,7 @@ master_key <- data.frame(input_file_no_error_rows_id = unique(input_file_no_erro
 # Merge based on the corresponding IDs in the master key
 merged_data <- input_file_no_error_rows %>%
   left_join(master_key, by = c("id" = "id")) %>%
-  left_join(isochrones_sf, by = c("isochrones_sf_id" = "id"))
+  left_join(isochrones_sf, by = c("isochrones_sf_id" = "id")); merged_data
 
 # Clean up the merged data (optional)
 merged_data <- merged_data[, !(names(merged_data) %in% c("id.x", "id.y"))] # Remove duplicate ID columns
@@ -116,9 +116,6 @@ merged_data <- merged_data %>%
 glimpse(merged_data)
 class(merged_data)
 write_csv(merged_data, "data/06-isochrones/end_merged_data_isochrones_input_file.csv")
-
-# Write the resulting sf object to a shapefile
-#st_write(merged_sf, "data/06-isochrones/merged_sf.shp")
 
 # Define a function to generate range descriptions
 generate_range_description <- function(range) {
@@ -138,6 +135,30 @@ generate_range_description <- function(range) {
 # Apply the function to create the range_description column
 merged_data$range_description <- sapply(merged_data$range, generate_range_description); merged_data$range_description 
 
+# Write the resulting sf object to a shapefile
+# Convert dataframe to sf object
+merged_sf <- st_as_sf(merged_data, 
+                      coords = c("long", "lat"),  # Specify the columns for longitude and latitude
+                      crs = 4326)  # Specify the CRS, EPSG code 4326 is for WGS84
+
+# Write sf object to shapefile
+st_write(merged_sf, "data/06-isochrones/merged_sf.shp", 
+         append = FALSE)
+
+# Plot merged_sf
+# Load the state data from rnaturalearth
+us_states <- ne_states(country = "united states of america", returnclass = "sf")
+
+# Exclude the Aleutian Islands by removing the relevant polygons
+us_states <- us_states %>%
+  filter(!name %in% c("Alaska", "Hawaii"))
+
+# Plot merged_data_sf with the United States overlay
+ggplot() +
+  geom_sf(data = merged_sf, color = "red", alpha = 0.5) +
+  geom_sf(data = us_states, fill = NA, color = "black") + # Overlay US shapefile
+  theme_minimal()
+
 # If you need to save the spatial data with geometry, consider using st_write to save as a shapefile or GeoJSON
 # Convert the geometries to POLYGON
 st_write(merged_data, "data/06-isochrones/merged_data_sf.shp", append = FALSE)
@@ -146,6 +167,7 @@ st_write(merged_data, "data/06-isochrones/merged_data_sf.shp", append = FALSE)
 usa_borders <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf") %>%
   sf::st_set_crs(4326) %>%
   select(name, iso_a2, woe_id, woe_label, woe_name, latitude, longitude, postal)
+
 
 # Convert geometry column to WKT format
 merged_data$wkt_geometry <- sf::st_as_text(merged_data$geometry)

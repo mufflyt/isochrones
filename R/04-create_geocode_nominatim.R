@@ -47,6 +47,9 @@ ACOG_Districts <- tyler::ACOG_Districts
 #**********************************************
 # GEOCODING FUNCTION
 #**********************************************
+#* method = "cascade" explained in the documentation for the geo package.  
+#* 
+#* 
 simple_create_geocode_nominatim <- function(csv_file, output_file) {
   #csv_file <- "data/04-geocode/for_geocoding_with_nominatim__results_clinician_data.csv" #for testing
   # Check if the CSV file exists
@@ -71,7 +74,7 @@ simple_create_geocode_nominatim <- function(csv_file, output_file) {
   # Geocode the addresses using Nominatim
   res_geoc <- tidygeocoder::geocode(
     .tbl = data, 
-    method = 'osm',                       
+    method = 'cascade', #'osm'                       
     address = 'address',                       
     lat = lat,                          
     long = long,                        
@@ -91,9 +94,79 @@ simple_create_geocode_nominatim <- function(csv_file, output_file) {
   return(invisible(res_geoc))
 }
 
-#df <- simple_create_geocode_nominatim(csv_file, output_file)
-#write_csv(df, "data/04-geocode/raw_geocode_df.csv")
-df <- read_csv(output_file)
+#TODO: Add in a cascading system where multiple services are used?
+
+# simple_create_geocode_cascade <- function(csv_file, output_file) {
+#   # # Check if the CSV file exists
+#   # if (!file.exists(csv_file)) {
+#   #   stop("Error: CSV file not found.")
+#   # }
+#   # 
+#   # cat(sprintf("Reading CSV file...\n"))
+# 
+#   # Read the CSV file into a data frame
+#   data <- read.csv(csv_file)
+# 
+#   # Check if the data frame contains a column named "address"
+#   # if (!"address" %in% colnames(data)) {
+#   #   stop("Error: The CSV file must have a column named 'address' for geocoding.")
+#   # }
+#   # 
+#   # cat(sprintf("Geocoding %d addresses...\n", nrow(data)))
+# 
+#   # Geocode the addresses using Nominatim
+#   res_geoc <- tidygeocoder::geocode_combine(
+#     .tbl = data,
+#     queries = list(
+#       #list(method = 'census', mode = 'batch', no_query = TRUE),
+#       #list(method = 'census', mode = 'single', no_query = TRUE),
+#       list(method = 'osm', no_query = TRUE),
+#       list(method = 'nominatim', no_query = TRUE)
+#     ),
+#     global_params = list(address = 'address'),
+#     return_list = TRUE,
+#     cascade = TRUE,
+#     query_names = c(#'Census Batch', 'Census Single', 
+#                     'OSM', 'Nominatim')
+#   )
+
+#   # cat(sprintf("Geocoded %d addresses.\n", nrow(res_geoc)))
+# 
+#   # Save the geocoded data to an output CSV file
+#   write.csv(res_geoc, file = output_file, row.names = FALSE)
+# 
+#   cat(sprintf("Saved the geocoded data to %s.\n", output_file))
+# 
+#   return(invisible(res_geoc))
+# }
+
+simple_create_geocode_cascade <- function(csv_file, output_file) {
+  # Read the CSV file into a data frame
+  data <- read.csv(csv_file)
+  
+  # Geocode the addresses using Nominatim
+  res_geoc <- tidygeocoder::geocode_combine(
+    .tbl = data,
+    queries = list(
+      list(method = 'osm', no_query = TRUE),
+      list(method = 'census', no_query = TRUE)
+    ),
+    global_params = list(address = 'address'),
+    return_list = TRUE,
+    cascade = TRUE,
+    query_names = c('OSM', 'Census')
+  )
+  
+  # Save the geocoded data to an output CSV file
+  write.csv(res_geoc, file = output_file, row.names = FALSE)
+  cat(sprintf("Saved the geocoded data to %s.\n", output_file))
+  
+  return(invisible(res_geoc))
+}
+
+
+output_file <- "data/04-geocode/end_geocoded_data_cascade.csv"
+df_cascade <- simple_create_geocode_cascade(csv_file, cascade_output_file)
 
 # Read the original CSV data
 original_data <- read_csv(csv_file)
@@ -116,7 +189,7 @@ joined_data <- original_data %>%
 joined_data <- joined_data %>%
   filter(State %in% states); joined_data
 
-paste0("There were ", nrow(joined_data), "observations where the state column matched a US state name.")
+paste0("There were ", nrow(joined_data), " observations where the state column matched a US state name.")
 
 read_csv(csv_file)
 
