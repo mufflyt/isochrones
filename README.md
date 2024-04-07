@@ -273,6 +273,10 @@ git push origin main
 We needed a database program to house each of the NPI files from each year due to RAM restrictions.  Postico is a client for PostgreSQL, and it allows you to execute raw SQL queries, including DDL statements._full_
 <img width="700" alt="Screenshot 2024-01-13 at 8 25 35 PM" src="https://github.com/mufflyt/isochrones/assets/44621942/86e54895-3358-4ff7-96d6-0e3e9b120a46">
 
+The database is postgres, template1.  Horrible naming job Tyler.  
+<img width="1440" alt="Screenshot 2024-04-07 at 10 29 19 AM" src="https://github.com/mufflyt/isochrones/assets/44621942/82a4ba0a-6301-488d-a6a3-80f437191fd8">
+
+
 # tyler package
 [tyler_1.1.0.tar.gz](https://github.com/mufflyt/isochrones/files/13914538/tyler_1.1.0.tar.gz)
 
