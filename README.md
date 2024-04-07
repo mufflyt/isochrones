@@ -276,6 +276,63 @@ We needed a database program to house each of the NPI files from each year due t
 The database is postgres, template1.  Horrible naming job Tyler.  This was a real pain in the ass because there were several rows of the same physician but with different addresses.  From what I could tell, the best data was in the Primary Specialty == GYNECOLOGIC ONCOLOGY, so a rank system was put in place to preferentially take that data.  
 <img width="1440" alt="Screenshot 2024-04-07 at 10 29 19 AM" src="https://github.com/mufflyt/isochrones/assets/44621942/82a4ba0a-6301-488d-a6a3-80f437191fd8">
 
+Using postgresql direectly without using Postico reading in huge databases is possible.  
+```r
+library(DBI)
+library(RPostgres)
+
+# Establish a connection
+con <- dbConnect(RPostgres::Postgres(),
+                 dbname = "nppes_isochrones",
+                 host = "localhost",
+                 port = 5432, # Default port for PostgreSQL
+                 user = "postgres",
+                 password = "postgres")
+
+# First SQL command to create the table
+sql_command1 <- "
+CREATE TABLE \"nppes_2023\" (
+    id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    \"NPI\" integer,
+    \"Last Name\" text,
+    \"First Name\" text,
+    \"Middle Name\" text,
+    \"Gender\" text,
+    \"City\" text,
+    \"State\" text,
+    \"Zip Code\" text,
+    \"Credential\" text,
+    \"Primary Speciality\" text,
+    \"Secondary Specialty\" text
+);
+"
+
+# Second SQL command to create the unique index
+sql_command2 <- "
+CREATE UNIQUE INDEX \"nppes_2023_pkey\" ON \"nppes_2023\"(id int4_ops);
+"
+
+# Execute the first SQL command
+dbExecute(con, sql_command1)
+
+# Execute the second SQL command
+dbExecute(con, sql_command2)
+
+# Reead in using R
+
+# Define the command to be executed
+# Replace placeholders with your actual file path, table name, and PostgreSQL connection details
+psql_command <- sprintf("psql -d %s -U %s -c \"\\copy %s FROM '%s' WITH CSV HEADER\"",
+                         "nppes_isochrones", "postgres", "nppes_2023", "/Users/tylermuffly/Documents/nppes_historical/npidata_pfile_20050523-20231112.csv")
+
+# Execute the command from R
+# This will prompt for the database user's password
+system(psql_command)
+```
+I am tryingg to figure eout why both Mastroyannis physicians are NOT in the postico database but they are in thhe NPI registry.  
+
+![Screenshot 2024-04-07 at 1 31 14 PM](https://github.com/mufflyt/isochrones/assets/44621942/72e51596-28af-4303-97c8-50d8738aaa9e)
+
 
 # tyler package
 [tyler_1.1.0.tar.gz](https://github.com/mufflyt/isochrones/files/13914538/tyler_1.1.0.tar.gz)
