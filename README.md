@@ -340,6 +340,9 @@ psql -d postgres -U postgres -c "CREATE DATABASE nppes_isochrones;"
 psql -d nppes_isochrones
 psql -d nppes_isochrones -U postgres
 ```
+<img width="573" alt="Screenshot 2024-04-07 at 7 15 16 PM" src="https://github.com/mufflyt/isochrones/assets/44621942/b13e35d6-46df-46c5-bf52-d7bce1368abc">
+
+
 
 # tyler package
 [tyler_1.1.0.tar.gz](https://github.com/mufflyt/isochrones/files/13914538/tyler_1.1.0.tar.gz)
