@@ -270,6 +270,90 @@ git push origin main
 ```
 
 # Postico Database
+I am using Terminal to download the NPPES files with `libcurl` since it has better handling of large data files.  If you're comfortable with the command line, wget or curl can be used directly from Terminal to download files. These tools often provide more robust handling of large file downloads and network issues:
+![Screenshot 2024-04-07 at 9 51 41 PM](https://github.com/mufflyt/isochrones/assets/44621942/89b70218-88a6-4c31-997e-ad77bdf765dc)
+
+* From the command line:  
+```r
+diskutil list
+# External drives are mounted under /Volumes on macOS
+ls /Volumes
+options(timeout = 100000)  # Set timeout to a high value
+mkdir -p /Volumes/Video\ Projects\ Muffly\ 1/nppes_historical_downloads
+curl -o /Volumes/Video\ Projects\ Muffly\ 1/nppes_historical_downloads/NPPES_Data_Disseminat_April_2021.zip http://data.nber.org/nppes/zip-orig/NPPES_Data_Disseminat_April_2021.zip
+```
+
+```
+library(tidyverse)
+
+# Ensure necessary package is installed
+if (!require("downloader")) install.packages("downloader")
+library(downloader)
+
+# Base URL for the files
+base_url <- "http://data.nber.org/nppes/zip-orig/"
+
+# Destination directory on the external hard drive
+dest_dir <- "/Volumes/Video\\ Projects\\ Muffly\\ 1/nppes_historical_downloads"
+
+# Ensure the destination directory exists - create using system call
+dir_create_command <- sprintf("mkdir -p %s", shQuote(dest_dir))
+system(dir_create_command)
+
+# Complete list of files to download
+file_names <- c(
+  "NPPES_Data_Dissemination_Nov_2007.zip",
+  "NPPES_Data_Dissemination_May_2008.zip",
+  "NPPES_Data_Dissemination_June_2009.zip",
+  #"NPPES_Data_Dissemination_Apr_2009.zip",
+  "NPPES_Data_Dissemination_Feb_2010.zip",
+  "NPPES_Data_Dissemination_April_2011.zip",
+  "NPPES_Data_Dissemination_Apr_2012.zip",
+  "NPPES_Data_Dissemination_Apr_2013.zip",
+  "NPPES_Data_Dissemination_Apr_2014.zip",
+  "NPPES_Data_Dissemination_April_2015.zip",
+  "NPPES_Data_Dissemination_Apr_2016.zip",
+  "NPPES_Data_Dissemination_April_2017.zip",
+  "NPPES_Data_Dissemination_April_2018.zip",
+  "NPPES_Data_Dissemination_April_2019.zip",
+  #"NPPES_Data_Dissemination_February_2020.zip",
+  "NPPES_Data_Dissemination_July_2020.zip",
+  #"NPPES_Data_Dissemination_October_2020.zip",
+  "NPPES_Data_Disseminat_April_2021.zip",
+  "NPPES_Data_Disseminat_April_2022.zip"
+)
+
+# Function to construct and execute curl command for each file
+download_file <- function(file_name, base_url, dest_dir) {
+  file_url <- paste0(base_url, file_name)
+  
+  # Adjusting for the correct handling of spaces in the file path
+  # Notice the use of shQuote() for the entire destination path including the file name
+  dest_path <- file.path(dest_dir, file_name)
+  full_dest_path <- shQuote(dest_path)
+  
+  # Construct the curl command
+  curl_command <- sprintf("curl -o %s %s", full_dest_path, shQuote(file_url))
+  
+  # Execute the command
+  system(curl_command)
+  
+  cat("Attempted download: ", file_name, "\n")
+}
+
+# Destination directory on the external hard drive, without escaping spaces
+dest_dir <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads"
+
+# Ensuring the directory creation command does not use backslashes to escape spaces
+dir_create_command <- sprintf("mkdir -p '%s'", dest_dir)
+system(dir_create_command)
+
+# Loop over the file names and download each
+for (file_name in file_names) {
+  download_file(file_name, base_url, dest_dir)
+}
+```
+
 We needed a database program to house each of the NPI files from each year due to RAM restrictions.  Postico is a client for PostgreSQL, and it allows you to execute raw SQL queries, including DDL statements._full_
 <img width="700" alt="Screenshot 2024-01-13 at 8 25 35 PM" src="https://github.com/mufflyt/isochrones/assets/44621942/86e54895-3358-4ff7-96d6-0e3e9b120a46">
 
@@ -341,8 +425,6 @@ psql -d nppes_isochrones
 psql -d nppes_isochrones -U postgres
 ```
 <img width="573" alt="Screenshot 2024-04-07 at 7 15 16 PM" src="https://github.com/mufflyt/isochrones/assets/44621942/b13e35d6-46df-46c5-bf52-d7bce1368abc">
-
-
 
 # tyler package
 [tyler_1.1.0.tar.gz](https://github.com/mufflyt/isochrones/files/13914538/tyler_1.1.0.tar.gz)
