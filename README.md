@@ -333,6 +333,13 @@ I am tryingg to figure eout why both Mastroyannis physicians are NOT in the post
 
 ![Screenshot 2024-04-07 at 1 31 14 PM](https://github.com/mufflyt/isochrones/assets/44621942/72e51596-28af-4303-97c8-50d8738aaa9e)
 
+In terminal:
+```r
+# creeate a new database
+psql -d postgres -U postgres -c "CREATE DATABASE nppes_isochrones;"
+psql -d nppes_isochrones
+psql -d nppes_isochrones -U postgres
+```
 
 # tyler package
 [tyler_1.1.0.tar.gz](https://github.com/mufflyt/isochrones/files/13914538/tyler_1.1.0.tar.gz)
