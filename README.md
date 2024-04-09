@@ -500,6 +500,18 @@ We needed a database program to house each of the NPI files from each year due t
 The database is Postgres, template1.  Horrible naming job Tyler.  This was a real pain in the ass because there were several rows of the same physician but with different addresses.  From what I could tell, the best data was in the Primary Specialty == GYNECOLOGIC ONCOLOGY, so a rank system was put in place to preferentially take that data.  
 <img width="1440" alt="Screenshot 2024-04-07 at 10 29 19 AM" src="https://github.com/mufflyt/isochrones/assets/44621942/82a4ba0a-6301-488d-a6a3-80f437191fd8">
 
+### Create a database and start the postgresql database in terminal:
+```r
+# This command connects to the default PostgreSQL database 'postgres' as the 'postgres' user and executes the SQL command to create a new database named 'nppes_isochrones'.
+psql -d postgres -U postgres -c "CREATE DATABASE nppes_isochrones;"
+
+# This command connects to the 'nppes_isochrones' database as the 'postgres' user. 
+# It opens the PostgreSQL command line interface for the 'nppes_isochrones' database, allowing the user to execute SQL commands directly.
+psql -d nppes_isochrones -U postgres
+```
+<img width="573" alt="Screenshot 2024-04-07 at 7 15 16 PM" src="https://github.com/mufflyt/isochrones/assets/44621942/b13e35d6-46df-46c5-bf52-d7bce1368abc">
+
+
 Using postgresql directly without using Postico reading in huge databases is possible.  
 ```r
 library(DBI)
@@ -556,16 +568,6 @@ system(psql_command)
 I am trying to figure out why both Mastroyannis physicians are NOT in the Postico database but are in the NPI registry.  Because the Postico database was Physician Compare and NOT NPPES.  Mastroyannis senior may not take Medicare patients so he would not be in the Physician Compare data.  
 
 ![Screenshot 2024-04-07 at 1 31 14 PM](https://github.com/mufflyt/isochrones/assets/44621942/72e51596-28af-4303-97c8-50d8738aaa9e)
-
-In terminal:
-```r
-# create a new database
-psql -d postgres -U postgres -c "CREATE DATABASE nppes_isochrones;"
-psql -d nppes_isochrones
-psql -d nppes_isochrones -U postgres
-```
-<img width="573" alt="Screenshot 2024-04-07 at 7 15 16 PM" src="https://github.com/mufflyt/isochrones/assets/44621942/b13e35d6-46df-46c5-bf52-d7bce1368abc">
-
 
 
 # tyler package
