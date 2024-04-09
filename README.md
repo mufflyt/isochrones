@@ -269,7 +269,7 @@ git commit -m "Reconfigure Git LFS for large files"
 git push origin main
 ```
 
-# Postico Database
+# Download the NPPES files.  
 I am using Terminal to download the NPPES files with `libcurl` since it has better handling of large data files.  If you're comfortable with the command line, wget or curl can be used directly from Terminal to download files. These tools often provide more robust handling of large file downloads and network issues:
 ![Screenshot 2024-04-07 at 9 51 41 PM](https://github.com/mufflyt/isochrones/assets/44621942/89b70218-88a6-4c31-997e-ad77bdf765dc)
 
@@ -354,13 +354,153 @@ for (file_name in file_names) {
 }
 ```
 
+### Unzip
+We then unzipped each zip file and moved the largest file (usually the pfile .csv) to a separate directory where we can store them all together.  This needs to run overnight.  
+```
+### Unzip
+library(tidyverse)
+
+# Function to unzip a file into a separate subdirectory
+unzip_file <- function(file_name, dest_dir) {
+  # Construct the full path to the zip file
+  zip_path <- file.path(dest_dir, file_name)
+  
+  # Create a unique subdirectory based on the file name (without the .zip extension)
+  sub_dir_name <- tools::file_path_sans_ext(basename(file_name))
+  sub_dir_path <- file.path(dest_dir, sub_dir_name)
+  
+  # Ensure the subdirectory exists
+  if (!dir.exists(sub_dir_path)) {
+    dir.create(sub_dir_path, recursive = TRUE)
+  }
+  
+  # Unzip the file into the subdirectory
+  unzip_status <- tryCatch({
+    unzip(zip_path, exdir = sub_dir_path)
+    TRUE
+  }, warning = function(w) {
+    message("Warning unzipping ", file_name, ": ", w$message)
+    FALSE
+  }, error = function(e) {
+    message("Error unzipping ", file_name, ": ", e$message)
+    FALSE
+  })
+  
+  if (unzip_status) {
+    message("Unzipped: ", file_name, " into ", sub_dir_path)
+  }
+}
+
+# Destination directory on the external hard drive, without escaping spaces
+dest_dir <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads"
+
+# Ensuring the directory creation command does not use backslashes to escape spaces
+dir_create_command <- sprintf("mkdir -p '%s'", dest_dir)
+system(dir_create_command)
+
+# Complete list of files to download (make sure this matches your list)
+file_names <- c(
+  "NPPES_Data_Dissemination_Nov_2007.zip",
+  "NPPES_Data_Dissemination_May_2008.zip",
+  "NPPES_Data_Dissemination_June_2009.zip",
+  #"NPPES_Data_Dissemination_Apr_2009.zip",
+  "NPPES_Data_Dissemination_Feb_2010.zip",
+  "NPPES_Data_Dissemination_April_2011.zip",
+  "NPPES_Data_Dissemination_Apr_2012.zip",
+  "NPPES_Data_Dissemination_Apr_2013.zip",
+  "NPPES_Data_Dissemination_Apr_2014.zip",
+  "NPPES_Data_Dissemination_April_2015.zip",
+  "NPPES_Data_Dissemination_Apr_2016.zip",
+  "NPPES_Data_Dissemination_April_2017.zip",
+  "NPPES_Data_Dissemination_April_2018.zip",
+  "NPPES_Data_Dissemination_April_2019.zip",
+  #"NPPES_Data_Dissemination_February_2020.zip",
+  "NPPES_Data_Dissemination_July_2020.zip",
+  #"NPPES_Data_Dissemination_October_2020.zip",
+  "NPPES_Data_Disseminat_April_2021.zip",
+  "NPPES_Data_Disseminat_April_2022.zip"
+)
+
+# After downloading all files, loop over the file names and unzip each into its own subdirectory
+for (file_name in file_names) {
+  unzip_file(file_name, dest_dir)
+}
+```
+
+### Moving files:
+```
+############################################################
+# Copy largest file to a single directory
+
+library(fs)
+library(dplyr)
+
+# Function to find and copy the largest file from each year's unzipped subdirectory
+copy_largest_file_from_each_year <- function(base_unzip_dir, target_dir) {
+  # List all subdirectories within the base directory
+  subdirs <- dir_ls(base_unzip_dir, recurse = TRUE, type = "directory")
+  
+  # Loop through each subdirectory
+  for (subdir in subdirs) {
+    # Define an empty tibble to hold file info
+    file_info_df <- tibble(filepath = character(), filesize = numeric())
+    
+    # List all files in the subdirectory
+    files <- dir_ls(subdir, recurse = TRUE, type = "file")
+    
+    # Skip if no files found
+    if (length(files) == 0) next
+    
+    # Get sizes of all files
+    file_sizes <- file_info(files)$size
+    
+    # Append to the dataframe
+    file_info_df <- bind_rows(file_info_df, tibble(filepath = files, filesize = file_sizes))
+    
+    # Identify the largest file in the current subdirectory
+    largest_file <- file_info_df %>% 
+      arrange(desc(filesize)) %>% 
+      slice(1) %>% 
+      pull(filepath)
+    
+    # Extract year and filename for the target path
+    year_subdir_name <- basename(dirname(largest_file))
+    largest_file_name <- basename(largest_file)
+    target_file_name <- paste(year_subdir_name, largest_file_name, sep="_")
+    target_file_path <- file.path(target_dir, target_file_name)
+    
+    # Copy the largest file to the target directory with modified name
+    if (!is.na(largest_file) && file_exists(largest_file)) {
+      file_copy(largest_file, target_file_path, overwrite = TRUE)
+      message("Copied the largest file from ", year_subdir_name, ": ", largest_file_name, " to ", target_dir)
+    }
+  }
+}
+
+# Base directory where files were unzipped
+base_unzip_dir <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads"
+
+# Target directory for the largest files from each year
+target_dir <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/unzipped_p_files"
+
+# Ensure the target directory exists
+if (!dir_exists(target_dir)) {
+  dir_create(target_dir)
+}
+
+# Execute the function
+copy_largest_file_from_each_year(base_unzip_dir, target_dir)
+```
+
+
+# Postico
 We needed a database program to house each of the NPI files from each year due to RAM restrictions.  Postico is a client for PostgreSQL, and it allows you to execute raw SQL queries, including DDL statements._full_
 <img width="700" alt="Screenshot 2024-01-13 at 8 25 35 PM" src="https://github.com/mufflyt/isochrones/assets/44621942/86e54895-3358-4ff7-96d6-0e3e9b120a46">
 
-The database is postgres, template1.  Horrible naming job Tyler.  This was a real pain in the ass because there were several rows of the same physician but with different addresses.  From what I could tell, the best data was in the Primary Specialty == GYNECOLOGIC ONCOLOGY, so a rank system was put in place to preferentially take that data.  
+The database is Postgres, template1.  Horrible naming job Tyler.  This was a real pain in the ass because there were several rows of the same physician but with different addresses.  From what I could tell, the best data was in the Primary Specialty == GYNECOLOGIC ONCOLOGY, so a rank system was put in place to preferentially take that data.  
 <img width="1440" alt="Screenshot 2024-04-07 at 10 29 19 AM" src="https://github.com/mufflyt/isochrones/assets/44621942/82a4ba0a-6301-488d-a6a3-80f437191fd8">
 
-Using postgresql direectly without using Postico reading in huge databases is possible.  
+Using postgresql directly without using Postico reading in huge databases is possible.  
 ```r
 library(DBI)
 library(RPostgres)
@@ -413,18 +553,20 @@ psql_command <- sprintf("psql -d %s -U %s -c \"\\copy %s FROM '%s' WITH CSV HEAD
 # This will prompt for the database user's password
 system(psql_command)
 ```
-I am tryingg to figure eout why both Mastroyannis physicians are NOT in the postico database but they are in thhe NPI registry.  
+I am trying to figure out why both Mastroyannis physicians are NOT in the Postico database but are in the NPI registry.  Because the Postico database was Physician Compare and NOT NPPES.  Mastroyannis senior may not take Medicare patients so he would not be in the Physician Compare data.  
 
 ![Screenshot 2024-04-07 at 1 31 14 PM](https://github.com/mufflyt/isochrones/assets/44621942/72e51596-28af-4303-97c8-50d8738aaa9e)
 
 In terminal:
 ```r
-# creeate a new database
+# create a new database
 psql -d postgres -U postgres -c "CREATE DATABASE nppes_isochrones;"
 psql -d nppes_isochrones
 psql -d nppes_isochrones -U postgres
 ```
 <img width="573" alt="Screenshot 2024-04-07 at 7 15 16 PM" src="https://github.com/mufflyt/isochrones/assets/44621942/b13e35d6-46df-46c5-bf52-d7bce1368abc">
+
+
 
 # tyler package
 [tyler_1.1.0.tar.gz](https://github.com/mufflyt/isochrones/files/13914538/tyler_1.1.0.tar.gz)
