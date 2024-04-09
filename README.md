@@ -511,6 +511,50 @@ psql -d nppes_isochrones -U postgres
 ```
 <img width="573" alt="Screenshot 2024-04-07 at 7 15 16 PM" src="https://github.com/mufflyt/isochrones/assets/44621942/b13e35d6-46df-46c5-bf52-d7bce1368abc">
 
+```r
+DROP TABLE IF EXISTS nppes_2023;
+
+CREATE TABLE nppes_2023 (
+    "NPI" TEXT,
+    "Entity Type Code" TEXT,
+    "Provider Organization Name (Legal Business Name)" TEXT,
+    "Provider Last Name (Legal Name)" TEXT,
+    "Provider First Name" TEXT,
+    "Provider Middle Name" TEXT,
+    "Provider Name Prefix Text" TEXT,
+    "Provider Name Suffix Text" TEXT,
+    "Provider Credential Text" TEXT,
+    "Provider Other Organization Name" TEXT,
+    "Provider Other Organization Name Type Code" TEXT,
+    "Provider First Line Business Mailing Address" TEXT,
+    "Provider Second Line Business Mailing Address" TEXT,
+    "Provider Business Mailing Address City Name" TEXT,
+    "Provider Business Mailing Address State Name" TEXT,
+    "Provider Business Mailing Address Postal Code" TEXT,
+    "Provider Business Mailing Address Country Code (If outside U.S.)" TEXT,
+    "Provider Business Mailing Address Telephone Number" TEXT,
+    "Provider Business Mailing Address Fax Number" TEXT,
+    "Provider First Line Business Practice Location Address" TEXT,
+    "Provider Second Line Business Practice Location Address" TEXT,
+    "Provider Business Practice Location Address City Name" TEXT,
+    "Provider Business Practice Location Address State Name" TEXT,
+    "Provider Business Practice Location Address Postal Code" TEXT,
+    "Provider Business Practice Location Address Country Code (If outside U.S.)" TEXT,
+    "Provider Business Practice Location Address Telephone Number" TEXT,
+    "Provider Business Practice Location Address Fax Number" TEXT,
+    "Provider Enumeration Date" DATE,
+    "Last Update Date" DATE,
+    "Provider Gender Code" TEXT,
+    "Healthcare Provider Taxonomy Code_1" TEXT,
+    "Provider License Number_1" TEXT,
+    "Provider License Number State Code_1" TEXT,
+    "Healthcare Provider Primary Taxonomy Switch_1" TEXT,
+    "Healthcare Provider Taxonomy Code_2" TEXT,
+    "Provider License Number_2" TEXT,
+    "Provider License Number State Code_2" TEXT,
+    "Healthcare Provider Primary Taxonomy Switch_2" TEXT
+);
+```
 
 Using postgresql directly without using Postico reading in huge databases is possible.  
 ```r
