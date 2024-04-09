@@ -210,7 +210,7 @@ copy_largest_file_from_each_year <- function(base_unzip_dir, target_dir) {
     # Copy the largest file to the target directory with modified name
     if (!is.na(largest_file) && file_exists(largest_file)) {
       file_copy(largest_file, target_file_path, overwrite = TRUE)
-      message("Copied the largest file from ", year_subdir_name, ": ", largest_file_name, " to ", target_dir)
+      message("Copied the largest file from folder:", year_subdir_name, ": ", largest_file_name, " to ", target_dir)
     }
   }
 }
