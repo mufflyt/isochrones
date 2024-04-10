@@ -270,8 +270,10 @@ git push origin main
 ```
 
 # Download the NPPES files.  
-I am using Terminal to download the NPPES files with `libcurl` since it has better handling of large data files.  If you're comfortable with the command line, wget or curl can be used directly from Terminal to download files. These tools often provide more robust handling of large file downloads and network issues:
+* I am using Terminal to download the NPPES files with `libcurl` since it has better handling of large data files.  If you're comfortable with the command line, wget or curl can be used directly from Terminal to download files. These tools often provide more robust handling of large file downloads and network issues:
 ![Screenshot 2024-04-07 at 9 51 41 PM](https://github.com/mufflyt/isochrones/assets/44621942/89b70218-88a6-4c31-997e-ad77bdf765dc)
+
+* The `npiall` file from NBER may be a good option.  
 
 * From the command line:  
 ```r
