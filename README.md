@@ -273,9 +273,14 @@ git push origin main
 * I am using Terminal to download the NPPES files with `libcurl` since it has better handling of large data files.  If you're comfortable with the command line, wget or curl can be used directly from Terminal to download files. These tools often provide more robust handling of large file downloads and network issues:
 ![Screenshot 2024-04-07 at 9 51 41 PM](https://github.com/mufflyt/isochrones/assets/44621942/89b70218-88a6-4c31-997e-ad77bdf765dc)
 
-* The `npiall` file from NBER may be a good option.  
+* You can download the data from NPPES directly.  This downloads directly to the external hard drive called `Video Projects Muffly 1`.
+```r
+wget -P "/Volumes/Video Projects Muffly 1/nppes_historical_downloads" "https://download.cms.gov/nppes/NPPES_Data_Dissemination_April_2024.zip"
+```
 
-* From the command line:  
+
+
+* Here we are downloading `npiall` file from NBER from the command line:  
 ```r
 diskutil list
 # External drives are mounted under /Volumes on macOS
@@ -285,6 +290,7 @@ mkdir -p /Volumes/Video\ Projects\ Muffly\ 1/nppes_historical_downloads
 curl -o /Volumes/Video\ Projects\ Muffly\ 1/nppes_historical_downloads/NPPES_Data_Disseminat_April_2021.zip http://data.nber.org/nppes/zip-orig/NPPES_Data_Disseminat_April_2021.zip
 ```
 
+* R code to run the Terminal for multiple large downloads in the `code/02.25-downloader.R' file.  
 ```
 library(tidyverse)
 
@@ -603,7 +609,7 @@ dbExecute(con, sql_command1)
 # Execute the second SQL command
 dbExecute(con, sql_command2)
 
-# Reead in using R
+# Reed in using R
 
 # Define the command to be executed
 # Replace placeholders with your actual file path, table name, and PostgreSQL connection details
