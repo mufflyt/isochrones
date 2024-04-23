@@ -21,9 +21,11 @@ library(censusapi)       # Access US Census Bureau data via API
 library(data.table)      # Extends data frame capabilities for efficient data manipulation
 library (DiagrammeR)
 library(DiagrammeRsvg)
+library(downloader)
 library(easyr)           # A package for simplifying common R tasks
 library(forcats)         # Tools for working with categorical data
 library(formattable)     # Format data for tables and charts
+library(fs)
 library(ggplot2)         # Data visualization package based on the Grammar of Graphics
 library(ggthemes)        # Additional themes for ggplot2
 library(glue)
@@ -848,6 +850,98 @@ retrieve_clinician_data <- function(input_data, chunk_size = 100, output_dir = "
 # retrieve_clinician_data(input_data, 
 #                         chunk_size = 100, 
 #                         output_dir = "data/02.5-subspecialists_over_time/retrieve_clinician_data_chunk_results")
+
+# For 02.25-downloader
+# Function to construct and execute curl command for each file
+download_file <- function(file_name, base_url, dest_dir) {
+  file_url <- paste0(base_url, file_name)
+  
+  # Adjusting for the correct handling of spaces in the file path
+  # Notice the use of shQuote() for the entire destination path including the file name
+  dest_path <- file.path(dest_dir, file_name)
+  full_dest_path <- shQuote(dest_path)
+  
+  # Construct the curl command
+  curl_command <- sprintf("curl -o %s %s", full_dest_path, shQuote(file_url))
+  
+  # Execute the command
+  system(curl_command)
+  
+  cat("Attempted download: ", file_name, "\n")
+}
+
+# Function to unzip a file into a separate subdirectory
+unzip_file <- function(file_name, dest_dir) {
+  # Construct the full path to the zip file
+  zip_path <- file.path(dest_dir, file_name)
+  
+  # Create a unique subdirectory based on the file name (without the .zip extension)
+  sub_dir_name <- tools::file_path_sans_ext(basename(file_name))
+  sub_dir_path <- file.path(dest_dir, sub_dir_name)
+  
+  # Ensure the subdirectory exists
+  if (!dir.exists(sub_dir_path)) {
+    dir.create(sub_dir_path, recursive = TRUE)
+  }
+  
+  # Unzip the file into the subdirectory
+  unzip_status <- tryCatch({
+    unzip(zip_path, exdir = sub_dir_path)
+    TRUE
+  }, warning = function(w) {
+    message("Warning unzipping ", file_name, ": ", w$message)
+    FALSE
+  }, error = function(e) {
+    message("Error unzipping ", file_name, ": ", e$message)
+    FALSE
+  })
+  
+  if (unzip_status) {
+    message("Unzipped: ", file_name, " into ", sub_dir_path)
+  }
+}
+
+# Function to find and copy the largest file from each year's unzipped subdirectory
+copy_largest_file_from_each_year <- function(base_unzip_dir, target_dir) {
+  # List all subdirectories within the base directory
+  subdirs <- dir_ls(base_unzip_dir, recurse = TRUE, type = "directory")
+  
+  # Loop through each subdirectory
+  for (subdir in subdirs) {
+    # Define an empty tibble to hold file info
+    file_info_df <- tibble(filepath = character(), filesize = numeric())
+    
+    # List all files in the subdirectory
+    files <- dir_ls(subdir, recurse = TRUE, type = "file")
+    
+    # Skip if no files found
+    if (length(files) == 0) next
+    
+    # Get sizes of all files
+    file_sizes <- file_info(files)$size
+    
+    # Append to the dataframe
+    file_info_df <- bind_rows(file_info_df, tibble(filepath = files, filesize = file_sizes))
+    
+    # Identify the largest file in the current subdirectory
+    largest_file <- file_info_df %>% 
+      arrange(desc(filesize)) %>% 
+      slice(1) %>% 
+      pull(filepath)
+    
+    # Extract year and filename for the target path
+    year_subdir_name <- basename(dirname(largest_file))
+    largest_file_name <- basename(largest_file)
+    target_file_name <- paste(year_subdir_name, largest_file_name, sep="_")
+    target_file_path <- file.path(target_dir, target_file_name)
+    
+    # Copy the largest file to the target directory with modified name
+    if (!is.na(largest_file) && file_exists(largest_file)) {
+      file_copy(largest_file, target_file_path, overwrite = TRUE)
+      message("Copied the largest file from folder:", year_subdir_name, ": ", largest_file_name, " to ", target_dir)
+    }
+  }
+}
 
 
 # fin

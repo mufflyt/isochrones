@@ -32,6 +32,23 @@ library(tidyverse)
 if (!require("downloader")) install.packages("downloader")
 library(downloader)
 
+#### Download the NPPES file at https://download.cms.gov/nppes/NPI_Files.html
+# https://download.cms.gov/nppes/NPPES_Data_Dissemination_April_2024.zip
+base_url <- "https://download.cms.gov/nppes/"
+file_names <- c("NPPES_Data_Dissemination_April_2024.zip")
+dest_dir <- "/Volumes/Video\\ Projects\\ Muffly\\ 1/nppes_historical_downloads"
+
+# Ensure the destination directory exists - create using system call
+dir_create_command <- sprintf("mkdir -p %s", shQuote(dest_dir))
+system(dir_create_command)
+
+# Loop over the file names and download each
+for (file_name in file_names) {
+  download_file(file_name, base_url, dest_dir)
+}
+
+########################################
+# Multiple downloads from NBER
 # Base URL for the files
 base_url <- "http://data.nber.org/nppes/zip-orig/"
 
@@ -65,24 +82,6 @@ file_names <- c(
   "NPPES_Data_Disseminat_April_2022.zip"
 )
 
-# Function to construct and execute curl command for each file
-download_file <- function(file_name, base_url, dest_dir) {
-  file_url <- paste0(base_url, file_name)
-  
-  # Adjusting for the correct handling of spaces in the file path
-  # Notice the use of shQuote() for the entire destination path including the file name
-  dest_path <- file.path(dest_dir, file_name)
-  full_dest_path <- shQuote(dest_path)
-  
-  # Construct the curl command
-  curl_command <- sprintf("curl -o %s %s", full_dest_path, shQuote(file_url))
-  
-  # Execute the command
-  system(curl_command)
-  
-  cat("Attempted download: ", file_name, "\n")
-}
-
 # Destination directory on the external hard drive, without escaping spaces
 dest_dir <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads"
 
@@ -98,37 +97,6 @@ for (file_name in file_names) {
 
 #### UNZIP
 library(tidyverse)
-
-# Function to unzip a file into a separate subdirectory
-unzip_file <- function(file_name, dest_dir) {
-  # Construct the full path to the zip file
-  zip_path <- file.path(dest_dir, file_name)
-  
-  # Create a unique subdirectory based on the file name (without the .zip extension)
-  sub_dir_name <- tools::file_path_sans_ext(basename(file_name))
-  sub_dir_path <- file.path(dest_dir, sub_dir_name)
-  
-  # Ensure the subdirectory exists
-  if (!dir.exists(sub_dir_path)) {
-    dir.create(sub_dir_path, recursive = TRUE)
-  }
-  
-  # Unzip the file into the subdirectory
-  unzip_status <- tryCatch({
-    unzip(zip_path, exdir = sub_dir_path)
-    TRUE
-  }, warning = function(w) {
-    message("Warning unzipping ", file_name, ": ", w$message)
-    FALSE
-  }, error = function(e) {
-    message("Error unzipping ", file_name, ": ", e$message)
-    FALSE
-  })
-  
-  if (unzip_status) {
-    message("Unzipped: ", file_name, " into ", sub_dir_path)
-  }
-}
 
 # Destination directory on the external hard drive, without escaping spaces
 dest_dir <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads"
