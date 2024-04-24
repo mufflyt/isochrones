@@ -500,6 +500,10 @@ if (!dir_exists(target_dir)) {
 copy_largest_file_from_each_year(base_unzip_dir, target_dir)
 ```
 
+# Read the data into duckDB
+![image](https://github.com/mufflyt/isochrones/assets/44621942/f9348ac4-72d4-4149-8d08-38a9c1fabf32)
+We are using duckDB because it is lightning fast and works with R through 'duckplyr' so dplyr verbs can be used.  Then a schema can be built so that only the rows of interest are read in to R.  
+
 
 # Postico
 We needed a database program to house each of the NPI files from each year due to RAM restrictions.  Postico is a client for PostgreSQL, and it allows you to execute raw SQL queries, including DDL statements._full_
