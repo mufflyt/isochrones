@@ -1,15 +1,16 @@
-# Here we are trying to get year-specific physicians.  
+# Here we are trying to get year-specific physicians from physician_compare.  
 
 #######################
 source("R/01-setup.R")
-#######################
-
-# See code below to do database work.  
+####################### 
+conflicted::conflicts_prefer(exploratory::left_join)
+conflicted::conflicts_prefer(dplyr::case_when)
+conflicted::conflicts_prefer(dplyr::filter)
 
 #****************************************************************************
-#* CLEAN EACH YEAR OF DATA TO CREATE 'year_by_year_nppes_data_collected'.  WE ONLY BROUGHT IN MINIMAL INFO ABOUT THE PHYSICIANS FROM THE POSTICO DATABASE LIKE NAME AND NPI NUMBER.  
+#* CLEAN EACH YEAR OF DATA TO CREATE 'year_by_year_physician_compare_data_collected'.  WE ONLY BROUGHT IN MINIMAL INFO ABOUT THE PHYSICIANS FROM THE POSTICO DATABASE LIKE NAME AND NPI NUMBER.  
 #****************************************************************************
-year_by_year_nppes_data_collected <- exploratory::searchAndReadDelimFiles(folder = "data/02.5-subspecialists_over_time/Postico", pattern = "*.csv|*.tsv|*.txt|*.text|*.tab", delim = ",", # I had to manually specify the delimiter here.  
+year_by_year_physician_compare_data_collected <- exploratory::searchAndReadDelimFiles(folder = "data/02.5-subspecialists_over_time/Postico", pattern = "*.csv|*.tsv|*.txt|*.text|*.tab", delim = ",", # I had to manually specify the delimiter here.  
 quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
   readr::type_convert() %>%
   exploratory::clean_data_frame() %>%
@@ -26,11 +27,12 @@ quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "
   exploratory::reorder_cols(year, NPI, `Last Name`, `First Name`, `Middle Name`, Gender, City, State, `Zip Code`, `Primary Specialty`, id, Credential, `Secondary Specialty`) %>%
   select(-Credential, -`Secondary Specialty`) %>%
   rename(goba_id = id) %>%
-  readr::write_csv(., "data/02.5-subspecialists_over_time/end_year_by_year_nppes_data_collected.csv")
-dim(year_by_year_nppes_data_collected)[1]
-# year_by_year_nppes_data_collected <- readr::read_csv("data/02.5-subspecialists_over_time/end_year_by_year_nppes_data_collected.csv") # for testing
+  readr::write_csv(., "data/02.5-subspecialists_over_time/end_year_by_year_physician_compare_data_collected.csv")
 
-# > year_by_year_nppes_data_collected
+dim(year_by_year_physician_compare_data_collected)[1]
+# year_by_year_physician_compare_data_collected <- readr::read_csv("data/02.5-subspecialists_over_time/end_year_by_year_physician_compare_data_collected.csv") # for testing
+
+# > year_by_year_physician_compare_data_collected
 # # A tibble: 323,193 × 11
 # # Groups:   NPI [49,232]
 # year        NPI `Last Name` `First Name` `Middle Name` Gender City  State `Zip Code` `Primary Specialty` goba_id
@@ -47,18 +49,18 @@ dim(year_by_year_nppes_data_collected)[1]
 # 10 2013     1.00e9 YUZEFOVICH  MICHAEL      NA            M      ALEX… VA    22306      OBSTETRICS/GYNECOL…    1164
 
 # Calculate the needed values
-total_physicians <- nrow(year_by_year_nppes_data_collected)
-start_year <- min(year_by_year_nppes_data_collected$year)
-end_year <- max(year_by_year_nppes_data_collected$year)
-unique_physicians <- year_by_year_nppes_data_collected %>%
+total_physicians <- nrow(year_by_year_physician_compare_data_collected)
+start_year <- min(year_by_year_physician_compare_data_collected$year)
+end_year <- max(year_by_year_physician_compare_data_collected$year)
+unique_physicians <- year_by_year_physician_compare_data_collected %>%
   distinct(NPI) %>%
   nrow()
 
 # Use glue to create the message with formatted numbers
-glue::glue("There are {format(total_physicians, big.mark = ',')} general and GO OBGYN physicians from {start_year} to {end_year}. But there were only {format(unique_physicians, big.mark = ',')} unique physicians by NPI number in the dataset.")
+glue::glue("There are {format(total_physicians, big.mark = ',')} general and GO OBGYN physicians from {start_year} to {end_year}. But there were only {format(unique_physicians, big.mark = ',')} unique physicians by NPI number in the Physician Compare dataset.")
 
 # Group the data by NPI and count the number of unique years for each physician
-physician_years <- year_by_year_nppes_data_collected %>%
+physician_years <- year_by_year_physician_compare_data_collected %>%
   group_by(NPI) %>%
   summarise(years_present = n_distinct(year))
 
@@ -68,12 +70,12 @@ physician_counts <- physician_years %>%
   summarise(physician_count = n())
 
 # Calculate the percentage of physicians for each number of years present
-total_physicians <- n_distinct(year_by_year_nppes_data_collected$NPI)
+total_physicians <- n_distinct(year_by_year_physician_compare_data_collected$NPI)
 physician_counts <- physician_counts %>%
   mutate(percentage = (physician_count / total_physicians) * 100)
 
 # Group by NPI and count the number of unique years each physician appears
-year_counts <- year_by_year_nppes_data_collected %>%
+year_counts <- year_by_year_physician_compare_data_collected %>%
   group_by(NPI) %>%
   summarize(year_count = n_distinct(year)) %>%
   pull(year_count)
@@ -85,20 +87,175 @@ num_physicians_all_years <- sum(year_counts == max(year_counts))
 percent_all_years <- (num_physicians_all_years / unique_physicians) * 100
 
 print(physician_counts)
-glue::glue("There were {format(num_physicians_all_years, big.mark = ',')} OBGYN and GO physicians ({round(percent_all_years, 1)}% of the total physicians) were present in every year from 2013 to 2023.")
+glue::glue("There were {format(num_physicians_all_years, big.mark = ',')} OBGYN and GO physicians ({round(percent_all_years, 1)}% of the total physicians) were present in all ten years from 2013 to 2023.")
+
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
+#####  SANITY CHECK
+#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
+
+# MASTROYANNIS is found in physician_compare_data with a Montana address because Costas does NOT see Medicare patients.
+physician_compare_data %>% filter(`Last Name` == "MASTROYANNIS")
+
+#**************************
+# BRING IN GOBA DATA AND MERGE WITH TO PHYSICIAN COMPARE DATA
+#**************************
+# Load the datasets
+physician_compare_data <- read_csv("data/02.5-subspecialists_over_time/end_year_by_year_physician_compare_data_collected.csv")
+
+#* goba_unrestricted.csv originates from Exploratory/~~GOBA_Master_November_2022/~Recent_Grads_GOBA_NPI_2022/subspecialists_over_time
+exploratory_data <- read_csv("data/02.5-subspecialists_over_time/from_exploratory_subspecialists_over_time.csv")
+
+# Ensure NPI is in the same format for both datasets and handle NAs if necessary
+exploratory_data$NPI <- as.numeric(as.character(exploratory_data$NPI))
+
+# Merge the datasets based on NPI, only one person per subspecialty per year
+merged_data <- left_join(physician_compare_data, exploratory_data[, c("NPI", "sub1")], by = "NPI") %>%
+  group_by(year, sub1) %>%
+  distinct(NPI, .keep_all = TRUE) 
+
+# Group by year and subspecialty, then summarize to get counts
+data_for_plot <- merged_data %>%
+  group_by(year, sub1) %>%
+  distinct(NPI, .keep_all = TRUE) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  filter(!is.na(sub1)) %>% # Remove entries without a subspecialty
+  rename(Subspecialty = sub1) %>%
+  mutate(Subspecialty = case_when(
+    Subspecialty == "FPM" ~ "Urogynecology",
+    Subspecialty == "MFM" ~ "Maternal-Fetal Medicine",
+    Subspecialty == "MIG" ~ "Minimally Invasive Gynecologic Surgery",
+    Subspecialty == "ONC" ~ "Gynecologic Oncology",
+    Subspecialty == "PAG" ~ "Pediatric and Adolescent Gynecology",
+    Subspecialty == "REI" ~ "Reproductive Endocrinology & Infertility",
+    TRUE ~ Subspecialty
+  ))
+
+
+data_for_plot$year <- as.factor(data_for_plot$year)
+class(data_for_plot$year)
+
+# Create the alluvial plot
+ggplot(data = data_for_plot,
+       aes(axis1 = year, axis2 = Subspecialty, y = count)) +
+  geom_alluvium(aes(fill = Subspecialty)) +
+  geom_stratum() + 
+  geom_text(stat = 'stratum', aes(label = after_stat(stratum)), size = 3) +
+  theme_minimal() +
+  labs(title = "Flow of Physicians by Subspecialty Over Years",
+       x = "Year",
+       y = "Count of Physicians",
+       fill = "Subspecialty")
+
+
+# Convert 'year' to a factor for plotting purposes if it's numeric
+data_for_plot$year <- as.factor(data_for_plot$year)
+data_for_plot$Subspecialty <- factor(data_for_plot$Subspecialty, levels = sort(unique(data_for_plot$Subspecialty)))
+
+#remotes::install_github("dreamRs/esquisse")
+#esquisse::esquisser(data_for_plot)
+
+plot <- ggplot(data_for_plot) +
+  aes(x = year, fill = Subspecialty, colour = Subspecialty, weight = count) +
+  geom_bar() +
+  scale_fill_hue(direction = 1) +
+  scale_color_hue(direction = 1) +
+  labs(x = "Count of physicians", y = "Year") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  facet_wrap(vars(Subspecialty), nrow = 4L); plot
+
+ggsave("data/02.5-subspecialists_over_time/input_of_subspecialists _by_year.png", plot = plot, width = 10, height = 8, dpi = 300)
+
+
+####
+# To create a column called years_practicing that shows how many consecutive years a physician (identified by their NPI
+
+
+# Load the datasets
+physician_compare_data <- read_csv("data/02.5-subspecialists_over_time/end_year_by_year_physician_compare_data_collected.csv")
+exploratory_data <- read_csv("data/02.5-subspecialists_over_time/from_exploratory_subspecialists_over_time.csv")
+
+# Ensure NPI is in the same format for both datasets and handle NAs if necessary
+exploratory_data$NPI <- as.numeric(as.character(exploratory_data$NPI))
+
+# Merge the datasets based on NPI, only one person per subspecialty per year
+merged_data <- left_join(physician_compare_data, exploratory_data[, c("NPI", "sub1")], by = "NPI") %>%
+  group_by(year, sub1) %>%
+  distinct(NPI, .keep_all = TRUE) 
+
+# Assuming merged_data is your data frame
+consecutive_years <- merged_data %>%
+  arrange(NPI, year) %>%
+  group_by(NPI) %>%
+  mutate(next_year = lead(year), # Get the next year for comparison
+         is_consecutive = if_else(year == next_year - 1, TRUE, FALSE, missing = FALSE), # Identify consecutive years
+         gap = cumsum(!is_consecutive), # Identify gaps in practicing years
+         consecutive_group = paste0(NPI, "-", gap), # Create a unique identifier for each consecutive group
+         years_practicing = 1) %>% # Initialize years_practicing
+  group_by(consecutive_group) %>%
+  mutate(years_practicing = n()) %>% # Count the number of rows in each consecutive group
+  ungroup() %>%
+  select(-next_year, -is_consecutive, -gap, -consecutive_group) # Remove the intermediate columns
+
+# To see the maximum span of consecutive years for each NPI
+max_years_practicing <- consecutive_years %>%
+  group_by(NPI) %>%
+  summarise(max_years_practicing = max(years_practicing))
+
+# Join back to the original dataset if needed
+merged_data <- left_join(merged_data, max_years_practicing, by = "NPI") %>%
+  group_by(NPI) %>%
+  select(-`Primary Specialty`) %>%
+  distinct(NPI, .keep_all = TRUE); merged_data
+
+View(merged_data)
+
+######
+# To incorporate the creation of the years_practicing_range column that includes the span of minimum to the maximum years practiced for each physician,
+
+# Assuming consecutive_years and merged_data as your data frames
+# Step 1: Calculate the maximum span of consecutive years for each NPI
+max_years_practicing <- consecutive_years %>%
+  group_by(NPI) %>%
+  summarise(max_years_practicing = max(years_practicing))
+
+# Step 2: Calculate min and max years for each NPI to create the years_practicing_range
+years_practicing_range <- consecutive_years %>%
+  group_by(NPI) %>%
+  summarise(
+    min_year = min(year),
+    max_year = max(year),
+    .groups = 'drop' # Remove grouping structure after summarising
+  ) %>%
+  mutate(years_practicing_range = paste(min_year, "-", max_year))
+
+# Step 3: Join both the max_years_practicing and years_practicing_range with the original dataset
+merged_data <- merged_data %>%
+  left_join(max_years_practicing, by = "NPI") %>%
+  left_join(years_practicing_range, by = "NPI") %>%
+  select(-min_year, -max_year) %>% # Assuming you want to drop the Primary Specialty column
+  distinct(NPI, .keep_all = TRUE)
+
+# Display the updated merged_data to check the new columns
+head(merged_data)
+
+merged_data$years_practicing_range
+
+
+
 
 #**************************
 #* VALIDATE THE NPI NUMBERS
 #**************************
-year_by_year_nppes_data_validated_npi <- validate_and_remove_invalid_npi(input_data = "data/02.5-subspecialists_over_time/end_year_by_year_nppes_data_collected.csv") %>% 
+year_by_year_physician_compare_data_validated_npi <- validate_and_remove_invalid_npi(input_data = "data/02.5-subspecialists_over_time/end_year_by_year_physician_compare_data_collected.csv") %>% 
   dplyr::filter(npi_is_valid == TRUE) %>% 
-  readr::write_csv(., "data/02.5-subspecialists_over_time/end_year_by_year_nppes_data_validated_npi.csv")
-dim(year_by_year_nppes_data_validated_npi)[1]
-#year_by_year_nppes_data_validates_npi <- readr::read_csv("data/02.5-subspecialists_over_time/end_year_by_year_nppes_data_validated_npi.csv") # for testing
-paste0("There are ", dim(year_by_year_nppes_data_validated_npi)[1], " validated non-unique NPI numbers from 2013 to 2023.")
+  readr::write_csv(., "data/02.5-subspecialists_over_time/end_year_by_year_physician_compare_data_validated_npi.csv")
+dim(year_by_year_physician_compare_data_validated_npi)[1]
+#year_by_year_physician_compare_data_validates_npi <- readr::read_csv("data/02.5-subspecialists_over_time/end_year_by_year_physician_compare_data_validated_npi.csv") # for testing
+paste0("There are ", dim(year_by_year_physician_compare_data_validated_npi)[1], " validated non-unique NPI numbers from 2013 to 2023.")
 
 
-# > year_by_year_nppes_data_validated_npi
+# > year_by_year_physician_compare_data_validated_npi
 # # A tibble: 323,193 × 12
 # year       NPI `Last Name` `First Name` `Middle Name` Gender City  State `Zip Code` `Primary Specialty` goba_id
 # <dbl>     <dbl> <chr>       <chr>        <chr>         <chr>  <chr> <chr> <chr>      <chr>                 <dbl>
@@ -107,25 +264,25 @@ paste0("There are ", dim(year_by_year_nppes_data_validated_npi)[1], " validated 
 # 3  2013    1.00e9 PALASZEWSKI DAWN         NA            F      TAMPA FL    33612      OBSTETRICS/GYNECOL…     200
 
 #**************************
-#* RETURN THE CONTEMPORARY DEMOGRAPHICS OF THE PHYSICIAN DATA WITH PREFIX OF "CLINICIAN_DATA_" (GENDER, MEDICAL SCHOOL, GRAD YEAR) ARE THE ONLY TIMELESS VARIABLES.  PAST SUBSPECIALISTS WHO ARE NO LONGER PRACTICING ARE NOT SEARCHABLE VIA CONTEMPORARY NPPES NPI DATABASE SO WE WILL NEED TO USE THE POSTICO PAST NPI DATABASE FOR ADDRESS, PRACTICE NAME, ETC.  PEOPLE WHO RETIRED ARE GOING TO BE "NO RESULTS"
+#* RETURN THE CONTEMPORARY DEMOGRAPHICS OF THE PHYSICIAN DATA WITH PREFIX OF "CLINICIAN_DATA_" (GENDER, MEDICAL SCHOOL, GRAD YEAR) ARE THE ONLY TIMELESS VARIABLES.  PAST SUBSPECIALISTS WHO ARE NO LONGER PRACTICING ARE NOT SEARCHABLE VIA CONTEMPORARY physician_compare NPI DATABASE SO WE WILL NEED TO USE THE POSTICO PAST NPI DATABASE FOR ADDRESS, PRACTICE NAME, ETC.  PEOPLE WHO RETIRED ARE GOING TO BE "NO RESULTS"
 #**************************
 ## Call the retrieve_clinician_data function with an NPI value
-distinct_year_by_year_nppes_data_validated_npi <- readr::read_csv("data/02.5-subspecialists_over_time/end_year_by_year_nppes_data_validated_npi.csv") %>% 
+distinct_year_by_year_physician_compare_data_validated_npi <- readr::read_csv("data/02.5-subspecialists_over_time/end_year_by_year_physician_compare_data_validated_npi.csv") %>% 
   dplyr::distinct(NPI, .keep_all = TRUE) %>%
   arrange(year, goba_id) %>%
   #head(101) %>% # FOR TESTING
-  write_csv(., "data/02.5-subspecialists_over_time/end_distinct_year_by_year_nppes_data_validated_npi.csv") 
-#View(distinct_year_by_year_nppes_data_validated_npi)
-dim(distinct_year_by_year_nppes_data_validated_npi)[1]
+  write_csv(., "data/02.5-subspecialists_over_time/end_distinct_year_by_year_physician_compare_data_validated_npi.csv") 
+#View(distinct_year_by_year_physician_compare_data_validated_npi)
+dim(distinct_year_by_year_physician_compare_data_validated_npi)[1]
 
 # Calculate the start and end year
-start_year <- min(distinct_year_by_year_nppes_data_validated_npi$year)
-end_year <- max(distinct_year_by_year_nppes_data_validated_npi$year)
+start_year <- min(distinct_year_by_year_physician_compare_data_validated_npi$year)
+end_year <- max(distinct_year_by_year_physician_compare_data_validated_npi$year)
 # Get the number of unique OBGYNs
-num_unique_obgyns <- nrow(distinct_year_by_year_nppes_data_validated_npi)
+num_unique_obgyns <- nrow(distinct_year_by_year_physician_compare_data_validated_npi)
 glue("There are {format(num_unique_obgyns, big.mark = ',')} unique OBGYNs represented from {start_year} to {end_year}.")
 
-# > distinct_year_by_year_nppes_data_validated_npi
+# > distinct_year_by_year_physician_compare_data_validated_npi
 # # A tibble: 49,232 × 12
 # year       NPI `Last Name` `First Name` `Middle Name` Gender City  State `Zip Code` `Primary Specialty` goba_id
 # <dbl>     <dbl> <chr>       <chr>        <chr>         <chr>  <chr> <chr> <chr>      <chr>                 <dbl>
@@ -136,7 +293,10 @@ glue("There are {format(num_unique_obgyns, big.mark = ',')} unique OBGYNs repres
 #**************************
 #* BRING IN SUBSPECIALIST DATA WITH NPI NUMBER FROM GOBA
 #**************************
-complete_npi_for_subspecialists <- readr::read_csv("data/02.5-subspecialists_over_time/goba_unrestricted.csv") %>%
+#*
+#* goba_unrestricted.csv originates from Exploratory/~~GOBA_Master_November_2022/~Recent_Grads_GOBA_NPI_2022/subspecialists_over_time
+
+complete_npi_for_subspecialists <- readr::read_csv("data/02.5-subspecialists_over_time/from_exploratory_subspecialists_over_time.csv") %>%
   as_tibble() %>%
   #distinct(NPI_goba, .keep_all = TRUE) %>%
   #dplyr::rename(npi = NPI_goba) %>%
@@ -160,8 +320,9 @@ states <- complete_npi_for_subspecialists$state_goba[complete_npi_for_subspecial
 glue("Subspecialist OBGYNS are present in {length(unique(states))} states plus {paste(unique(non_states), collapse = ', ')}.")
 
 
+
 #**************************
-#* retrieve_clinician_data FUNCTION FOR GETTING DEMOGRAPHICS BY MATCHING NPI NUMBERS TO THE NPPES DATABASE.  GETS DEMOGRAPHICS USING THE NPPES API VIA PROVIDER::CLINICIANS FUNCTION.  
+#* retrieve_clinician_data FUNCTION FOR GETTING DEMOGRAPHICS BY MATCHING NPI NUMBERS TO THE physician_compare DATABASE.  GETS DEMOGRAPHICS USING THE physician_compare API VIA PROVIDER::CLINICIANS FUNCTION.  
 #**************************
 input_data <- ("data/02.5-subspecialists_over_time/goba_unrestricted_cleaned.csv") 
 
@@ -179,7 +340,7 @@ retrieve_clinician_data_output <- exploratory::searchAndReadDelimFiles(folder = 
 
 write_rds(retrieve_clinician_data_output, "data/02.5-subspecialists_over_time/end_retrieve_clinician_data_chunk_results.rds")
 
-# Specific column names from the NPPES data starting with "clinician_data_"
+# Specific column names from the physician_compare data starting with "clinician_data_"
 filtered_columns <- grep("^clinician_data_", names(retrieve_clinician_data_output), value = TRUE); filtered_columns
 
 paste0("There are ", dim(retrieve_clinician_data_output)[1], " unique subspecialist OBGYNs WITH NPI NUMBERS and timeless DEMOGRAPHIC DATA represented from 2013 to 2023.")
@@ -205,7 +366,7 @@ glue("There are {format(num_unique_obgyns_with_npi, big.mark = ',')} unique OBGY
 #**************************
 #retrieve_clinician_data_output <- read_rds("data/02.5-subspecialists_over_time/end_retrieve_clinician_data_chunk_results.rds")
 # Brought over from old Mac with the Postico database.  
-gyn_onc_over_the_years <- readr::read_csv("data/02.5-subspecialists_over_time/end_year_by_year_nppes_data_collected.csv") %>%
+gyn_onc_over_the_years <- readr::read_csv("data/02.5-subspecialists_over_time/end_year_by_year_physician_compare_data_collected.csv") %>%
   filter(`Primary Specialty` == "GYNECOLOGICAL ONCOLOGY") 
 
 write_csv(gyn_onc_over_the_years, "data/02.5-subspecialists_over_time/gyn_onc_over_the_years.csv")
@@ -275,17 +436,17 @@ print(retirement_table)
 
 
 
-# TODO:  Antijoin between end_distinct_year_by_year_nppes_data_validated_npi.csv and retrieve_clinician_data_output ot find those who had no results for the NPI number with the API.  
+# TODO:  Antijoin between end_distinct_year_by_year_physician_compare_data_validated_npi.csv and retrieve_clinician_data_output ot find those who had no results for the NPI number with the API.  
 
 #View(retrieve_clinician_data_output)
 
-# c("Load raw data of all generalists for all years", year_by_year_nppes_data_collected, #Previous years NPI files, Postico files
-#   "Validate NPI numbers", distinct_year_by_year_nppes_data_validated_npi, #Number of individual physicians
+# c("Load raw data of all generalists for all years", year_by_year_physician_compare_data_collected, #Previous years NPI files, Postico files
+#   "Validate NPI numbers", distinct_year_by_year_physician_compare_data_validated_npi, #Number of individual physicians
 #   "Narrow to subspecialists only", complete_npi_for_subspecialists, 
-#   "NPPES Demographics present for subspecialists", retrieve_clinician_data_output,
+#   "physician_compare Demographics present for subspecialists", retrieve_clinician_data_output,
 #   "Finalize output")
 
-all_docs <- nrow(year_by_year_nppes_data_collected %>% distinct(NPI)); all_docs
+all_docs <- nrow(year_by_year_physician_compare_data_collected %>% distinct(NPI)); all_docs
 subspecialists <- nrow(complete_npi_for_subspecialists); subspecialists
 excluded_bc_generalists <- all_docs - subspecialists; excluded_bc_generalists
 non_onc_subspecialists <- nrow(complete_npi_for_subspecialists %>% filter(sub1 != "ONC"))
@@ -295,7 +456,7 @@ a1 <- paste0('Number of of all OBGYNs \n for all years, n = ', format(all_docs, 
 b1 <- ''
 c1 <- ''
 d1 <- paste0('Number of Gynecologic\n Oncologists included\n for analysis,\n n = ', format(nrow(complete_npi_for_subspecialists %>% filter(sub1 == "ONC")), big.mark = ",", scientific = FALSE))
-e1 <- paste0('Number of Gynecologic\n Oncologists with \nNPPES Demographics,\n n = ', format(nrow(onc_with_demographics), big.mark = ",", scientific = FALSE))
+e1 <- paste0('Number of Gynecologic\n Oncologists with \nphysician_compare Demographics,\n n = ', format(nrow(onc_with_demographics), big.mark = ",", scientific = FALSE))
 a2 <- ''
 b2 <- paste0('Excluded because\n General OBGYN,\n n = ', format(excluded_bc_generalists, big.mark = ","))
 c2 <- paste0('Non-Gynecologic\n Oncology Subspecialist\n n = ', format(non_onc_subspecialists, big.mark = ","))
@@ -429,24 +590,24 @@ db_connection <- dbConnect(
 )
 
 ################
-## Reference the "NPPES" table using tbl
-nppes_table <- dplyr::tbl(db_connection, "2022")
+## Reference the "physician_compare" table using tbl
+physician_compare_table <- dplyr::tbl(db_connection, "2022")
 nucc_taxonomy_201 <- dplyr::tbl(db_connection, "nucc_taxonomy_201")
 
-#nppes_table <- nppes_table %>% collect()
-# View(nppes_table)
-# write_csv(nppes_table, "temp_nppees_table.csv")
+#physician_compare_table <- physician_compare_table %>% collect()
+# View(physician_compare_table)
+# write_csv(physician_compare_table, "temp_nppees_table.csv")
 
 # Fetch the data you need from the database
-nppes_data <- nppes_table %>%
+physician_compare_data <- physician_compare_table %>%
   distinct(NPI, .keep_all = TRUE) %>%
   mutate(`Zip Code` = str_sub(`Zip Code`,1 ,5)) %>%
   filter(`Primary Specialty` %in% c("GYNECOLOGICAL ONCOLOGY", "OBSTETRICS/GYNECOLOGY")) %>% 
   mutate(year = "2023") %>%
   collect()
 
-View(nppes_data)
-write_csv(nppes_data, "nppes_data.csv")
+View(physician_compare_data)
+write_csv(physician_compare_data, "physician_compare_data.csv")
 
 #**************************
 #* DOWNLOADS PHYSICIAN DATA FROM NPI DATABASE FOR EACH YEAR
@@ -487,7 +648,7 @@ add_zip_collect <- collect(add_zip)
 collected_data <- collect(filtered_data)
 
 # Specify the file path for the RDS file
-rds_file_path <- "nppes_november_2023.rds"
+rds_file_path <- "physician_compare_november_2023.rds"
 
 # Write the collected data to the RDS file
 saveRDS(collected_data, file = rds_file_path)

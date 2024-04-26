@@ -18,14 +18,21 @@ set.seed(1978)
 invisible(gc())
 
 library(censusapi)       # Access US Census Bureau data via API
+library(conflicted)
 library(data.table)      # Extends data frame capabilities for efficient data manipulation
-library (DiagrammeR)
+library(DBI)             # This is required for connecting to the database
+library(dbplyr)
+library(DiagrammeR)
 library(DiagrammeRsvg)
 library(downloader)
+library(duckdb)
+library(DBI)
+library(duckplyr)
 library(easyr)           # A package for simplifying common R tasks
 library(forcats)         # Tools for working with categorical data
 library(formattable)     # Format data for tables and charts
 library(fs)
+library(ggalluvial)
 library(ggplot2)         # Data visualization package based on the Grammar of Graphics
 library(ggthemes)        # Additional themes for ggplot2
 library(glue)
@@ -44,8 +51,10 @@ library(provider)        # Access to healthcare provider data
 library(progress)        # Creates progress bars to monitor code execution progress
 library(readxl)          # Read Excel files
 library(rnaturalearth)   # Access Natural Earth data for mapping
+library(RPostgres)       # If using PostgreSQL
 library(sf)              # Provides classes and methods for working with spatial data
 library(shiny)           # Building interactive web applications
+library(skimr)
 library(stringi)         # String manipulation functions (UTF-8 aware)
 library(stringr)         # String manipulation functions
 library(tidyverse)
@@ -57,6 +66,7 @@ library(viridis)         # Color palettes for data visualization
 library(wesanderson)     # Color palettes inspired by Wes Anderson films
 library(webshot)         # Takes screenshots of web pages
 library(rnaturalearth)
+
 
 devtools::install_github("cysouw/qlcMatrix")
 devtools::install_github("paulhendricks/anonymizer")
@@ -93,6 +103,10 @@ code_folder <- here::here("R")
 #####  Functions for nomogram
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 `%nin%`<-Negate(`%in%`)
+
+'%nin%' <- function(x, table) {
+  !(x %in% table)
+}
 
 #' Search NPI Database by Taxonomy
 search_by_taxonomy <- function(taxonomy_to_search) {
@@ -943,6 +957,11 @@ copy_largest_file_from_each_year <- function(base_unzip_dir, target_dir) {
   }
 }
 
+
+remove_table <- function(connection, table_name) {
+  dbExecute(connection, glue::glue("DROP TABLE IF EXISTS {table_name}"))
+  cat("Table", table_name, "has been removed from the database.\n")
+}
 
 # fin
 print("Setup is complete!")

@@ -1,5 +1,9 @@
 #######################
 source("R/01-setup.R")
+conflicted::conflicts_prefer(dplyr::filter)
+conflicted::conflicts_prefer(lubridate::year)
+conflicted::conflicts_prefer(exploratory::str_remove_all)
+conflicted::conflicts_prefer(dplyr::recode)
 #######################
 
 # The code you provided appears to be R code that performs the following tasks:
@@ -55,3 +59,4 @@ janitor::tabyl(cleaned_all_taxonomy_search_data$sub1)
 janitor::tabyl(cleaned_all_taxonomy_search_data$GenderPhysicianCompare)
 janitor::tabyl(cleaned_all_taxonomy_search_data$state)
 
+### fin
