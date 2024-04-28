@@ -83,10 +83,7 @@ options(tigris_class = "sf")
 options(tigris_use_cache = TRUE)
 getOption("tigris_use_cache")
 
-
-Sys.setenv(HERE_API_KEY = "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
-readRenviron("~/.Renviron")
-hereR::set_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
+source("R/api_keys.R")
 
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 #####  Directory structure with here
@@ -962,6 +959,10 @@ remove_table <- function(connection, table_name) {
   dbExecute(connection, glue::glue("DROP TABLE IF EXISTS {table_name}"))
   cat("Table", table_name, "has been removed from the database.\n")
 }
+
+# Used in 04-create_geocode_nominatim.R
+
+
 
 # fin
 print("Setup is complete!")
