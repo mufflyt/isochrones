@@ -202,23 +202,25 @@ P12W_026N	Female:	WHITE ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NO
 
 Appendix 3: Characteristics of Isochrones
 The bespoke R code generates individual maps for each drive time, visually representing the accessible areas on a map.  The function shapefiles are geospatial data files used for storing geographic information, including the boundaries of the reachable areas.  The HERE API (here.com) was utilized because traffic and time could be standardized yearly.  Each year, the isochrones are built on the third Friday in October at 0900, defined as “posix_time”.  We imagined that patients would see their primary care provider at this time of year for an influenza vaccination or other issues.  The hereR package (https://github.com/munterfi/hereR/ ) is a wrapper around the R code that calls the HERE REST API for isoline routing (platform.here.com) and returns it as an sf object.  There is a cost of $5.50 for every 1,000 isolines created (https://www.here.com/get-started/pricing#here---platform---pricing---page-title ).  
+![Screenshot 2024-05-03 at 8 51 55 PM](https://github.com/mufflyt/isochrones/assets/44621942/afbb3f48-2e6c-43bb-a324-c56beb937ede)
 
 ```r
-•	October 18, 2013
-•	October 17, 2014
-•	October 16, 2015
-•	October 21, 2016
-•	October 20, 2017
-•	October 19, 2018
-•	October 18, 2019
-•	October 16, 2020
-•	October 15, 2021
-•	October 21, 2022
-
-c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-16 09:00:00",
-  "2016-10-21 09:00:00", "2017-10-20 09:00:00", "2018-10-19 09:00:00",
-  "2019-10-18 09:00:00", "2020-10-16 09:00:00", "2021-10-15 09:00:00",
-  "2022-10-21 09:00:00", "2023-10-20 09:00:00")
+iso_datetime_yearly <- tibble(
+  date = c(
+    "2013-10-18 09:00:00",
+    "2014-10-17 09:00:00",
+    "2015-10-16 09:00:00",
+    "2016-10-21 09:00:00",
+    "2017-10-20 09:00:00",
+    "2018-10-19 09:00:00",
+    "2019-10-18 09:00:00",
+    "2020-10-16 09:00:00",
+    "2021-10-15 09:00:00",
+    "2022-10-21 09:00:00",
+    "2023-10-20 09:00:00"
+  ),
+  year = c("2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023")
+)
 ```
 
 R code utilizing the hereR package with the isoline library.  The range of isochrones was 30 minutes, 60 minutes, 120 minutes, and 180 minutes.  
