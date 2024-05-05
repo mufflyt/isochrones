@@ -83,7 +83,7 @@ options(tigris_class = "sf")
 options(tigris_use_cache = TRUE)
 getOption("tigris_use_cache")
 
-source("R/api_keys.R")
+source("/Users/tylermuffly/Dropbox (Personal)/isochrones/R/api_keys.R")
 
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 #####  Directory structure with here
@@ -493,31 +493,33 @@ test_and_process_isochrones <- function(input_file) {
 ##############################
 ###############################
 process_and_save_isochrones <- function(input_file, chunk_size = 25, 
-                                        iso_datetime = "2023-10-20 09:00:00",
+                                        iso_datetime_yearly,
                                         iso_ranges = c(30*60, 60*60, 120*60, 180*60),
                                         crs = 4326, 
                                         transport_mode = "car",
-                                        file_path_prefix = "data/06-isochrones/isochrones_") 
-  {
+                                        file_path_prefix = "data/06-isochrones/isochrones_") {
   message("Starting isochrones processing...")
-  input_file$lat <- as.numeric(input_file$lat)
-  input_file$long <- as.numeric(input_file$long)
-
-  input_file_sf <- input_file %>%
-    sf::st_as_sf(coords = c("long", "lat"), crs = crs)
-
-  posix_time <- as.POSIXct(iso_datetime, format = "%Y-%m-%d %H:%M:%S")
-
+  
+  input_file <- input_file %>% 
+    mutate(lat = as.numeric(lat),
+           long = as.numeric(long))
+  
+  input_file_sf <- st_as_sf(input_file, coords = c("long", "lat"), crs = crs)
+  
   num_chunks <- ceiling(nrow(input_file_sf) / chunk_size)
   isochrones_list <- list()
-
-  message("Processing ", num_chunks, " chunks...")
+  
+  message("Number of chunks to process: ", num_chunks)
   for (i in 1:num_chunks) {
     message("Processing chunk ", i, " of ", num_chunks)
     start_idx <- (i - 1) * chunk_size + 1
     end_idx <- min(i * chunk_size, nrow(input_file_sf))
     chunk_data <- input_file_sf[start_idx:end_idx, ]
-
+    
+    year_index <- match(format(as.POSIXct(iso_datetime_yearly$date), "%Y"), iso_datetime_yearly$year)
+    
+    posix_time <- as.POSIXct(iso_datetime_yearly$date[year_index], format = "%Y-%m-%d %H:%M:%S")
+    
     isochrones <- tryCatch(
       {
         hereR::isoline(
@@ -538,38 +540,34 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25,
         return(NULL)
       }
     )
-
+    
     if (!is.null(isochrones)) {
-      # Create the file name with the current date and time
       current_datetime <- format(Sys.time(), "%Y%m%d%H%M%S")
-
+      
       file_name <- paste(file_path_prefix, current_datetime, "_chunk_", min(chunk_data$id), "_to_", max(chunk_data$id))
-
-      # Assuming "arrival" field is originally in character format with both date and time
-      # Convert it to a DateTime object
-      isochrones$arrival <- as.POSIXct(isochrones$arrival, format = "%Y-%m-%d %H:%M:%S")
-
-      # Save the data as a shapefile with the layer name "isochrones"
+      
+      isochrones <- isochrones %>%
+        mutate(arrival = as.POSIXct(arrival, format = "%Y-%m-%d %H:%M:%S"))
+      
       message("Writing chunk ", i, " to file: ", file_name)
-      sf::st_write(
+      st_write(
         isochrones,
         dsn = file_name,
         layer = "isochrones",
         driver = "ESRI Shapefile",
         quiet = FALSE
       )
-
-      # Store the isochrones in the list
+      
       isochrones_list[[i]] <- isochrones
     }
   }
-
-  # Combine all isochrones from the list into one data frame
+  
   isochrones_data <- do.call(rbind, isochrones_list)
-
+  
   message("Finished processing all chunks.")
   return(isochrones_data)
 }
+
 
 
 ##############################
@@ -962,7 +960,22 @@ remove_table <- function(connection, table_name) {
 
 # Used in 04-create_geocode_nominatim.R
 
-
+iso_datetime_yearly <- tibble(
+  date = c(
+    "2013-10-18 09:00:00",
+    "2014-10-17 09:00:00",
+    "2015-10-16 09:00:00",
+    "2016-10-21 09:00:00",
+    "2017-10-20 09:00:00",
+    "2018-10-19 09:00:00",
+    "2019-10-18 09:00:00",
+    "2020-10-16 09:00:00",
+    "2021-10-15 09:00:00",
+    "2022-10-21 09:00:00",
+    "2023-10-20 09:00:00"
+  ),
+  year = c("2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023")
+)
 
 # fin
 print("Setup is complete!")
