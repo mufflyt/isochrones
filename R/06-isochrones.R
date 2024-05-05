@@ -8,14 +8,15 @@ source("R/01-setup.R")
 
 ##### To do the actual gathering of the isochrones: `process_and_save_isochrones`.  We do this in chunks of 25 because we were losing the entire searched isochrones when one error hit.  There is a 1:1 relationship between isochrones and rows in the `input_file` so to match exactly on row we need no errors.  Lastly, we save as a shapefile so that we can keep the MULTIPOLYGON geometry setting for the sf object making it easier to work with the spatial data in the future for plotting, etc.  I struggled because outputing the data as a dataframe was not easy to write it back to a MULTIPOLYGON.
 
-input_file <- #readr::read_csv("data/05-geocode-cleaning/end_inner_join_postmastr_clinician_data.csv") %>%
-  readr::read_csv("data/04-geocode/end_geocoded_data_nominatim.csv") %>%
+input_file <- 
+  readr::read_csv("data/04-geocode/geocoded_batch/end_rejoined_geocoded_data_nominatim.csv") %>%
   dplyr::mutate(id = row_number()) %>% # creates a unique identifier number
   dplyr::distinct(address, .keep_all = TRUE) %>%
   dplyr::filter(!is.na(lat) & !is.na(long)) %>% # Exclude rows where lat or long is NA
-  dplyr::filter(sub1 == "ONC") %>%
-  # dplyr::mutate (id = seq_len(nrow(.))) %>% # creates a unique identifier number
-  dplyr::filter(state_goba == "Colorado")# & city_goba == "Aurora") # For testing with a small sample
+  #dplyr::filter(sub1 == "ONC") %>%
+  dplyr::mutate (id = seq_len(nrow(.))) %>% # creates a unique identifier number
+  #dplyr::filter(State == "CO" & ploccityname == "AURORA") # For testing with a small sample.  ALL CAPS.  
+  dplyr::sample_n(size = 10)
 
 #**********************************************
 # TESTING ISOCHRONES WITH A ONE SECOND ISOCHRONE
@@ -51,8 +52,8 @@ input_file_no_error_rows <- input_file %>%
 
 # TODO I need to fix the process_and_save_isochrones function to give it a path to save.
 # Call the `process_and_save_isochrones` function with your input_file
-iso_datetime_yearly <-
-  c(
+iso_datetime_yearly <- tibble(
+  date = c(
     "2013-10-18 09:00:00",
     "2014-10-17 09:00:00",
     "2015-10-16 09:00:00",
@@ -64,20 +65,28 @@ iso_datetime_yearly <-
     "2021-10-15 09:00:00",
     "2022-10-21 09:00:00",
     "2023-10-20 09:00:00"
-  )
+  ),
+  year = c("2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023")
+)
+
+conflicted::conflicts_prefer(base::ceiling)
 
 isochrones_sf <- process_and_save_isochrones(
   input_file = input_file_no_error_rows,
   chunk_size = 25,
-  iso_datetime = "2023-10-20 09:00:00",
   iso_ranges = c(30 * 60, 
                  60 * 60, 
                  120 * 60, 
                  180 * 60),
   crs = 4326,
+  iso_datetime_yearly = iso_datetime_yearly,
   transport_mode = "car",
   file_path_prefix = "data/06-isochrones/isochrones_"
 )
+
+#Arranging the data by the rank column ensures that the layers are plotted in the correct order, with higher-ranked layers plotted on top of lower-ranked ones. This is indeed important for proper layering in the plot. 
+isochrones_sf <- isochrones_sf %>%
+  dplyr::arrange(desc(rank)); plot(isochrones_sf[5])
 
 # Check the dimensions of the final isochrones_data
 dim(isochrones_sf)
