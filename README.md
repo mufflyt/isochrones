@@ -652,7 +652,11 @@ Exploratory is a graphical wrapper over R.  It is impressive, and I use it for a
 Thank you to Lampros for this review.  https://superface.ai/blog/geocoding-apis-comparison-1 is a great article.  
 
 # HERE API
-I pay the HERE API for geocoding and building isochrones as I feel uncomfortable given my limited knowledge base maintaining an osrm instance on Amazon or in a docker file.  I do not understand either, so this is an easy way to geocode and build isochrones.  Costs for a Basic plan:  https://www.here.com/get-started/pricing#storageandtransferrates are reasonable.  Many thanks to Merlin 
+I pay the HERE API for geocoding and building isochrones as I feel uncomfortable given my limited knowledge base maintaining an osrm instance on Amazon or in a docker file.  I do not understand either, so this is an easy way to geocode and build isochrones.  Costs for a Basic plan:  https://www.here.com/get-started/pricing#storageandtransferrates are reasonable.  Many thanks to Merlin.
+
+https://platform.here.com/management/usage
+![Screenshot 2024-05-07 at 11 10 56 AM](https://github.com/mufflyt/isochrones/assets/44621942/4b30a85e-0dba-46a9-9902-48d02904cc39)
+
 
 ## HERE Geocoding and Search
 HERE Geocoding and Search costs $0.83 per 1,000 searches after 30,000 free geocodes per month.  Each physician for each year will need to be geocoded.  
