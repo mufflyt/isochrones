@@ -6,6 +6,212 @@ source("R/01-setup.R")
 conflicted::conflicts_prefer(exploratory::left_join)
 conflicted::conflicts_prefer(dplyr::case_when)
 conflicted::conflicts_prefer(dplyr::filter)
+conflicted::conflicts_prefer(lubridate::year)
+
+#****************************************************************************
+#* DESCRIBE NBER DATA 
+#****************************************************************************
+
+npi_all_collected <- readr::read_csv("~/Dropbox (Personal)/isochrones/data/02.33-nber_nppes_data/end_sp_duckdb_npi_all.csv")
+
+nber <- arsenal::tableby(~., data = npi_all_collected %>% dplyr::select(penumdatestr, lastupdatestr, pgender, pcredential, soleprop))
+
+nber_summary <- summary(nber, text=T, pfootnote=TRUE); nber_summary
+
+###
+# Add a year for every person
+###
+duckdb_file_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
+
+# Connect to DuckDB with the specified database file
+con <- dbConnect(duckdb::duckdb(), duckdb_file_path)
+
+# Write npi_all_collected into duckplyr database
+dbWriteTable(con, "npi_all_collected", npi_all_collected, overwrite = TRUE)
+dbListTables(con)
+npi_all_collected <- dplyr::tbl(con, "npi_all_collected"); glimpse(npi_all_collected)
+
+npi_all_collected <- npi_all_collected %>%
+  duckplyr::select(npi, pfname, plname, address, plocline1, ploccityname, plocstatename, ploczip, ploctel, pmailline1, pmailcityname, pmailstatename, pmailzip, pgender, pcredential, ptaxcode1, ptaxcode2, soleprop)
+
+# Create table with all years from 2005 to 2020
+years <- tibble(year = 2005:2020)
+dbWriteTable(con, "year_series", years, overwrite = TRUE)
+year_series <- dplyr::tbl(con, "year_series")
+
+# Assuming 'dataframe_i_have' contains 'lastupdatestr' along with 'npi' and other details
+# Let's assume dataframe_i_have is a large dataset and you've loaded it into your DuckDB database for efficiency
+dataframe_i_have <- tbl(con, "npi_all_collected")
+
+# Redefine the function to use within a dplyr chain
+assign_lastupdate <- function(npi, year, updates) {
+  update_values <- updates %>%
+    filter(npi == npi) %>%
+    arrange(lastupdatestr) %>%
+    pull(lastupdatestr) %>%
+    na.omit() %>%
+    unique()
+  
+  last_value <- NA_integer_
+  for (update in update_values) {
+    if (year >= update) {
+      last_value <- update
+    } else {
+      break
+    }
+  }
+  return(last_value)
+}
+
+# Sample for demonstration (Consider efficiency for large data)
+sample_data <- dataframe_i_have %>%
+  dplyr::filter(plname == "MUFFLY") %>%
+  collect()
+
+# Apply the function to each row
+dataframe_final <- sample_data %>%
+  rowwise() %>%
+  mutate(lastupdatestr = assign_lastupdate(npi, year, dataframe_i_have)) %>%
+  ungroup() %>%
+  arrange(npi, year)
+
+print(dataframe_final, n=100)
+
+
+
+# Apply the function
+sample_data$lastupdatestr <- mapply(assign_lastupdate, sample_data$npi, sample_data$year, MoreArgs = list(updates = dataframe_i_have))
+
+# View results
+print(sample_data)
+
+# 
+# # Perform the cross join correctly
+# dataframe_expanded <- npi_all_collected %>%
+#   dplyr::cross_join(year_series) %>%  # Use year_series directly if it's already defined as tbl
+#   dplyr::select(npi, pfname, plname, address, plocline1, ploccityname, plocstatename, ploczip, ploctel,
+#                 pmailline1, pmailcityname, pmailstatename, pmailzip, pgender, pcredential, ptaxcode1, ptaxcode2,
+#                 soleprop, year)  # Directly use 'year' without the table name prefix
+# 
+# 
+# # To view or confirm the operation, you might execute and collect a small sample
+# tyler <- dataframe_expanded %>% dplyr::filter(plname == "MUFFLY") %>% collect()
+# glimpse(tyler)
+# 
+# # Define a function to assign lastupdatestr based on the year
+# assign_lastupdate <- function(npi, year, updates) {
+#   # Find the specific updates list for the given npi
+#   update_values <- updates %>% 
+#     filter(npi == !!npi) %>%
+#     pull(lastupdatestr) %>%
+#     unlist() %>%
+#     sort(decreasing = FALSE)
+#   
+#   # Determine the correct lastupdatestr for each year
+#   last_value <- NA_integer_
+#   for (update in update_values) {
+#     if (year >= update) {
+#       last_value <- update
+#     } else {
+#       break
+#     }
+#   }
+#   return(last_value)
+# }
+# 
+# # Apply the function to each row
+# dataframe_final <- tyler %>%
+#   rowwise() %>%
+#   mutate(lastupdatestr = assign_lastupdate(npi, year, dataframe_i_have)) %>%
+#   ungroup() %>%
+#   arrange(npi, year)
+# 
+# print(dataframe_final, n=100)
+
+
+
+# Calculate the needed values
+total_physicians <- nrow(npi_all_collected)
+start_year <- min(npi_all_collected$lastupdatestr)
+end_year <- max(npi_all_collected$lastupdatestr)
+unique_physicians <- npi_all_collected %>%
+  distinct(npi, .keep_all = FALSE) %>%
+  nrow()
+
+# Use glue to create the message with formatted numbers
+glue::glue("There are {format(total_physicians, big.mark = ',')} OBGYN physicians listed from {start_year} to {end_year}. There were only {format(unique_physicians, big.mark = ',')} unique physicians by NPI number in the NBER dataset.")
+
+# Group the data by npi and count the number of unique years for each physician
+conflicted::conflicts_prefer(lubridate::year)
+physician_years <- npi_all_collected %>%
+  group_by(npi) %>%
+  summarise(years_present = n_distinct(lastupdatestr))
+
+# Count the number of physicians for each number of years present
+physician_counts <- physician_years %>%
+  group_by(years_present) %>%
+  summarise(physician_count = n())
+
+# Calculate the percentage of physicians for each number of years present
+total_physicians <- n_distinct(npi_all_collected$npi)
+physician_counts <- physician_counts %>%
+  mutate(percentage = (physician_count / total_physicians) * 100)
+
+# Group by npi and count the number of unique years each physician appears
+year_counts <- npi_all_collected %>%
+  group_by(npi) %>%
+  summarize(year_count = n_distinct(lastupdatestr)) %>%
+  pull(year_count)
+
+# Count the number of physicians who appear in every year
+num_physicians_all_years <- sum(year_counts == max(year_counts))
+
+# Calculate the percentage of physicians who appear in every year
+percent_all_years <- (num_physicians_all_years / unique_physicians) * 100
+
+print(physician_counts)
+glue::glue("There were {format(num_physicians_all_years, big.mark = ',')} OBGYN physicians ({round(percent_all_years, 1)}% of the total physicians) were present in all 15 years from {start_year} to {end_year}.")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #****************************************************************************
 #* CLEAN EACH YEAR OF DATA TO CREATE 'year_by_year_physician_compare_data_collected'.  WE ONLY BROUGHT IN MINIMAL INFO ABOUT THE PHYSICIANS FROM THE POSTICO DATABASE LIKE NAME AND NPI NUMBER.  

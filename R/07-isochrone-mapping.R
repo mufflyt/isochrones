@@ -9,7 +9,7 @@ ACOG_Districts <- tyler::ACOG_Districts
 # Assuming subspecialists_lat_long and isochrones are both sf dataframes
 # First, create a copy of subspecialists_lat_long with the point geometries
 subspecialists_lat_long <- read_csv("data/04-geocode/end_geocoded_data_nominatim.csv") %>%
-  left_join(`ACOG_Districts`, by = join_by(`state` == `State`)) 
+  exploratory::left_join(`ACOG_Districts`, by = join_by(`State` == `State`)) 
  
   # mutate(id = 1:n()) %>%
   # mutate(postal_code = stringr::str_sub(postal_code, 1, 5)) %>%
@@ -138,8 +138,8 @@ ggplot() +
 #*******************************
 # SANITY CHECK
 #******************************* 
-end_isochrones_sf_clipped$range <- as.factor(end_isochrones_sf_clipped$rng_dsc)
-color_palette <- viridis::magma(length(unique(end_isochrones_sf_clipped$rng_dsc)))
+end_isochrones_sf_clipped$range <- as.factor(end_isochrones_sf_clipped$range)
+color_palette <- viridis::magma(length(unique(end_isochrones_sf_clipped$range)))
 
 isochrone_map <- leaflet() %>%
   addProviderTiles("CartoDB.Positron", group = "Greyscale") %>%
@@ -175,7 +175,7 @@ isochrone_map <- leaflet() %>%
     data = end_isochrones_sf_clipped,
     position = "bottomright",
     colors = color_palette,
-    labels = unique(end_isochrones_sf_clipped$rng_dsc),  # Corrected to use drive_time
+    labels = unique(end_isochrones_sf_clipped$range),  # Corrected to use drive_time
     title = "Drive Time (minutes)",
     opacity = 0.6
   ) %>%

@@ -19,6 +19,7 @@ invisible(gc())
 
 library(censusapi)       # Access US Census Bureau data via API
 library(conflicted)
+library(DataExplorer)
 library(data.table)      # Extends data frame capabilities for efficient data manipulation
 library(DBI)             # This is required for connecting to the database
 library(dbplyr)
@@ -492,19 +493,24 @@ test_and_process_isochrones <- function(input_file) {
 
 ##############################
 ###############################
-process_and_save_isochrones <- function(input_file, chunk_size = 25, 
+# Define cache filesystem
+fc <- cache_filesystem(file.path(".cache"))
+
+process_and_save_isochrones <- memoise::memoise(function(input_file, chunk_size = 25, 
                                         iso_datetime_yearly,
                                         iso_ranges = c(30*60, 60*60, 120*60, 180*60),
                                         crs = 4326, 
                                         transport_mode = "car",
                                         file_path_prefix = "data/06-isochrones/isochrones_") {
   message("Starting isochrones processing...")
+  conflicted::conflicts_prefer(base::setdiff)
   
-  input_file <- input_file %>% 
-    mutate(lat = as.numeric(lat),
-           long = as.numeric(long))
+  # Convert latitude and longitude to numeric
+  input_file <- input_file %>%
+    dplyr::mutate(across(c(lat, long), as.numeric))
   
-  input_file_sf <- st_as_sf(input_file, coords = c("long", "lat"), crs = crs)
+  # Convert input file to sf object
+  input_file_sf <- sf::st_as_sf(input_file, coords = c("long", "lat"), crs = crs)
   
   num_chunks <- ceiling(nrow(input_file_sf) / chunk_size)
   isochrones_list <- list()
@@ -517,9 +523,9 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25,
     chunk_data <- input_file_sf[start_idx:end_idx, ]
     
     year_index <- match(format(as.POSIXct(iso_datetime_yearly$date), "%Y"), iso_datetime_yearly$year)
-    
     posix_time <- as.POSIXct(iso_datetime_yearly$date[year_index], format = "%Y-%m-%d %H:%M:%S")
     
+    # Process isochrones
     isochrones <- tryCatch(
       {
         hereR::isoline(
@@ -544,13 +550,15 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25,
     if (!is.null(isochrones)) {
       current_datetime <- format(Sys.time(), "%Y%m%d%H%M%S")
       
+      # Generate file name
       file_name <- paste(file_path_prefix, current_datetime, "_chunk_", min(chunk_data$id), "_to_", max(chunk_data$id))
       
       isochrones <- isochrones %>%
-        mutate(arrival = as.POSIXct(arrival, format = "%Y-%m-%d %H:%M:%S"))
+        dplyr::mutate(arrival = as.POSIXct(arrival, format = "%Y-%m-%d %H:%M:%S"))
       
+      # Write isochrones to shapefile
       message("Writing chunk ", i, " to file: ", file_name)
-      st_write(
+      sf::st_write(
         isochrones,
         dsn = file_name,
         layer = "isochrones",
@@ -561,11 +569,37 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25,
       isochrones_list[[i]] <- isochrones
     }
   }
-  
-  isochrones_data <- do.call(rbind, isochrones_list)
+  # Combine isochrones from all chunks
+  isochrones_data <- base::do.call(rbind, isochrones_list)
   
   message("Finished processing all chunks.")
   return(isochrones_data)
+}, cache = fc) #cache argument here
+
+##############################
+###############################
+track_api_calls_and_cost <- function(iso_ranges, num_rows) {
+  # Define constants for pricing
+  free_calls_per_month <- 2500
+  cost_per_thousand_calls <- 5.50
+  
+  # Calculate total API calls per row
+  api_calls_per_row <- length(iso_ranges)
+  
+  # Calculate total API calls for all rows
+  total_api_calls <- api_calls_per_row * num_rows
+  
+  # Determine if API calls exceed the free limit
+  if (total_api_calls <= free_calls_per_month) {
+    total_cost <- 0
+  } else {
+    # Calculate cost for additional API calls
+    additional_calls <- total_api_calls - free_calls_per_month
+    total_cost <- additional_calls * cost_per_thousand_calls / 1000
+  }
+  
+  # Return total API calls and estimated cost
+  return(list(total_api_calls = total_api_calls, total_cost = total_cost))
 }
 
 
@@ -959,23 +993,28 @@ remove_table <- function(connection, table_name) {
 }
 
 # Used in 04-create_geocode_nominatim.R
-
 iso_datetime_yearly <- tibble(
-  date = c(
-    "2013-10-18 09:00:00",
-    "2014-10-17 09:00:00",
-    "2015-10-16 09:00:00",
-    "2016-10-21 09:00:00",
-    "2017-10-20 09:00:00",
-    "2018-10-19 09:00:00",
-    "2019-10-18 09:00:00",
-    "2020-10-16 09:00:00",
-    "2021-10-15 09:00:00",
-    "2022-10-21 09:00:00",
-    "2023-10-20 09:00:00"
-  ),
+  date = c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-16 09:00:00",
+           "2016-10-21 09:00:00", "2017-10-20 09:00:00", "2018-10-19 09:00:00",
+           "2019-10-18 09:00:00", "2020-10-16 09:00:00", "2021-10-15 09:00:00",
+           "2022-10-21 09:00:00", "2023-10-20 09:00:00"),
   year = c("2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023")
 )
+
+# Function to generate range descriptions
+generate_range_description <- function(range) {
+  if (range >= 0 && range <= 30) {
+    return("0-29 minutes")
+  } else if (range > 30 && range <= 60) {
+    return("30-59 minutes")
+  } else if (range > 60 && range <= 120) {
+    return("60-119 minutes")
+  } else if (range > 120 && range <= 180) {
+    return("120-179 minutes")
+  } else {
+    return("180+ minutes")
+  }
+}
 
 # fin
 print("Setup is complete!")
