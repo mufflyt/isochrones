@@ -166,8 +166,8 @@ glue::glue("There were {format(num_physicians_all_years, big.mark = ',')} OBGYN 
 # ' ---------------------------------------------------------
 # NPPES Section -----------------------------------------------
 
-# `nppes` Batch read in NPPES data to duckDB-----------------------------------------
-con <- dbConnect(duckdb::duckdb(), "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/my_duckdb.duckdb")  
+# `nppes_all` Batch read in NPPES data to duckDB------------------------------
+con <- dbConnect(duckdb::duckdb(), "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/unzipped_p_files/nppes_my_duckdb.duckdb")  
 directory_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/unzipped_p_files/"
 
 file_names <- c(
@@ -195,13 +195,13 @@ print(tables_created)
 # List all tables in DuckDB to confirm
 dbListTables(con)
 
-
-# 'nppes_2024'  cleaning ---------------------------------------------
+# 'nppes_all'  cleaning ---------------------------------------------
 # Define the list of table names
 table_names <- dbListTables(con)
 
 # Run the function
 tables_processed <- process_tables(con, table_names)
+
 
 # 'nppes_2024' read in one file at a time file to DuckDB ----
 file_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_April_2024/npidata_pfile_20050523-20240407.csv"
