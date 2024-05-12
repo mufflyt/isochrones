@@ -749,3 +749,11 @@ print(all_results)
 
 Best,
 Merlin
+
+
+
+# Retirement
+I am not sure how to determine when people retire?
+* NPPES listing seems to continue on forever even when they are retired (Chris Carey listed in 2022.  Sue Davidson listed in 2022.  Karlotta Davis listed in 2022.)
+* I do not have the year they stopped completing MOC.
+* Maybe Physician Compare because if they do not bill for Medicare patients they would not be in there?
