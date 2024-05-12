@@ -203,6 +203,7 @@ table_names <- dbListTables(con)
 tables_processed <- process_tables(con, table_names)
 
 
+
 # 'nppes_2024' read in one file at a time file to DuckDB ----
 file_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_April_2024/npidata_pfile_20050523-20240407.csv"
 
