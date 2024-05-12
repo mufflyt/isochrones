@@ -1,26 +1,24 @@
 # Here we are trying to get year-specific physicians from physician_compare.  
 
-#######################
+# Setup and conflicts -----------------------------------------------------
 source("R/01-setup.R")
-####################### 
 conflicted::conflicts_prefer(exploratory::left_join)
 conflicted::conflicts_prefer(dplyr::case_when)
 conflicted::conflicts_prefer(dplyr::filter)
 conflicted::conflicts_prefer(lubridate::year)
 
 #****************************************************************************
-#* DESCRIBE NBER DATA 
+#* DESCRIBE NBER DATA -----
 #****************************************************************************
-
 npi_all_collected <- readr::read_csv("~/Dropbox (Personal)/isochrones/data/02.33-nber_nppes_data/end_sp_duckdb_npi_all.csv")
 
 nber <- arsenal::tableby(~., data = npi_all_collected %>% dplyr::select(penumdatestr, lastupdatestr, pgender, pcredential, soleprop))
 
 nber_summary <- summary(nber, text=T, pfootnote=TRUE); nber_summary
 
-###
-# Add a year for every person
-###
+#****************************************************************************
+# Add a year for every person ----
+#****************************************************************************
 duckdb_file_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
 
 # Connect to DuckDB with the specified database file
@@ -142,7 +140,6 @@ unique_physicians <- npi_all_collected %>%
 glue::glue("There are {format(total_physicians, big.mark = ',')} OBGYN physicians listed from {start_year} to {end_year}. There were only {format(unique_physicians, big.mark = ',')} unique physicians by NPI number in the NBER dataset.")
 
 # Group the data by npi and count the number of unique years for each physician
-conflicted::conflicts_prefer(lubridate::year)
 physician_years <- npi_all_collected %>%
   group_by(npi) %>%
   summarise(years_present = n_distinct(lastupdatestr))
@@ -214,6 +211,7 @@ glue::glue("There were {format(num_physicians_all_years, big.mark = ',')} OBGYN 
 
 
 #****************************************************************************
+#* physician compare year-by-year ------
 #* CLEAN EACH YEAR OF DATA TO CREATE 'year_by_year_physician_compare_data_collected'.  WE ONLY BROUGHT IN MINIMAL INFO ABOUT THE PHYSICIANS FROM THE POSTICO DATABASE LIKE NAME AND NPI NUMBER.  
 #****************************************************************************
 year_by_year_physician_compare_data_collected <- exploratory::searchAndReadDelimFiles(folder = "data/02.5-subspecialists_over_time/Postico", pattern = "*.csv|*.tsv|*.txt|*.text|*.tab", delim = ",", # I had to manually specify the delimiter here.  
@@ -295,15 +293,15 @@ percent_all_years <- (num_physicians_all_years / unique_physicians) * 100
 print(physician_counts)
 glue::glue("There were {format(num_physicians_all_years, big.mark = ',')} OBGYN and GO physicians ({round(percent_all_years, 1)}% of the total physicians) were present in all ten years from 2013 to 2023.")
 
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
-#####  SANITY CHECK
-#### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
+#**************************
+# * `physician compare` SANITY CHECK ----
+#**************************
 
 # MASTROYANNIS is found in physician_compare_data with a Montana address because Costas does NOT see Medicare patients.
 physician_compare_data %>% filter(`Last Name` == "MASTROYANNIS")
 
 #**************************
-# BRING IN GOBA DATA AND MERGE WITH TO PHYSICIAN COMPARE DATA
+# BRING IN GOBA DATA AND MERGE WITH TO PHYSICIAN COMPARE DATA ----
 #**************************
 # Load the datasets
 physician_compare_data <- read_csv("data/02.5-subspecialists_over_time/end_year_by_year_physician_compare_data_collected.csv")

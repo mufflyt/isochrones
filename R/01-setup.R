@@ -1016,5 +1016,119 @@ generate_range_description <- function(range) {
   }
 }
 
+# 02.33-bner_nppes_data
+create_duckdb_tables <- function(directory_path, file_names, con) {
+  conflicted::conflicts_prefer(stringr::str_remove_all)
+  
+  # Iterate over each file name provided
+  for (i in seq_along(file_names)) {
+    file_name <- file_names[i]
+    full_path <- file.path(directory_path, file_name)
+    table_name <- tools::file_path_sans_ext(gsub("[^A-Za-z0-9]", "_", file_name))  # Clean and create a valid table name
+    table_name <- paste0(table_name, "_", i)  # Add counter to make table name unique
+    
+    # Construct SQL command to create a table
+    sql_command <- sprintf(
+      "CREATE TABLE %s AS SELECT * FROM read_csv_auto('%s', header=TRUE, quote='\"', escape='\"', null_padding=true, ignore_errors=true)",
+      table_name, full_path
+    )
+    
+    # Execute the SQL command
+    dbExecute(con, sql_command)
+    
+    # Optional: output the list of tables after creation
+    cat(sprintf("Table '%s' created from '%s'.\n", table_name, file_name))
+  }
+  
+  # List all tables in DuckDB to confirm
+  return(dbListTables(con))
+}
+
+# 02.33-bner_nppes_data
+# Define a function to process each table in the database
+process_tables <- function(con, table_names) {
+  # Initialize an empty list to store the results
+  results <- list()
+  
+  # Initialize an empty data frame to store merged data
+  all_data <- data.frame()
+  
+  # Loop through each table name
+  for (i in 1:length(table_names)) {
+    table_name <- table_names[i]
+    cat("Processing table:", table_name, "\n")
+    
+    # Use tryCatch to handle errors
+    tryCatch({
+      # Use duckplyr to create a reference to the table without loading it into R
+      table_ref <- tbl(con, table_name)
+      
+      # Perform the data processing steps
+      processed_data <- table_ref %>%
+        select(
+          NPI, # npi,
+          `Entity Type Code`, # entity,
+          `Provider First Name`, # pfname,
+          `Provider Last Name (Legal Name)`, # plname,
+          `Provider Other First Name`, # pfnameoth,
+          `Provider First Line Business Practice Location Address`, # plocline1,
+          `Provider Business Practice Location Address City Name`, # ploccityname,
+          `Provider Business Practice Location Address State Name`, # plocstatename,
+          `Provider Business Practice Location Address Postal Code`, # ploczip,
+          `Provider Business Practice Location Address Country Code (If outside U.S.)`, # ploccountry,
+          `Provider Business Practice Location Address Telephone Number`, # ploctel,
+          `Provider First Line Business Mailing Address`, # pmailline1,
+          `Provider Business Mailing Address City Name`, # pmailcityname,
+          `Provider Business Mailing Address State Name`, # pmailstatename,
+          `Provider Business Mailing Address Country Code (If outside U.S.)`, # pmailcountry,
+          `Provider Business Mailing Address Postal Code`, # pmailzip,
+          `Provider Gender Code`, # pgender,
+          `Provider Credential Text`, # pcredential,
+          `Provider Organization Name (Legal Business Name)`, # porgname,
+          `Healthcare Provider Taxonomy Code_1`, # ptaxcode1,
+          `Healthcare Provider Taxonomy Code_2`, # ptaxcode2,
+          `Is Sole Proprietor`# soleprop,
+        ) %>%
+        filter(
+          `Entity Type Code` == 1,
+          `Provider Business Mailing Address Country Code (If outside U.S.)` == "US",
+          `Provider Business Practice Location Address Country Code (If outside U.S.)` == "US",
+          `Healthcare Provider Taxonomy Code_1` %in% c("207V00000X", "207VC0200X", "207VE0102X", "207VF0040X", "207VG0400X", "207VM0101X", "207VX0000X", "207VX0201X", "207VB0002X") |
+            `Healthcare Provider Taxonomy Code_2` %in% c("207V00000X", "207VC0200X", "207VE0102X", "207VF0040X", "207VG0400X", "207VM0101X", "207VX0000X", "207VX0201X")
+        ) %>%
+        select(-`Entity Type Code`, -`Provider Other First Name`, -`Provider Business Practice Location Address Country Code (If outside U.S.)`, -`Provider Business Mailing Address Country Code (If outside U.S.)`) %>%
+        mutate(across(c(`Provider First Name`, `Provider Last Name (Legal Name)`, `Provider First Line Business Practice Location Address`, `Provider Business Practice Location Address City Name`, `Provider First Line Business Mailing Address`, `Provider Business Mailing Address City Name`), ~str_to_upper(.))) %>%
+        distinct(NPI, `Provider Business Practice Location Address City Name`, `Provider Business Practice Location Address State Name`, .keep_all = TRUE) %>%
+        mutate(year = table_name) # Add a new column "year" with the table name
+      
+      cat("Processed table:", table_name, "\n")
+      cat("Writing processed data to CSV...\n")
+      
+      # Collect the processed data
+      processed_data_df <- processed_data %>% collect()
+      
+      # Append the processed data to the merged data frame
+      all_data <- dplyr::bind_rows(all_data, processed_data_df)
+      
+      # Store the table name in the results list
+      results[[table_name]] <- processed_data
+    }, error = function(e) {
+      cat("Error processing table:", table_name, "\n")
+      message("Error message:", e$message, "\n\n")
+    })
+  }
+  
+  cat("All tables processed.\n")
+  
+  # Write the merged data frame to disk
+  write_csv(all_data, "~/Dropbox (Personal)/isochrones/data/02.33-nber_nppes_data/nppes_years/all_nppes_files.csv")
+  
+  # Write the merged data frame to the database
+  #db_write_table(con, "default.all_nppes_files", all_data, overwrite = TRUE)
+  
+  # Return the list of processed tables
+  return(results)
+}
+
 # fin
 print("Setup is complete!")
