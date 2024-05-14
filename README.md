@@ -766,4 +766,12 @@ prescribers(year = 2021,
             type = 'Provider',
             npi = 1003000423)
 ```
-* Opioid prescription as a marker for surgery.  
+* www.docinfo.org through FSMB search only tells you if they have a license or not
+* Opioid prescription as a marker for surgery.
+* certificationmatters.org.  https://www.certificationmatters.org/find-my-doctor/?dsearch=1&lname=Muffly&fname=&state=CO&specialty=obstetrics-gynecology.
+  You can search without a state.  https://www.certificationmatters.org/find-my-doctor/?dsearch=1&lname=Muffly&fname=&state=&specialty=obstetrics-gynecology
+  The last name search requires 5 letters
+  You can search without a first name
+  You can search without a state if you delete it
+  You are allowed 15 searches per day, and you will be kicked out after that.  Incognito mode does not work either.  
+  You can't get more than 25 results at a time
