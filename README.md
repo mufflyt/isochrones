@@ -753,7 +753,17 @@ Merlin
 
 
 # Retirement
-I am not sure how to determine when people retire?
-* NPPES listing seems to continue on forever even when they are retired (Chris Carey listed in 2022.  Sue Davidson listed in 2022.  Karlotta Davis listed in 2022.)
+I am not sure how to determine when people retire?  What is on my retirement list of to-dos:  
+* NPPES listing seems to continue forever even when they are retired (Chris Carey listed in 2022.  Sue Davidson listed in 2022.  Karlotta Davis listed in 2022.)
 * I do not have the year they stopped completing MOC.
-* Maybe Physician Compare because if they do not bill for Medicare patients they would not be in there?
+* Maybe Physician Compare because if they do not bill for Medicare patients they would not be in there?  There is what I think is an early version of Physician Compare at NBER but it does not have the year for each row.
+
+* Malpractice insurance coverage????
+* Medicare PArt D Prescribing data: https://data.cms.gov/provider-summary-by-type-of-service/medicare-part-d-prescribers/medicare-part-d-prescribers-by-provider
+The 'provider' package (SWEET 📦 ) has:
+```r
+prescribers(year = 2021,
+            type = 'Provider',
+            npi = 1003000423)
+```
+* Opioid prescription as a marker for surgery.  
