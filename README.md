@@ -753,6 +753,7 @@ Merlin
 
 
 # Retirement
+* ACOG Committee Opinion No. 739: The Late-Career Obstetrician-Gynecologist
 I am not sure how to determine when people retire?  What is on my retirement list of to-dos:  
 * NPPES listing seems to continue forever even when they are retired (Chris Carey listed in 2022.  Sue Davidson listed in 2022.  Karlotta Davis listed in 2022.)
 * I do not have the year they stopped completing MOC.
