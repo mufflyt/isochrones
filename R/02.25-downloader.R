@@ -1,8 +1,11 @@
 # Downloading multiple years of NPPES files from NBER, unzip, and gather the appropriate files into one directory.  Many thanks to NBER for caching the NPI file for multiple years at http://data.nber.org/nppes/zip-orig/.  These files are quite large so I used an external hard drive to save the data.  
 
+# Setup -------------------------------------------------------------------
 source("R/01-setup.R")
 
-#### Download the NPPES file at https://download.cms.gov/nppes/NPI_Files.html
+
+# NPPES file download -----------------------------------------------------
+# https://download.cms.gov/nppes/NPI_Files.html
 # https://download.cms.gov/nppes/NPPES_Data_Dissemination_April_2024.zip
 base_url <- "https://download.cms.gov/nppes/"
 file_names <- c("NPPES_Data_Dissemination_April_2024.zip")
@@ -17,6 +20,7 @@ for (file_name in file_names) {
   download_file(file_name, base_url, dest_dir)
 }
 
+# NPPES unzip -------------------------------------------------------------
 # Unzip the file
 unzip(file.path(dest_dir, file_name), exdir = dest_dir)
 
@@ -36,6 +40,7 @@ if (!dir_exists(target_dir)) {
   dir_create(target_dir)
 }
 
+# NPPES Copy largest file to folder ---------------------------------------
 # Execute the function
 copy_largest_file_from_each_year(base_unzip_dir, target_dir)
 
@@ -144,3 +149,37 @@ if (!dir_exists(target_dir)) {
 copy_largest_file_from_each_year(base_unzip_dir, target_dir)
 
 #######
+
+
+# Facility Affiliation ----------------------------------------------------
+file_dir <- "/Volumes/Video Projects Muffly 1/facility_affiliation"
+file_names <- list.files(file_dir)
+dest_dir <- "/Volumes/Video Projects Muffly 1/facility_affiliation"
+
+# Ensure the destination directory exists - create using system call
+dir_create_command <- sprintf("mkdir -p %s", shQuote(dest_dir))
+system(dir_create_command)
+
+# Facility affiliation unzip ---------------------------------------------------------
+# After downloading all files, loop over the file names and unzip each into its own subdirectory
+for (file_name in file_names) {
+  unzip_file(file_name, dest_dir)
+}
+
+# Copy largest file to a single directory
+base_unzip_dir <- "/Volumes/Video Projects Muffly 1/facility_affiliation"
+
+# Target directory for the largest files from each year
+target_dir <- "/Volumes/Video Projects Muffly 1/facility_affiliation/unzipped_files"
+
+# Ensure the target directory exists
+if (!dir_exists(target_dir)) {
+  dir_create(target_dir)
+}
+
+# Facility affiliation Copy largest file to folder ---------------------------------
+# Execute the function
+conflicted::conflicts_prefer(dplyr::bind_rows)
+copy_largest_file_from_each_year(base_unzip_dir, target_dir)
+
+
