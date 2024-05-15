@@ -1044,6 +1044,23 @@ create_duckdb_tables <- function(directory_path, file_names, con) {
   return(dbListTables(con))
 }
 
+# # Define the directory path
+# directory_path <- "/path/to/your/directory"
+# 
+# # Retrieve file names from the directory
+# file_names <- list_files_in_directory(directory_path)
+# 
+# # Database connection (already defined)
+# con <- your_existing_database_connection
+# 
+# # Create DuckDB tables from the files
+# created_tables <- create_duckdb_tables(directory_path, file_names, con)
+# 
+# # Optional: print the list of tables in DuckDB after creation
+# cat("List of tables in DuckDB after creation:\n")
+# print(created_tables)
+
+
 # 02.33-bner_nppes_data
 # Define a function to process each table in the database
 process_tables <- function(con, table_names) {
