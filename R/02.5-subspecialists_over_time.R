@@ -126,48 +126,8 @@ print(physician_counts)
 glue::glue("There were {format(num_physicians_all_years, big.mark = ',')} OBGYN physicians ({round(percent_all_years, 1)}% of the total physicians) were present in all 15 years from {start_year} to {end_year}.")
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #****************************************************************************
-#* physician compare year-by-year ------
+# physician compare year-by-year ------
 #* CLEAN EACH YEAR OF DATA TO CREATE 'year_by_year_physician_compare_data_collected'.  WE ONLY BROUGHT IN MINIMAL INFO ABOUT THE PHYSICIANS FROM THE POSTICO DATABASE LIKE NAME AND NPI NUMBER.  
 #****************************************************************************
 year_by_year_physician_compare_data_collected <- exploratory::searchAndReadDelimFiles(folder = "data/02.5-subspecialists_over_time/Postico", pattern = "*.csv|*.tsv|*.txt|*.text|*.tab", delim = ",", # I had to manually specify the delimiter here.  
@@ -249,12 +209,25 @@ percent_all_years <- (num_physicians_all_years / unique_physicians) * 100
 print(physician_counts)
 glue::glue("There were {format(num_physicians_all_years, big.mark = ',')} OBGYN and GO physicians ({round(percent_all_years, 1)}% of the total physicians) were present in all ten years from 2013 to 2023.")
 
+# * `physician compare` for retirement ----
+year_by_year_physician_compare_data_collected %>%
+  group_by(NPI) %>%
+  slice_max(order_by = year, n = 1) %>%
+  mutate(highest_year = year, .after = ifelse("year" %in% names(.), "year", last_col())) %>%
+  select(NPI, highest_year, `Last Name`, `First Name`) %>%
+  ungroup() %>%
+  select(-`Last Name`, -`First Name`) %>%
+  rename(`retirement year` = highest_year) %>%
+  # Remove the last year because that is people who are still practicing.  
+  filter(`retirement year` != 2023) %>%
+  write_csv("data/02.5-subspecialists_over_time/physician_compare_retirement_years.csv")
+
 #**************************
 # * `physician compare` SANITY CHECK ----
 #**************************
 
 # MASTROYANNIS is found in physician_compare_data with a Montana address because Costas does NOT see Medicare patients.
-physician_compare_data %>% filter(`Last Name` == "MASTROYANNIS")
+year_by_year_physician_compare_data_collected %>% filter(`Last Name` == "MASTROYANNIS")
 
 #**************************
 # BRING IN GOBA DATA AND MERGE WITH TO PHYSICIAN COMPARE DATA ----
