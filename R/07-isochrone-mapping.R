@@ -12,6 +12,8 @@
 # ### File Management and Data Export
 # Lastly, the script is geared towards robust output management by writing the processed data back into shapefiles—a popular format in geographic information systems (GIS) that supports geometric location and attribute information. This step ensures that the spatial data, now enriched and validated, is stored in a standardized format ready for further analysis or sharing.
 
+
+
 #######################
 source("R/01-setup.R")
 #######################

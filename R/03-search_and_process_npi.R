@@ -22,6 +22,50 @@ source("R/01-setup.R")
 # 
 # Save Results: The final merged dataset is saved in RDS (R Data Store) format for further analysis or use in other R scripts.
 
+# Required Input Files for Script Execution
+
+# 1. NPI Data Files:
+#    - Directory: "/Volumes/Video Projects Muffly 1/nppes_historical_downloads"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_Nov_2007.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_May_2008.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_June_2009.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_Feb_2010.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_April_2011.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_Apr_2012.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_Apr_2013.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_Apr_2014.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_April_2015.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_Apr_2016.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_April_2017.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_April_2018.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_April_2019.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_July_2020.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Disseminat_April_2021.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Disseminat_April_2022.zip"
+#      - "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/NPPES_Data_Dissemination_April_2024.zip"
+
+# 2. Filtered Subspecialists Data:
+#    - File: "/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/goba/subspecialists_only.csv"
+
+# 3. Unfiltered Subspecialists Data:
+#    - File: "data/03-search_and_process_npi/unfiltered_subspecialists_only.csv"
+
+# 4. NA Filtered Subspecialists Data:
+#    - File: "data/03-search_and_process_npi/NA_filtered_subspecialists_only.csv"
+
+# 5. Output NA Filtered Subspecialists Data:
+#    - File: "data/03-search_and_process_npi/output_NA_filtered_subspecialists_only.csv"
+
+# 6. Searched NPI Numbers Data:
+#    - File: "data/03-search_and_process_npi/searched_npi_numbers.csv"
+
+# 7. Subspecialists Only Data:
+#    - File: "data/03-search_and_process_npi/subspecialists_only.csv"
+
+# 8. End Complete NPI for Subspecialists Data:
+#    - File: "data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds"
+
+
 #**************************
 # GETS NPI NUMBERS FOR THOSE WITHOUT NPI NUMBERS 
 #**************************

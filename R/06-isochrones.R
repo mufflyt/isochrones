@@ -15,6 +15,39 @@
 # ### Concluding Steps
 # The script concludes by saving the Leaflet map as an HTML file, facilitating easy sharing and presentation of the results. This comprehensive script not only demonstrates advanced capabilities in handling and analyzing geospatial data but also ensures that the results are accessible and informative, suitable for stakeholders needing detailed geographic insights.
 
+# Required Input Files for Script Execution ----
+
+# 1. Setup Script:
+#    - R Script: "R/01-setup.R"
+
+# 2. Input and Output Directories:
+#    - Output Directory: "data/06-isochrones/"
+#    - File Path: "data/04-geocode/geocoded_batch/end_rejoined_geocoded_data_nominatim.csv"
+
+# 3. GOBA Unrestricted Data:
+#    - RDS File: "data/06-isochrones/goba/goba_unrestricted.rds"
+
+# 4. Geocoded Data:
+#    - CSV File: "data/04-geocode/geocoded_batch/end_rejoined_geocoded_data_nominatim.csv"
+
+# 5. Merged Data Output:
+#    - CSV File: "data/06-isochrones/end_merged_data_isochrones_input_file.csv"
+
+# 6. Shapefiles:
+#    - Shapefile: "data/06-isochrones/merged_sf.shp"
+#    - Shapefile: "data/06-isochrones/merged_data_sf.shp"
+#    - Shapefile: "data/06-isochrones/end_isochrones_sf_clipped/isochrones.shp"
+
+# 7. US States Data:
+#    - GeoJSON Data: "state_data.csv"
+
+# 8. Isochrones Clipped Output:
+#    - Shapefile: "data/06-isochrones/end_isochrones_sf_clipped/isochrones.shp"
+
+# 9. Leaflet Map Output:
+#    - HTML File: "data/06-isochrones/map.html"
+
+
 #######################
 source("R/01-setup.R")
 #######################

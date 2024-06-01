@@ -15,6 +15,36 @@
 # **Visualization and Further Analysis:**
 #   The script is structured to possibly support further steps like data visualization or deeper analysis, evidenced by placeholders and comments that suggest integrating additional datasets or performing group-based summaries.
 
+# Required Input Files for Script Execution ----
+
+# 1. Subspecialists Data:
+#    - CSV File: "data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds"
+
+# 2. GOBA Unrestricted Cleaned Data:
+#    - CSV File: "data/02.5-subspecialists_over_time/goba_unrestricted_cleaned.csv"
+
+# 3. Geocoding Data for Nominatim Results:
+#    - CSV File: "data/04-geocode/for_geocoding_with_nominatim__results_clinician_data.csv"
+#    - CSV File: "data/04-geocode/short_for_testing_for_geocoding_with_nominatim__results_clinician_data.csv"
+
+# 4. NBER Data:
+#    - CSV File: "data/02.33-nber_nppes_data/end_sp_duckdb_npi_all.csv"
+
+# 5. State Data for Sanity Check:
+#    - CSV File: "state_data.csv"
+
+# 6. Final Geocoded Data:
+#    - CSV File: "data/04-geocode/end_sp_duckdb_npi_all_geocoded_data_nominatim.csv"
+#    - CSV File: "data/04-geocode/end_rejoined_geocoded_data_nominatim.csv"
+#    - CSV File: "data/04-geocode/end_geocoded_data_nominatim.csv"
+
+# 7. Final Geocoded Data for Output:
+#    - CSV File: "data/04-geocode/end_rejoined_geocoded_data_nominatim.csv"
+
+# 8. Final Output:
+#    - PNG File: "data/04-geocode/geocode_flowchart.png"
+
+
 #######################
 source("R/01-setup.R")
 #######################
