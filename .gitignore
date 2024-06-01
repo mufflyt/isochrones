@@ -12,3 +12,4 @@ figures/*
 .here
 api_keys.R
 data/04-geocode/geocoded_batch/raw/*.csv
+data/06-isochrones/isochrones_*_chunk_*/
