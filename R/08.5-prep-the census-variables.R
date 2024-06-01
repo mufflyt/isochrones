@@ -3,7 +3,28 @@ source("R/01-setup.R")
 #######################
 # TODO: get block variables of total female population per block group for non-decennial census years.
 
-# This code is focused on retrieving and preparing census variables for analysis. It starts by loading demographic and housing characteristic variables for the 2020 decennial census. The code filters and cleans these variables to include only the data related to females, excluding males and irrelevant annotations, and then writes the cleaned data to a CSV file. It also extracts ACS (American Community Survey) variables for 2020, specifically targeting variables related to population demographics. The code selects and stores these variables in a data frame and saves them as a CSV file. Overall, the code prepares demographic data for further analysis, focusing on gender and race-related variables.
+# The provided R script is designed to process and analyze demographic data, focusing primarily on the female population from the 2020 Decennial Census and American Community Survey (ACS). Here's a breakdown of what the script does:
+
+# ### Setup and Data Acquisition
+# The script starts by sourcing a setup R script which likely configures the working environment and loads necessary libraries. It then accesses demographic and housing characteristic variables for the 2020 decennial census. These variables are retrieved using a function (`load_variables`) which pulls data directly, presumably from an online API, ensuring the data is up-to-date and accurate.
+# 
+# ### Data Filtering and Cleaning
+# The main focus in the data processing step is to filter and clean the census data to isolate specific demographic information:
+#   - **Variable Selection**: It selects variables related to "SEX BY AGE," focusing exclusively on the female population. This includes filtering out any variables related to males and removing unnecessary annotations which may clutter the dataset.
+# - **Data Cleaning**: The script performs extensive cleaning on the variable labels by removing unnecessary punctuations and annotations, like "!!" which are common in raw census data files. This makes the data more readable and ready for analysis.
+# - **Restructuring Data**: It rearranges the data, removing and renaming columns to make the dataset more manageable. Only relevant variables are retained, which are crucial for downstream analysis.
+# 
+# ### Data Saving
+# Once the data is cleaned and properly formatted, the script writes this prepared data to a CSV file. This file now contains streamlined and cleaned-up demographic data, specifically focusing on the female population segmented by various age and racial categories, ready for further analysis or reporting.
+# 
+# ### Additional Functionality
+# The script hints at a TODO for retrieving block-level data on the female population for non-decennial years, suggesting future integration with American Community Survey (ACS) data for interim years.
+# 
+# ### Data Expansion and Output
+# Towards the end, the script outlines structures to integrate and process ACS data in a similar fashion. It specifies the retrieval of additional ACS variables related to demographics, aiming to enrich the census data with more frequent updates between the decennial counts.
+# 
+# ### Overall Function
+# The overall purpose of this script is to prepare demographic data focusing on the female population from the census for detailed demographic analysis. By filtering, cleaning, and saving this data, the script facilitates easy access to processed data for analysts or statisticians who might be conducting detailed demographic studies, policy-making, or social research. The data prepared by this script would be crucial in understanding population dynamics, planning community services, or targeting interventions based on demographic trends.
 
 #************************************
 # GET THE DECENNIAL CENSUS VARIABLES

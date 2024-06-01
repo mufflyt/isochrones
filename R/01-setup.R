@@ -1152,6 +1152,132 @@ process_tables <- function(con, table_names) {
   return(results)
 }
 
+#
+calculate_intersection_overlap_and_save <- function(block_groups_file, isochrones_file, drive_time_variable, output_dir) {
+  
+  # Read block groups shapefile and process it
+  block_groups <- sf::st_read(block_groups_file) %>%
+    mutate(bg_area = st_area(.)) %>%  # Calculate area for each block group
+    sf::st_transform(2163) %>%
+    sf::st_make_valid() %>%
+    sf::st_simplify(preserveTopology = FALSE, dTolerance = 1000)
+  
+  # Get CRS of block_groups
+  block_groups_crs <- st_crs(block_groups)
+  
+  # Read isochrones shapefile and process it
+  isochrones <- sf::st_read(isochrones_file) %>%
+    dplyr::arrange(desc(rank)) %>% # This is IMPORTANT for the layering. 
+    rename(drive_time = range) %>%
+    sf::st_transform(2163) %>%
+    sf::st_make_valid() %>%
+    sf::st_simplify(preserveTopology = FALSE, dTolerance = 1000) %>%
+    sf::st_set_crs(block_groups_crs)  # Set CRS to match block_groups
+  
+  # Filter isochrones for the specified drive time
+  isochrones_filtered <- isochrones %>%
+    filter(drive_time == drive_time_variable) %>%
+    mutate(isochrones_drive_time = drive_time_variable) 
+  
+  # Log the progress
+  message(paste("Plot of Isochrones for", drive_time_variable, "minutes..."))
+  
+  # Function to plot isochrones with USA and state borders, roads, and save as an image file
+  plot_isochrones_and_save <- function(isochrones, drive_time_variable, output_dir) {
+    # Load USA and state borders data
+    usa_border <- ne_countries(scale = "small", country = "United States of America", returnclass = "sf")
+    state_border <- ne_states(country = "United States of America", returnclass = "sf")
+    
+    # Load roads data
+    #roads <- ne_download(scale = 110, type = "roads", category = "physical", returnclass = "sf")
+    
+    # Define limits for the x and y axes to focus on the contiguous USA
+    xlim <- c(-125, -65)  # Adjust as needed
+    ylim <- c(25, 50)     # Adjust as needed
+    
+    # Create the ggplot
+    p <- ggplot() +
+      geom_sf(data = usa_border, color = "black", fill = NA) +  # USA borders
+      geom_sf(data = state_border, color = "darkgray", fill = NA) +  # State borders
+      #geom_sf(data = block_groups, color = "lightgray") +  
+      geom_sf(data = isochrones[1], fill = alpha("blue", 0.5)) +  # Isochrones with fill alpha
+      labs(title = paste("Isochrones for", drive_time_variable, "Minutes")) +
+      coord_sf(xlim = xlim, ylim = ylim)  # Use coord_sf for spatial data and set limits
+    
+    # Define the output filename
+    output_filename <- paste0("plot_", drive_time_variable, "_minutes.png")
+    
+    # Save the ggplot as an image file
+    ggsave(file.path(output_dir, "isochrone_files", output_filename), plot = p, width = 7, height = 7)
+  }
+  
+  # Call the function to plot and save the isochrones
+  plot_isochrones_and_save(isochrones_filtered, drive_time_variable, output_dir)
+  
+  
+  # Call the function to plot and save the isochrones
+  plot_isochrones_and_save(isochrones_filtered, drive_time_variable, output_dir)
+  
+  # Write the filtered isochrones as a shapefile with the drive time variable in the filename
+  output_filename <- paste0("filtered_isochrones_", drive_time_variable, "_minutes.shp")
+  st_write(
+    isochrones_filtered, append = FALSE,
+    file.path(
+      "data/08-get-block-group-overlap/isochrone_files",
+      output_filename
+    )
+  )
+  
+  # Calculate intersection between block groups and isochrones
+  intersect <- st_intersection(block_groups, isochrones_filtered) %>%
+    mutate(intersect_area = st_area(.)) %>%
+    select(GEOID, intersect_area) %>%
+    st_drop_geometry()
+  
+  # Assign intersect_drive_time after calculating intersection
+  intersect <- intersect %>%
+    mutate(intersect_drive_time = drive_time_variable)
+  
+  # Log the progress
+  message(paste("Calculating intersection for", drive_time_variable, "minutes..."))
+  
+  # Merge intersection area with block groups
+  intersect_block_group <- left_join(block_groups, intersect, by = "GEOID")
+  
+  # Calculate overlap and save cleaned data
+  intersect_block_group_cleaned <- intersect_block_group %>% 
+    mutate(
+      intersect_area = ifelse(is.na(intersect_area), 0, intersect_area),  # Assign 0 to NA intersect_area values
+      overlap = as.numeric(intersect_area / bg_area)  # Calculate overlap as a proportion
+    )
+  write_csv(intersect_block_group_cleaned, paste0("data/08-get-block-group-overlap/intersect_block_group_cleaned_", drive_time_variable, "minutes.csv"))
+  
+  tryCatch(
+    {
+      # Calculate area in all block groups
+      block_groups_intersected <- intersect_block_group_cleaned %>%
+        mutate(bg_area = st_area(.))
+      
+      # Summary of the overlap percentiles
+      summary_bg <- summary(block_groups_intersected$overlap)
+      
+      # Print the summary
+      message("Summary of Overlap Percentages for", drive_time_variable, "minutes:")
+      message(paste0("The isochrones overlap with: ", round(summary_bg[[4]], 4) * 100,"% of the block groups in the block groups provided by area. " ))
+    },
+    error = function(e) {
+      message("Error: ", e)
+    }
+  )
+}
+
+#
+add_drive_time_column <- function(file_path, drive_time) {
+  df <- readr::read_csv(file_path)
+  df <- df %>% mutate(intersect_drive_time = as.character(drive_time))
+  readr::write_csv(df, file_path)
+}
+
 
 # Redefine the function to use within a dplyr chain
 assign_lastupdate <- function(npi, year, updates) {

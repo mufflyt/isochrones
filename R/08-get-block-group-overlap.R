@@ -1,128 +1,24 @@
 #######################
 source("R/01-setup.R")
 #######################
-#This code is primarily focused on processing and analyzing the spatial overlap between block groups and isochrones. It starts by reading a shapefile of block groups for Colorado, transforming it to a suitable projection, simplifying geometries, and writing the processed shapefile to a new location. It then reads isochrones data, applies similar transformations, combines them into a single feature, and creates a reference map. Next, it calculates the percentage overlap between each block group and the isochrones, summarizing the results to provide information about the extent of overlap. The final output includes a summary message indicating the percentage of block groups that overlap with the isochrones.
-
-#This function takes the block_groups and isochrones datasets as input, along with the breaks argument for specifying drive times. It calculates overlap percentages for each drive time, saves individual shapefiles, and returns a list of summaries for each drive time.
-
-#Function to calculate intersection between block groups and isochrones, calculate overlap percentages, and save to a shapefile
-calculate_intersection_overlap_and_save <- function(block_groups_file, isochrones_file, drive_time_variable, output_dir) {
-  
-  # Read block groups shapefile and process it
-  block_groups <- sf::st_read(block_groups_file) %>%
-    mutate(bg_area = st_area(.)) %>%  # Calculate area for each block group
-    sf::st_transform(2163) %>%
-    sf::st_make_valid() %>%
-    sf::st_simplify(preserveTopology = FALSE, dTolerance = 1000)
-  
-  # Get CRS of block_groups
-  block_groups_crs <- st_crs(block_groups)
-  
-  # Read isochrones shapefile and process it
-  isochrones <- sf::st_read(isochrones_file) %>%
-    dplyr::arrange(desc(rank)) %>% # This is IMPORTANT for the layering. 
-    rename(drive_time = range) %>%
-    sf::st_transform(2163) %>%
-    sf::st_make_valid() %>%
-    sf::st_simplify(preserveTopology = FALSE, dTolerance = 1000) %>%
-    sf::st_set_crs(block_groups_crs)  # Set CRS to match block_groups
-  
-  # Filter isochrones for the specified drive time
-  isochrones_filtered <- isochrones %>%
-    filter(drive_time == drive_time_variable) %>%
-    mutate(isochrones_drive_time = drive_time_variable) 
-  
-  # Log the progress
-  message(paste("Plot of Isochrones for", drive_time_variable, "minutes..."))
-  
-  # Function to plot isochrones with USA and state borders, roads, and save as an image file
-  plot_isochrones_and_save <- function(isochrones, drive_time_variable, output_dir) {
-    # Load USA and state borders data
-    usa_border <- ne_countries(scale = "small", country = "United States of America", returnclass = "sf")
-    state_border <- ne_states(country = "United States of America", returnclass = "sf")
-    
-    # Load roads data
-    #roads <- ne_download(scale = 110, type = "roads", category = "physical", returnclass = "sf")
-    
-    # Define limits for the x and y axes to focus on the contiguous USA
-    xlim <- c(-125, -65)  # Adjust as needed
-    ylim <- c(25, 50)     # Adjust as needed
-    
-    # Create the ggplot
-    p <- ggplot() +
-      geom_sf(data = usa_border, color = "black", fill = NA) +  # USA borders
-      geom_sf(data = state_border, color = "darkgray", fill = NA) +  # State borders
-      #geom_sf(data = block_groups, color = "lightgray") +  
-      geom_sf(data = isochrones[1], fill = alpha("blue", 0.5)) +  # Isochrones with fill alpha
-      labs(title = paste("Isochrones for", drive_time_variable, "Minutes")) +
-      coord_sf(xlim = xlim, ylim = ylim)  # Use coord_sf for spatial data and set limits
-    
-    # Define the output filename
-    output_filename <- paste0("plot_", drive_time_variable, "_minutes.png")
-    
-    # Save the ggplot as an image file
-    ggsave(file.path(output_dir, "isochrone_files", output_filename), plot = p, width = 7, height = 7)
-  }
-  
-  # Call the function to plot and save the isochrones
-  plot_isochrones_and_save(isochrones_filtered, drive_time_variable, output_dir)
-  
-  
-  # Call the function to plot and save the isochrones
-  plot_isochrones_and_save(isochrones_filtered, drive_time_variable, output_dir)
-  
-  # Write the filtered isochrones as a shapefile with the drive time variable in the filename
-  output_filename <- paste0("filtered_isochrones_", drive_time_variable, "_minutes.shp")
-  st_write(
-    isochrones_filtered, append = FALSE,
-    file.path(
-      "data/08-get-block-group-overlap/isochrone_files",
-      output_filename
-    )
-  )
-  
-  # Calculate intersection between block groups and isochrones
-  intersect <- st_intersection(block_groups, isochrones_filtered) %>%
-    mutate(intersect_area = st_area(.)) %>%
-    select(GEOID, intersect_area) %>%
-    st_drop_geometry()
-  
-  # Assign intersect_drive_time after calculating intersection
-  intersect <- intersect %>%
-    mutate(intersect_drive_time = drive_time_variable)
-  
-  # Log the progress
-  message(paste("Calculating intersection for", drive_time_variable, "minutes..."))
-  
-  # Merge intersection area with block groups
-  intersect_block_group <- left_join(block_groups, intersect, by = "GEOID")
-  
-  # Calculate overlap and save cleaned data
-  intersect_block_group_cleaned <- intersect_block_group %>% 
-    mutate(
-      intersect_area = ifelse(is.na(intersect_area), 0, intersect_area),  # Assign 0 to NA intersect_area values
-      overlap = as.numeric(intersect_area / bg_area)  # Calculate overlap as a proportion
-    )
-  write_csv(intersect_block_group_cleaned, paste0("data/08-get-block-group-overlap/intersect_block_group_cleaned_", drive_time_variable, "minutes.csv"))
-  
-  tryCatch(
-    {
-      # Calculate area in all block groups
-      block_groups_intersected <- intersect_block_group_cleaned %>%
-        mutate(bg_area = st_area(.))
-      
-      # Summary of the overlap percentiles
-      summary_bg <- summary(block_groups_intersected$overlap)
-      
-      # Print the summary
-      message("Summary of Overlap Percentages for", drive_time_variable, "minutes:")
-      message(paste0("The isochrones overlap with: ", round(summary_bg[[4]], 4) * 100,"% of the block groups in the block groups provided by area. " ))
-    },
-    error = function(e) {
-      message("Error: ", e)
-    }
-  )
-}
+# #The script you've shared orchestrates a complex process involving spatial data analysis, specifically focused on determining the coverage of isochrones over block groups in Colorado. This is particularly useful in urban planning or geography to assess accessibility or coverage areas.
+# 
+# ### Initial Setup and Data Preparation
+# The code initiates by setting up the environment and loading necessary R scripts and packages. It reads shapefiles for block groups (specifically for Colorado) and isochrones from predefined paths. These shapefiles contain geographic data that can represent areas within a city or county that are accessible within a given drive time from a certain point.
+# 
+# ### Data Transformation and Simplification
+# Upon loading the data, transformations are applied to ensure the data is in the correct Coordinate Reference System (CRS) for accurate spatial analysis. This typically involves converting geographic coordinates into a projection that is more suitable for area calculations and spatial joins, which are less distorted than latitude and longitude when it comes to measuring real-world distances.
+# 
+# ### Spatial Analysis and Overlap Calculation
+# The core of this script involves calculating the overlap of isochrones with block groups using spatial join techniques. This is done by intersecting isochrones with block groups and computing the area of overlap. The overlap percentage is calculated to provide insights into how much of each block group's area falls within the accessible regions defined by isochrones. This analysis is repeated for different drive times (e.g., 30, 60, 120, 180 minutes), allowing for a multi-tiered analysis of accessibility.
+# 
+# ### Data Augmentation and Output
+# Further, the script augments the block group data with additional columns indicating the drive time associated with each isochrone overlap calculation. This augmented data is then saved into CSV files for each drive time category, facilitating easy access and further analysis. These files are prepared for further processing or reporting purposes, potentially supporting decisions on urban development, emergency service coverage, or transportation planning.
+# 
+# ### Visualization and Verification
+# Finally, the script uses the `leaflet` package to visualize the isochrones for each drive time on interactive maps. This visualization step is crucial for verifying the correctness of the spatial calculations and provides a graphical representation of data which is more intuitive and informative. It helps in understanding the geographical spread of accessibility across different time thresholds.
+# 
+# Overall, this script demonstrates a thorough approach to handling and analyzing spatial data with the goal of assessing coverage by isochrones across block groups. This type of analysis is integral in fields such as urban planning, environmental studies, and logistics.
 
 block_groups_file <- "data/07.5-prep-get-block-group-overlap/block_groups_tigris_2022.shp" #For full project 
 isochrones_file <- "data/06-isochrones/end_isochrones_sf_clipped/isochrones.shp"
@@ -136,12 +32,6 @@ unique_drive_times <- c(30, 60, 120, 180)
 ## Loop through unique drive times and calculate intersection for each
 for (drive_time in unique_drive_times) {
   calculate_intersection_overlap_and_save(block_groups_file, isochrones_file, drive_time, output_dir)
-}
-
-add_drive_time_column <- function(file_path, drive_time) {
-  df <- readr::read_csv(file_path)
-  df <- df %>% mutate(intersect_drive_time = as.character(drive_time))
-  readr::write_csv(df, file_path)
 }
 
 # Usage
