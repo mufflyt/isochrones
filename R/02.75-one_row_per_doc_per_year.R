@@ -1,3 +1,28 @@
+# Required Input Files for Script Execution
+
+# 1. NBER Historical Downloads:
+#    - Database File: "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
+
+# 2. NPPES Data Dissemination Files:
+#    - CSV Files from "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/unzipped_p_files/"
+#      Examples include:
+#      - "NPPES_Data_Disseminat_April_2010_npidata_20050523-20100208.csv"
+#      - "NPPES_Data_Disseminat_April_2021_npidata_pfile_20050523-20210411.csv"
+#      - Additional files for years up to 2024
+
+# 3. Facility Affiliation Files:
+#    - Directory: "/Volumes/Video Projects Muffly 1/facility_affiliation/unzipped_files"
+#    - Note: Specific file names are used in the script but not detailed here.
+
+# 4. Medicare Part D Prescribers Files:
+#    - Directory: "/Volumes/Video Projects Muffly 1/MedicarePartDPrescribersbyProvider/unzipped_files"
+#    - Files starting with "MUP_DPR_RY21_P04_V10_DY" for various years.
+
+# 5. Open Payments Data:
+#    - Directory: "/Volumes/Video Projects Muffly 1/openpayments/unzipped_files"
+#    - Example file pattern: "OP_DTL_GNRL_PGYR2020_P01182024" and similar for other years.
+
+
 source("R/01-setup.R")
 conflicted::conflicts_prefer(dplyr::left_join)
 conflicted::conflicts_prefer(dplyr::filter)

@@ -12,6 +12,66 @@
 # 
 # Finally, the script addresses data validation and output, verifying the correctness of NPI numbers and writing processed data to structured files for easy access and use in further analyses or reports. The script’s thorough approach to managing complex and varied datasets is evident throughout, making it a potent tool for healthcare data analysts looking to derive actionable insights from vast amounts of physician data.
 
+# Required Input Files for Script Execution ----
+
+# 1. NBER Data:
+#    - CSV File: "~/Dropbox (Personal)/isochrones/data/02.33-nber_nppes_data/end_sp_duckdb_nber_all.csv"
+
+# 2. DuckDB Database:
+#    - Database File: "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
+
+# 3. Yearly Physician Compare Data:
+#    - CSV Files: "data/02.5-subspecialists_over_time/Postico/"
+#      - "file1.csv"
+#      - "file2.csv"
+#      - "file3.csv"
+#      - "file4.csv"
+#      - "file5.csv"
+
+# 4. GOBA Data:
+#    - CSV File: "data/02.5-subspecialists_over_time/from_exploratory_subspecialists_over_time.csv"
+
+# 5. Physician Compare Data:
+#    - CSV File: "data/02.5-subspecialists_over_time/end_year_by_year_physician_compare_data_collected.csv"
+
+# 6. Validated NPI Data:
+#    - CSV File: "data/02.5-subspecialists_over_time/end_year_by_year_physician_compare_data_validated_npi.csv"
+
+# 7. Distinct Validated NPI Data:
+#    - CSV File: "data/02.5-subspecialists_over_time/end_distinct_year_by_year_physician_compare_data_validated_npi.csv"
+
+# 8. Retrieve Clinician Data Output:
+#    - CSV Files: "data/02.5-subspecialists_over_time/retrieve_clinician_data_chunk_results/"
+#      - "chunk1.csv"
+#      - "chunk2.csv"
+#      - "chunk3.csv"
+#      - "chunk4.csv"
+#      - "chunk5.csv"
+
+# 9. GYN ONC Data:
+#    - CSV File: "data/02.5-subspecialists_over_time/gyn_onc_over_the_years.csv"
+
+# 10. Flowchart Image:
+#    - Image File: "data/02.5-subspecialists_over_time/flowchart.png"
+
+# 11. Postico Database Data:
+#    - CSV Files:
+#      - "physician_compare_data_2023.csv"
+#      - "physician_compare_data_2022.csv"
+#      - "physician_compare_data_2021.csv"
+#      - "physician_compare_data_2020.csv"
+#      - "physician_compare_data_2019.csv"
+#      - "physician_compare_data_2018.csv"
+#      - "physician_compare_data_2017.csv"
+#      - "physician_compare_data_2016.csv"
+#      - "physician_compare_data_2015.csv"
+#      - "physician_compare_data_2014.csv"
+#      - "physician_compare_data_2013.csv"
+
+# 12. Processed Data:
+#    - RDS File: "Desktop/collect_result_full_join.rds"
+
+
 # Setup and conflicts -----------------------------------------------------
 source("R/01-setup.R")
 conflicted::conflicts_prefer(exploratory::left_join)
