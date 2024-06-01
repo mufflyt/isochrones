@@ -6,6 +6,33 @@
 # 
 # Throughout the script, various checks are implemented to ensure the integrity of the data, such as confirming the existence of files and directories, checking for missing values, and validating the range and completeness of the year data. This approach helps maintain the quality and reliability of the data processing workflow.
 
+# Required Input Files for Script Execution ----
+
+# 1. Facility Affiliation Files:
+#    - Directory: "/Volumes/Video Projects Muffly 1/retirement/"
+#      - "end_facility_affiliation_last_consecutive_year.csv"
+
+# 2. Medicare Part D Prescribers Files:
+#    - Directory: "/Volumes/Video Projects Muffly 1/retirement/"
+#      - "end_Medicare_part_D_prescribers_last_consecutive_year.csv"
+
+# 3. Updated Processed NIPs:
+#    - Directory: "/Volumes/Video Projects Muffly 1/retirement/"
+#      - "updated_processed_nips.csv"
+
+# 4. NPI Deactivation File:
+#    - Directory: "/Volumes/Video Projects Muffly 1/retirement/"
+#      - "retirement_NPPES Deactivated NPI Report 20240408.csv"
+
+# 5. End SP DuckDB NPI All:
+#    - Directory: "/Volumes/Video Projects Muffly 1/retirement/"
+#      - "end_sp_duckdb_npi_all.csv"
+
+# 6. GOBA File:
+#    - Directory: "/Volumes/Video Projects Muffly 1/retirement/"
+#      - "goba_unique_goba_deceased_retired.csv"
+
+
 # Setup ----
 source("R/01-setup.R")
 

@@ -1,5 +1,34 @@
 # Downloading multiple years of NPPES files from NBER, unzip, and gather the appropriate files into one directory.  Many thanks to NBER for caching the NPI file for multiple years at http://data.nber.org/nppes/zip-orig/.  These files are quite large so I used an external hard drive to save the data.  
 
+# Required Input Files for Script Execution ----
+
+# 1. NPPES Files from CMS:
+#    - Base URL: "https://download.cms.gov/nppes/"
+#    - Files:
+#      - "NPPES_Data_Dissemination_April_2024.zip"
+
+# 2. NPPES Files from NBER:
+#    - Base URL: "http://data.nber.org/nppes/zip-orig/"
+#    - Files:
+#      - "NPPES_Data_Dissemination_Nov_2007.zip"
+#      - "NPPES_Data_Dissemination_May_2008.zip"
+#      - "NPPES_Data_Dissemination_June_2009.zip"
+#      - "NPPES_Data_Dissemination_Feb_2010.zip"
+#      - "NPPES_Data_Dissemination_April_2011.zip"
+#      - "NPPES_Data_Dissemination_April_2012.zip"
+#      - "NPPES_Data_Dissemination_April_2013.zip"
+#      - "NPPES_Data_Dissemination_April_2014.zip"
+#      - "NPPES_Data_Dissemination_April_2015.zip"
+#      - "NPPES_Data_Dissemination_April_2016.zip"
+#      - "NPPES_Data_Dissemination_April_2017.zip"
+#      - "NPPES_Data_Dissemination_April_2018.zip"
+#      - "NPPES_Data_Dissemination_April_2019.zip"
+#      - "NPPES_Data_Dissemination_July_2020.zip"
+#      - "NPPES_Data_Dissemination_April_2021.zip"
+#      - "NPPES_Data_Dissemination_April_2022.zip"
+
+
+
 # Setup -------------------------------------------------------------------
 source("R/01-setup.R")
 

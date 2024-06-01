@@ -1,4 +1,49 @@
+# The script provided performs a series of operations primarily focusing on data management and analysis of healthcare provider data from the National Provider Identifier (NPI) and other sources. It starts by setting up the environment in R, specifying preferences for certain functions from various packages such as `duckplyr`, `lubridate`, and `conflicted`, to handle potential naming conflicts within the libraries used.
+# 
+# Key activities in the script include:
+#   
+#   1. **Database Connection and Setup:**
+#   The script establishes a connection to a DuckDB database, which is a lightweight SQL database. It points to a specific file path where the database is located, ensuring all data operations are performed within this database context.
+# 
+# 2. **Table Processing and Data Extraction:**
+#   It lists several table names from healthcare data sources (e.g., physician compare files, doctors and clinicians data over several years). For each table, it retrieves column names and checks the commonality of these columns across tables, identifying which columns appear frequently. This is used to standardize data structures across different datasets.
+# 
+# 3. **Data Loading and Table Creation:**
+#   The script includes commands to create tables by reading CSV files, especially from the NBER (National Bureau of Economic Research) website, which provides a comprehensive collection of provider data. It uses SQL commands within the DuckDB connection to execute these operations, handling possible CSV format issues like headers, quotes, and null values.
+# 
+# 4. **Data Filtering and Transformation:**
+#   It filters and transforms the data, selecting specific columns relevant to the analysis, such as provider names, locations, and specialties. The data is then cleaned and manipulated, e.g., converting names to uppercase, and filtering based on specific criteria like tax codes that correspond to certain medical specialties.
+# 
+# 5. **Analytical Operations:**
+#   The script performs a series of checks and analytical operations. For example, it filters the data to include only certain types of providers based on taxonomy codes, checks for data completeness, and refines the dataset to focus on specific attributes.
+# 
+# 6. **Output and Data Export:**
+#   Processed data is then written back to CSV files for further use, possibly in other analyses or reporting tools. The script also includes commands to handle errors gracefully during the data processing steps, ensuring that any issues are logged and do not halt the execution of the script.
+# 
+# Overall, the script is an example of complex data handling, merging, and analysis operations typical in data science projects involving large, diverse datasets. It emphasizes the use of database operations, custom R functions, and data manipulation techniques to prepare data for detailed analysis or reporting.
+
 # NBER DATA IS ok but it does have each change in address noted.  Maybe we assume that everyone stayed in the same place until the end.  https://www.nber.org/research/data/npinppes-cumulative-collection-preliminary
+
+# Required Input Files for Script Execution ----
+
+# 1. NBER Historical Downloads:
+#    - Database File: "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
+
+# 2. Doctors and Clinicians Archives:
+#    - CSV Files: Files from "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/unzipped_p_files/"
+#      - "NPPES_Data_Dissemination_April_2010_npidata_20050523-20100208.csv"
+#      - "NPPES_Data_Dissemination_April_2021_npidata_pfile_20050523-20210411.csv"
+#      - "NPPES_Data_Dissemination_April_2022_npidata_pfile_20050523-20220410.csv"
+#      - "NPPES_Data_Dissemination_April_2023_npidata_pfile_20050523-20230410.csv"
+#      - "NPPES_Data_Dissemination_April_2024_npidata_pfile_20050523-20240410.csv"
+
+# 3. Facility Affiliation Files:
+#    - Directory: "/Volumes/Video Projects Muffly 1/facility_affiliation/unzipped_files"
+#      - "facility_affiliation_file_1.csv"
+#      - "facility_affiliation_file_2.csv"
+#      - "facility_affiliation_file_3.csv"
+
+
 
 # Setup and conflicts -----------------------------------------------------
 # https://data.cms.gov/provider-data/search?theme=Doctors%20and%20clinicians
