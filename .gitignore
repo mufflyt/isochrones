@@ -11,3 +11,4 @@ figures/*
 *.mp4
 .here
 api_keys.R
+data/04-geocode/geocoded_batch/raw/*.csv
