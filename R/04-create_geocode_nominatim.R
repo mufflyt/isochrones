@@ -1,10 +1,19 @@
-
-# The following function uses the Nominatim API for geocoding and returns a list object with 2 sublists:
+# The provided R script focuses on data preparation, geocoding, and quality control for a dataset concerning subspecialists, potentially from a medical or similar professional database. The script includes several steps that are crucial for ensuring the data is usable for further analysis, particularly in geographic and location-based studies.
 # 
-# - wo_geocode: will be return a message or will include the rows where the 'lat', 'long' did not have values (NA's)
-# - geocode:  will be return a message or will include an 'sf' object with the additional columns 'lat', 'long'
-#
-# If the 'geocode' sublist is not empty then a .csv file will be saved based on the data.frame (not the 'sf' object)
+# **Data Preparation and Setup:**
+#   The script starts by loading necessary libraries and the initial setup file which configures the environment. It defines a vector of states, which includes territories of the United States as well. This array is later used to filter and validate data. The script reads a CSV file containing detailed addresses of medical subspecialists, unites several address-related columns into a single column to facilitate geocoding, and eliminates unnecessary columns like latitude and longitude coordinates, which might be re-derived from geocoding.
+# 
+# **Geocoding Preparation:**
+#   Before proceeding with geocoding, the script performs a data quality check by ensuring the addresses are unique and saving this preprocessed data for geocoding. This preparation is crucial to reduce redundancy in the geocoding process, which can be time-consuming and resource-intensive.
+# 
+# **Geocoding Process:**
+#   The script uses a memoised function to perform geocoding, which means results of the function calls are cached. This is particularly useful when dealing with large datasets or costly operations like geocoding. The script aims to read the cleaned data, checks for the existence of an 'address' column necessary for geocoding, and processes the data in batches using different geocoding services like Nominatim and ArcGIS. It is set up to handle errors and report on the progress of geocoding, including saving interim results periodically, which is essential for managing large datasets.
+# 
+# **Post-Geocoding Quality Control:**
+#   After geocoding, the script performs several quality checks. It reads the geocoded data to check how many entries were successfully geocoded and identifies any entries with missing coordinates. The goal is to ensure high data quality and to prepare the dataset for further analytical tasks. The script also integrates this geocoded data with other relevant data, potentially enhancing the dataset with additional geographic or demographic information.
+# 
+# **Visualization and Further Analysis:**
+#   The script is structured to possibly support further steps like data visualization or deeper analysis, evidenced by placeholders and comments that suggest integrating additional datasets or performing group-based summaries.
 
 #######################
 source("R/01-setup.R")

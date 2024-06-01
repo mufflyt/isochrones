@@ -1,8 +1,20 @@
+# The script in question represents a sophisticated geospatial data handling process, utilizing R's `tidyverse` and `sf` (simple features) packages to merge and analyze spatial data. It's a part of a larger workflow designed to integrate and visualize data related to medical subspecialists and geographical accessibility areas defined by isochrones. The script highlights the capabilities of R in processing complex geographical data for practical insights.
+# 
+# ### Data Preparation and Sanity Checks
+# Initially, the script loads a CSV file containing geocoded data of subspecialists. This data is merged with ACOG district information to enrich the dataset with additional geographical context. Substantial effort is devoted to data integrity and visualization: the script includes several sanity checks to ensure the data's validity, such as plotting points on a state and national map to visually inspect their correctness and distribution.
+# 
+# ### Geographical Operations and Spatial Joins
+# The script sets up for a spatial join—a critical step where it combines subspecialist data with isochrone data (geographical shapes representing reachable areas within certain timeframes from a given point). Before this, it ensures that both datasets share the same Coordinate Reference System (CRS) and that the geometries are valid, avoiding common pitfalls in spatial data handling like invalid shapes or mismatched projections.
+# 
+# ### Visualization and Output
+# Further along, the script prepares for visualization by arranging data and applying a color palette for clear representation. The merging of subspecialist data with isochrones allows for richer spatial analysis, such as identifying which medical specialists are accessible within specific time bounds from various locations. The script makes use of `leaflet`, a powerful tool for interactive maps, to create detailed visualizations that include interactive elements like popups.
+# 
+# ### File Management and Data Export
+# Lastly, the script is geared towards robust output management by writing the processed data back into shapefiles—a popular format in geographic information systems (GIS) that supports geometric location and attribute information. This step ensures that the spatial data, now enriched and validated, is stored in a standardized format ready for further analysis or sharing.
+
 #######################
 source("R/01-setup.R")
 #######################
-
-# This code performs a spatial join between two sf (Simple Features) data frames, subspecialists_lat_long and isochrones. It starts by creating a copy of subspecialists_lat_long with point geometries and ensures both data frames have the same Coordinate Reference System (CRS). Then, it makes the geometries valid (fixes any invalid geometries) in both data frames. Finally, it uses sf::st_join to join the two data frames based on their spatial relationship, and the left = FALSE argument ensures that it retains the isochrone polygons that intersect with the points in subspecialists_lat_long. The code checks if the number of rows in the result is equal to the number of rows in isochrones to verify if no data was lost during the spatial join.
 
 ACOG_Districts <- tyler::ACOG_Districts
 
@@ -10,21 +22,6 @@ ACOG_Districts <- tyler::ACOG_Districts
 # First, create a copy of subspecialists_lat_long with the point geometries
 subspecialists_lat_long <- read_csv("data/04-geocode/end_geocoded_data_nominatim.csv") %>%
   exploratory::left_join(`ACOG_Districts`, by = join_by(`State` == `State`)) 
- 
-  # mutate(id = 1:n()) %>%
-  # mutate(postal_code = stringr::str_sub(postal_code, 1, 5)) %>%
-  # mutate(access = exploratory::str_remove(access, regex("^POINT \\(", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
-  # mutate(access = exploratory::str_remove(access, regex("\\)$", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
-  # separate(access, into = c("long", "lat"), sep = "\\s+", convert = TRUE) %>%
-  # left_join(`ACOG_Districts`, by = join_by(`state_code` == `State_Abbreviations`)) %>%
-  # select(-id, -rank, -type, -district, -state) %>%
-  # filter(country %in% c("United States", "Puerto Rico")) %>%
-  # mutate(postal_code = str_sub(postal_code, 1, 5)) %>%
-  # rename(zip = postal_code) %>%
-  # mutate(across(c(lat, long), parse_number)) %>%
-  # filter(!is.na(lat)) %>%
-  # mutate(as.factor(ACOG_District)) %>%
-  # distinct(address, .keep_all = TRUE)
 
 #**********************************************
 # SANITY CHECK ON THE POINTS

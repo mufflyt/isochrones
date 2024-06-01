@@ -105,11 +105,11 @@ threads = parallel::detectCores()
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 #####  Functions for nomogram
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
+
+# Define an exclusion operator for ease of filtering
 `%nin%`<-Negate(`%in%`)
 
-'%nin%' <- function(x, table) {
-  !(x %in% table)
-}
+## Bespoke functions.  
 
 #' Search NPI Database by Taxonomy
 search_by_taxonomy <- function(taxonomy_to_search) {
@@ -1150,6 +1150,27 @@ process_tables <- function(con, table_names) {
   
   # Return the list of processed tables
   return(results)
+}
+
+
+# Redefine the function to use within a dplyr chain
+assign_lastupdate <- function(npi, year, updates) {
+  update_values <- updates %>%
+    filter(npi == npi) %>%
+    arrange(lastupdatestr) %>%
+    pull(lastupdatestr) %>%
+    na.omit() %>%
+    unique()
+  
+  last_value <- NA_integer_
+  for (update in update_values) {
+    if (year >= update) {
+      last_value <- update
+    } else {
+      break
+    }
+  }
+  return(last_value)
 }
 
 # fin

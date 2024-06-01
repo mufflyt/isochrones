@@ -1,4 +1,16 @@
-# Here we are trying to get year-specific physicians from physician_compare.  
+# The comprehensive R script orchestrates a meticulous analysis, management, and reporting process for physician data, emphasizing OB/GYN specialists and their subspecialties over several years. Utilizing a suite of R packages, the script undertakes tasks like data loading, cleaning, transformation, merging, and visualization. It begins by setting up the environment and resolving potential function conflicts to ensure smooth operation.
+# 
+# Initially, the script loads and describes the NBER data, selecting key attributes for subsequent analysis. It employs DuckDB, a SQL database optimized for analytical queries, to handle substantial datasets effectively, demonstrating the script’s capability to manage large-scale data by connecting to, querying, and manipulating data within DuckDB.
+# 
+# A significant aspect of the script is its intricate data processing methodology, exemplified by creating a yearly series to track changes over time and merging datasets by National Provider Identifier (NPI) to analyze physicians' last activity years. The script calculates various statistics such as the total number of physicians, unique counts, and activity span, employing the `glue` package to format and display these results meaningfully.
+# 
+# The physician compare dataset is further processed to extract and clean year-specific data, with special attention to merging and reconciling discrepancies in physician identifiers and specialty descriptions. This involves handling complex data issues like missing values and inconsistencies across multiple sources, demonstrating robust data manipulation capabilities.
+# 
+# In addition to cleaning and processing, the script also integrates external data from various sources like GOBA and NBER, aligning them with physician compare data to enrich the analysis. This integration is crucial for a comprehensive study of physician demographics, specialties, and practice patterns over time.
+# 
+# Moreover, the script includes advanced visualization techniques, creating alluvial plots to depict the flow of physicians across specialties over the years. It also prepares the data for further statistical analysis or reporting, showcasing the flexibility and depth of data handling possible with R.
+# 
+# Finally, the script addresses data validation and output, verifying the correctness of NPI numbers and writing processed data to structured files for easy access and use in further analyses or reports. The script’s thorough approach to managing complex and varied datasets is evident throughout, making it a potent tool for healthcare data analysts looking to derive actionable insights from vast amounts of physician data.
 
 # Setup and conflicts -----------------------------------------------------
 source("R/01-setup.R")
@@ -41,26 +53,6 @@ year_series <- dplyr::tbl(con, "year_series")
 # Let's assume dataframe_i_have is a large dataset and you've loaded it into your DuckDB database for efficiency
 dataframe_i_have <- tbl(con, "npi_all_collected")
 
-# Redefine the function to use within a dplyr chain
-assign_lastupdate <- function(npi, year, updates) {
-  update_values <- updates %>%
-    filter(npi == npi) %>%
-    arrange(lastupdatestr) %>%
-    pull(lastupdatestr) %>%
-    na.omit() %>%
-    unique()
-  
-  last_value <- NA_integer_
-  for (update in update_values) {
-    if (year >= update) {
-      last_value <- update
-    } else {
-      break
-    }
-  }
-  return(last_value)
-}
-
 # Sample for demonstration (Consider efficiency for large data)
 sample_data <- dataframe_i_have %>%
   dplyr::filter(plname == "MUFFLY") %>%
@@ -74,8 +66,6 @@ dataframe_final <- sample_data %>%
   arrange(npi, year)
 
 print(dataframe_final, n=100)
-
-
 
 # Apply the function
 sample_data$lastupdatestr <- mapply(assign_lastupdate, sample_data$npi, sample_data$year, MoreArgs = list(updates = dataframe_i_have))
@@ -343,8 +333,8 @@ merged_data <- left_join(merged_data, max_years_practicing, by = "NPI") %>%
 
 View(merged_data)
 
-######
-# To incorporate the creation of the years_practicing_range column that includes the span of minimum to the maximum years practiced for each physician,
+# Creation of years_practicing_range column ----
+# To incorporate the creation of the years_practicing_range column that includes the span of minimum to the maximum years practiced for each physician
 
 # Assuming consecutive_years and merged_data as your data frames
 # Step 1: Calculate the maximum span of consecutive years for each NPI
@@ -378,7 +368,7 @@ merged_data$years_practicing_range
 
 
 #**************************
-#* VALIDATE THE NPI NUMBERS
+#* VALIDATE THE NPI NUMBERS ----
 #**************************
 year_by_year_physician_compare_data_validated_npi <- validate_and_remove_invalid_npi(input_data = "data/02.5-subspecialists_over_time/end_year_by_year_physician_compare_data_collected.csv") %>% 
   dplyr::filter(npi_is_valid == TRUE) %>% 
@@ -424,7 +414,7 @@ glue("There are {format(num_unique_obgyns, big.mark = ',')} unique OBGYNs repres
 # 3  2013    1.00e9 PALASZEWSKI DAWN         NA            F      TAMPA FL    33612      OBSTETRICS/GYNECOL…     200
 
 #**************************
-#* BRING IN SUBSPECIALIST DATA WITH NPI NUMBER FROM GOBA
+#* BRING IN SUBSPECIALIST DATA WITH NPI NUMBER FROM GOBA ----
 #**************************
 #*
 #* goba_unrestricted.csv originates from Exploratory/~~GOBA_Master_November_2022/~Recent_Grads_GOBA_NPI_2022/subspecialists_over_time
@@ -455,6 +445,7 @@ glue("Subspecialist OBGYNS are present in {length(unique(states))} states plus {
 
 
 #**************************
+#* retrieve_clinician function ----
 #* retrieve_clinician_data FUNCTION FOR GETTING DEMOGRAPHICS BY MATCHING NPI NUMBERS TO THE physician_compare DATABASE.  GETS DEMOGRAPHICS USING THE physician_compare API VIA PROVIDER::CLINICIANS FUNCTION.  
 #**************************
 input_data <- ("data/02.5-subspecialists_over_time/goba_unrestricted_cleaned.csv") 
@@ -478,8 +469,6 @@ filtered_columns <- grep("^clinician_data_", names(retrieve_clinician_data_outpu
 
 paste0("There are ", dim(retrieve_clinician_data_output)[1], " unique subspecialist OBGYNs WITH NPI NUMBERS and timeless DEMOGRAPHIC DATA represented from 2013 to 2023.")
 
-
-
 # Calculate the number of females
 num_females <- sum(retrieve_clinician_data_output$clinician_data_gender == "Female", na.rm = TRUE)
 # Calculate the proportion of females
@@ -495,7 +484,7 @@ num_unique_obgyns_with_npi <- nrow(retrieve_clinician_data_output)
 glue("There are {format(num_unique_obgyns_with_npi, big.mark = ',')} unique OBGYNs WITH NPI NUMBERS represented.")
 
 #**************************
-#* GYN ONC Specific look at the data
+#* GYN ONC Specific look at the data ----
 #**************************
 #retrieve_clinician_data_output <- read_rds("data/02.5-subspecialists_over_time/end_retrieve_clinician_data_chunk_results.rds")
 # Brought over from old Mac with the Postico database.  
@@ -646,7 +635,7 @@ g <- DiagrammeR::create_graph(ndf,
 DiagrammeR::render_graph(g)
 export_graph(g, file_name = "data/02.5-subspecialists_over_time/flowchart.png")
 
-
+# Postico database ----
 #**************************
 #* WAS NOT RUN LOCALLY!
 #**************************

@@ -1,13 +1,28 @@
+# This R script meticulously orchestrates a sequence of operations focused on geospatial analysis, specifically the creation and handling of isochrones. These isochrones represent areas accessible within certain time limits from specific points, offering valuable insights into geographical accessibility. The script utilizes R's `tidyverse` packages and spatial data handling capabilities provided by the `sf` (simple features) package to manage and process geospatial data efficiently.
+# 
+# ### Initialization and Data Preprocessing
+# The script initializes by setting a coordinate reference system (CRS) relevant for geographic computations and specifies paths for input and output data directories. It loads a pre-processed dataset (`goba_unrestricted.rds`) that contains extensive geographic information. The primary geocoded data from the batch process is loaded from a CSV file, which is then pruned to ensure that only entries with valid geographical coordinates are considered. This dataset is enriched by joining additional demographic and professional data related to medical practitioners, focusing on specific subspecialties.
+# 
+# ### Isochrone Creation and Error Handling
+# A crucial part of the workflow involves generating isochrones using the HERE API, facilitated by the `hereR` package. The script prepares the data by assigning unique identifiers to each entry to maintain order and correspondence between requests and responses. The process is done in chunks to manage API limitations and to handle potential errors effectively. This methodical chunking helps in isolating and addressing errors without affecting the entirety of the dataset.
+# 
+# ### Spatial Data Management and Output
+# After generating the isochrones, the script performs several spatial data manipulations—such as arranging the data by specified criteria, clipping the isochrones to the U.S. borders, and validating the geometries to correct any inconsistencies. These steps ensure that the spatial data is accurate and ready for further analysis or visualization. The script then saves the processed data in the ESRI Shapefile format, preserving the complex geometrical data structure required for detailed spatial analysis.
+# 
+# ### Visualization and Quality Assurance
+# Towards the end, the script creates visual representations of the data using Leaflet maps, which allow for interactive exploration of the isochrones. These visualizations are augmented with data-driven pop-ups that provide additional information on demand. A final sanity check involves reading the clipped isochrones data, ensuring that the processed data aligns with expected median values, signifying the reliability of the isochrones in representing true geographic accessibility.
+# 
+# ### Concluding Steps
+# The script concludes by saving the Leaflet map as an HTML file, facilitating easy sharing and presentation of the results. This comprehensive script not only demonstrates advanced capabilities in handling and analyzing geospatial data but also ensures that the results are accessible and informative, suitable for stakeholders needing detailed geographic insights.
+
 #######################
 source("R/01-setup.R")
 #######################
 crs <- 4326
 output_iso_path <- "data/06-isochrones/"
 file_path <- "data/04-geocode/geocoded_batch/end_rejoined_geocoded_data_nominatim.csv"
-
+iso_ranges <- c(30 * 60, 60 * 60, 120 * 60, 180 * 60)
 goba_unrestricted <- read_rds("data/06-isochrones/goba/goba_unrestricted.rds")
-
-# This code performs a series of data processing and spatial analysis tasks using R and the tidyverse packages. It starts by reading a CSV file named "end_inner_join_postmastr_clinician_data.csv" into the `input_file` data frame and adds a unique identifier column "id" to it. Rows with a specific condition in the "postmastr.name.x" column are filtered out. Then, it keeps only distinct rows based on the "here.address" column and additional filtering criteria involving "postmastr.pm.state" and "postmastr.pm.city."  After preprocessing, the code performs isochrone testing using the "test_and_process_isochrones" function and stores potential errors in the "errors" object. It then filters out rows that are expected to produce errors, creating "input_file_no_error_rows." Next, the code generates isochrones using an external API, and it needs to save them. However, there seems to be a TODO comment indicating that the "process_and_save_isochrones" function needs modification for specifying the save path. The dimensions and class of the resulting isochrones data are checked, and there's a comment that mentions this step takes approximately 15 minutes.Following this, the code reads the isochrones data from a file, arranges it, and clips it to the borders of the USA. The clipped isochrones are validated, and any invalid geometries are corrected. Finally, the clipped isochrones are written to an ESRI Shapefile format in the specified directory. This code is part of a larger data processing and spatial analysis workflow and is designed to handle geographical data, isochrone calculations, and data validation.
 
 # Validate the file of geocoded data.
 

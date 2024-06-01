@@ -1,11 +1,3 @@
-#######################
-source("R/01-setup.R")
-conflicted::conflicts_prefer(dplyr::filter)
-conflicted::conflicts_prefer(lubridate::year)
-conflicted::conflicts_prefer(exploratory::str_remove_all)
-conflicted::conflicts_prefer(dplyr::recode)
-#######################
-
 # The code you provided appears to be R code that performs the following tasks:
 # 1. It sources an R script called "01-setup.R," which likely contains some setup or configuration code.
 # 2. It defines a function called "search_by_taxonomy" to retrieve data related to different subspecialties in the field of Obstetrics & Gynecology (OBGYN).
@@ -14,6 +6,14 @@ conflicted::conflicts_prefer(dplyr::recode)
 # 5. The code cleans and processes the "all_taxonomy_search_data" data frame. It filters the data to keep only rows with specific taxonomy descriptions related to OBGYN subspecialties, extracts the first five characters of the postal code, converts the "basic_enumeration_date" to a date object and extracts the year, shortens the "basic_middle_name" to a single character, and removes punctuation from names.
 # 6. It renames and recodes some columns for clarity and consistency.
 # 7. Finally, it writes the cleaned data frame to an RDS file named "end_cleaned_all_taxonomy_search_data.rds" in the "data/02-search_taxonomy" directory.
+
+
+#######################
+source("R/01-setup.R")
+conflicted::conflicts_prefer(dplyr::filter)
+conflicted::conflicts_prefer(lubridate::year)
+conflicted::conflicts_prefer(exploratory::str_remove_all)
+conflicted::conflicts_prefer(dplyr::recode)
 
 ##########################################################################
 # search_by_taxonomy
