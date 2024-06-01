@@ -1,6 +1,9 @@
 # NBER DATA IS ok but it does have each change in address noted.  Maybe we assume that everyone stayed in the same place until the end.  https://www.nber.org/research/data/npinppes-cumulative-collection-preliminary
 
 # Setup and conflicts -----------------------------------------------------
+# https://data.cms.gov/provider-data/search?theme=Doctors%20and%20clinicians
+# https://data.cms.gov/provider-data/search?keyword=Clinicians
+
 source("R/01-setup.R")
 conflict_prefer("filter", "duckplyr")
 conflict_prefer("year", "lubridate")
@@ -9,6 +12,50 @@ DBI::dbDisconnect(con)
 conflicted::conflicts_prefer(dplyr::recode)
 conflicted::conflicts_prefer(exploratory::recode)
 conflicted::conflicts_prefer(lubridate::year)
+duckdb_file_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
+con <- dbConnect(duckdb::duckdb(), duckdb_file_path)
+
+
+# Similiar columns across tables ------------------------------------------
+# Table names
+table_names <- c(
+  "doc_archive_06_2014_National_Downloadable_File_csv_1",
+  "doc_archive_12_2017_Physician_Compare_National_Downloadable_File_csv_3",
+  "doc_archive_12_2018_National_Downloadable_File_2018_12_csv_2",
+  "doc_archive_12_2019_Physician_Compare_National_Downloadable_File_201912_csv_3",
+  "doctors_and_clinicians_archive_12_2020_mj5m_pzi6_csv_10",
+  "doctors_and_clinicians_12_2021_DAC_NationalDownloadableFile_csv_7",
+  "doctors_and_clinicians_12_2022_DAC_NationalDownloadableFile_csv_8",
+  "doctors_and_clinicians_12_2023_DAC_NationalDownloadableFile_csv_9",
+  "doctors_and_clinicians_05_2024_DAC_NationalDownloadableFile_csv_6"
+)
+
+# Initialize an empty list to store column names for each table
+all_column_names <- list()
+
+# Iterate over table names and retrieve column names
+for (table_name in table_names) {
+  table_ref <- tbl(con, dplyr::sql(paste("SELECT * FROM", dplyr::sql(table_name), "LIMIT 0")))
+  column_names <- table_ref %>%
+    duckplyr::collect() %>%
+    names()
+  all_column_names[[table_name]] <- column_names
+}
+
+# Flatten the list into a single vector
+all_columns_vector <- unlist(all_column_names)
+
+# Count the frequency of each column name
+column_frequency <- table(all_columns_vector)
+
+# Determine the threshold for "most" tables, e.g., appears in at least 75% of the tables
+threshold <- length(table_names) * 0.85
+
+# Identify columns that meet or exceed the threshold
+common_columns_most <- names(column_frequency[column_frequency >= threshold])
+
+# Print the results
+cat("Columns common to most tables:\n", paste(common_columns_most, collapse = ", "), "\n")
 
 
 # NBER section ------------------------------------------------------------
@@ -206,7 +253,9 @@ table_names <- dbListTables(con)
 
 # Run the function
 tables_processed <- process_tables(con, table_names)
-# Writes to write_csv(all_data, "~/Dropbox (Personal)/isochrones/data/02.33-nber_nppes_data/nppes_years/all_nppes_files.csv")
+# Writes to 
+all_data_NPPES <- readr::read_csv("~/Dropbox (Personal)/isochrones/data/02.33-nber_nppes_data/nppes_years/all_nppes_files.csv")
+
 
 
 # 'nppes_2024' read in one file at a time file to DuckDB ----
@@ -365,43 +414,7 @@ con <- dbConnect(duckdb::duckdb(), duckdb_file_path)
 
 created_tables <- create_facility_affiliation_tables(directory_path, con);created_tables
 
-# 'facility_affiliation_all'  cleaning ---------------------------------------------
-# Specify the table names to process
-dbListTables(con)
-# table_names <- dbListTables(con)
-# table_names <- table_names[grep("^doc_|^doctors_", table_names)]; table_names
-table_names <-  
-c("doc_archive_06_2014_National_Downloadable_File_csv_1",  "doc_archive_12_2017_Physician_Compare_National_Downloadable_File_csv_3", "doc_archive_12_2018_National_Downloadable_File_2018_12_csv_2", "doc_archive_12_2019_Physician_Compare_National_Downloadable_File_201912_csv_3",
-"doctors_and_clinicians_archive_12_2020_mj5m_pzi6_csv_10",  "doctors_and_clinicians_12_2021_DAC_NationalDownloadableFile_csv_7", "doctors_and_clinicians_12_2022_DAC_NationalDownloadableFile_csv_8", "doctors_and_clinicians_12_2023_DAC_NationalDownloadableFile_csv_9",
-"doctors_and_clinicians_05_2024_DAC_NationalDownloadableFile_csv_6")
-
-
-# `facility_affiliation` Synchronizing column names ----------------------------------------------
-# Initialize an empty list to store column names for each table
-all_column_names <- list()
-
-# Iterate over table names and retrieve column names
-for (table_name in table_names) {
-  # Read table from the database
-  table_data <- dbReadTable(con, table_name)
-  
-  # Get column names
-  column_names <- names(table_data)
-  
-  # Store column names in the list
-  all_column_names[[table_name]] <- column_names
-}
-
-# Print column names for each table
-for (table_name in table_names) {
-  print(paste("Column names for table", table_name, ":", paste(all_column_names[[table_name]], collapse = ", ")))
-}
-
-
 # `facility_affiliation` filtering ------------------------------------------
-duckdb_file_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
-con <- dbConnect(duckdb::duckdb(), duckdb_file_path)
-
 output_csv_path <- "/Volumes/Video Projects Muffly 1/facility_affiliation/unzipped_files/facility_affiliation_merged/facility_affiliation_merged_data.csv" #This can be loaded into exploratory to see how to use non-duckplyr verbs to clean it.  
 
 # Call the process_duckdb_tables function
@@ -778,7 +791,26 @@ write_csv(last_consecutive_year, "/Volumes/Video Projects Muffly 1/MedicarePartD
 # ' -----------------------------------------------------------------------
 
 # open_payments Section----------------------------------------------------
-create_open_payments_tables <- function(directory_path, con) {
+
+# `open_payments` Batch read in NPPES data to duckDB-------------------------
+source("R/01-setup.R")
+conflicted::conflicts_prefer(exploratory::left_join)
+conflicted::conflicts_prefer(dplyr::case_when)
+conflicted::conflicts_prefer(dplyr::filter)
+conflicted::conflicts_prefer(lubridate::year)
+
+directory_path <- "/Volumes/Video Projects Muffly 1/openpayments/unzipped_files"
+duckdb_file_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
+con <- dbConnect(duckdb::duckdb(), duckdb_file_path)
+library(dplyr)
+library(stringr)
+library(DBI)
+library(tools)
+library(readr)
+library(conflicted)
+library(beepr)
+
+create_open_payments_tables <- function(directory_path, con, clean_names = TRUE, overwrite = FALSE, notify_every = 10) {
   # Ensure str_remove_all from stringr is preferred in case of conflicts
   conflicted::conflicts_prefer(stringr::str_remove_all)
   
@@ -786,19 +818,38 @@ create_open_payments_tables <- function(directory_path, con) {
   file_names <- list.files(directory_path, full.names = TRUE)
   
   # Function to create valid table names
-  clean_table_name <- function(file_name) {
+  clean_table_name <- function(file_name, clean_names) {
     base_name <- file_path_sans_ext(basename(file_name))
-    cleaned_name <- stringr::str_remove_all(base_name, "[^A-Za-z0-9]")
+    if (clean_names) {
+      cleaned_name <- str_remove_all(base_name, "[^A-Za-z0-9]")
+    } else {
+      cleaned_name <- base_name
+    }
     cleaned_name
   }
   
   # Initialize a vector to store created table names
-  created_tables <- character(length(file_names))
+  created_tables <- character()
+  skipped_tables <- character()
+  error_messages <- list()
   
-  # Iterate over each file name provided
-  for (i in seq_along(file_names)) {
-    full_path <- file_names[i]
-    table_name <- clean_table_name(full_path)
+  # Capture start time
+  start_time <- Sys.time()
+  last_notify_time <- start_time
+  
+  # Function to log messages with timestamp
+  log_message <- function(message) {
+    cat(sprintf("[%s] %s\n", Sys.time(), message))
+  }
+  
+  # Function to process each file
+  process_file <- function(full_path, clean_names, overwrite, con, i) {
+    table_name <- clean_table_name(full_path, clean_names)
+    
+    if (overwrite && table_name %in% dbListTables(con)) {
+      dbExecute(con, sprintf("DROP TABLE IF EXISTS %s", table_name))
+      log_message(sprintf("Table '%s' dropped.", table_name))
+    }
     
     # Construct SQL command to create a table
     sql_command <- sprintf(
@@ -809,11 +860,34 @@ create_open_payments_tables <- function(directory_path, con) {
     # Execute the SQL command with error handling
     tryCatch({
       dbExecute(con, sql_command)
-      created_tables[i] <- table_name
-      cat(sprintf("Table '%s' created from '%s'.\n", table_name, basename(full_path)))
+      log_message(sprintf("Table '%s' created from '%s'.", table_name, basename(full_path)))
+      list(success = TRUE, table_name = table_name, error = NULL)
     }, error = function(e) {
-      message(sprintf("Error creating table from '%s': %s", basename(full_path), e$message))
+      log_message(sprintf("Error creating table from '%s': %s", basename(full_path), e$message))
+      list(success = FALSE, table_name = table_name, error = e$message)
     })
+  }
+  
+  # Process files sequentially
+  for (i in seq_along(file_names)) {
+    full_path <- file_names[i]
+    result <- process_file(full_path, clean_names, overwrite, con, i)
+    
+    if (result$success) {
+      created_tables <- c(created_tables, result$table_name)
+    } else {
+      skipped_tables <- c(skipped_tables, result$table_name)
+      error_messages <- c(error_messages, result$error)
+    }
+    
+    # Print elapsed time every 10 seconds
+    current_time <- Sys.time()
+    if (as.numeric(difftime(current_time, last_notify_time, units = "secs")) >= 10) {
+      elapsed_time <- current_time - start_time
+      log_message(sprintf("Elapsed time after %d files: %s", i, as.character(elapsed_time)))
+      beepr::beep(1)  # System beep to indicate progress
+      last_notify_time <- current_time
+    }
   }
   
   # List all tables in DuckDB to confirm
@@ -822,131 +896,176 @@ create_open_payments_tables <- function(directory_path, con) {
   # Ensure connection is properly closed
   dbDisconnect(con)
   
-  return(all_tables)
+  # Final beep to indicate completion
+  beepr::beep(2)
+  
+  # Summary of results
+  summary <- list(
+    created_tables = created_tables,
+    skipped_tables = skipped_tables,
+    error_messages = error_messages,
+    all_tables = all_tables
+  )
+  
+  return(summary)
 }
 
-# `open_payments` Batch read in NPPES data to duckDB-------------------------
-source("R/01-setup.R")
-conflicted::conflicts_prefer(exploratory::left_join)
-conflicted::conflicts_prefer(dplyr::case_when)
-conflicted::conflicts_prefer(dplyr::filter)
-conflicted::conflicts_prefer(lubridate::year)
-
-directory_path <- "/Volumes/Video Projects Muffly 1/openpayments/unzipped_files1"
-duckdb_file_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
-con <- dbConnect(duckdb::duckdb(), duckdb_file_path)
-
-created_tables <- create_open_payments_tables(directory_path, con);created_tables
+#Usage:  
+created_tables <- create_open_payments_tables(
+  directory_path,
+  con = con,
+  clean_names = FALSE,
+  overwrite = TRUE,
+  notify_every = 1
+)
+created_tables
 
 # 'open_payments_all'  cleaning ---------------------------------------------
 # Specify the table names to process
+con <- dbConnect(duckdb::duckdb(), duckdb_file_path)
 dbListTables(con)
 # table_names <- dbListTables(con)
-# table_names <- table_names[grep("^doc_|^doctors_", table_names)]; table_names
-table_names <-  
-  c("MUP_DPR_RY21_P04_V10_DY13_NPI_csv_1",
-    "MUP_DPR_RY21_P04_V10_DY14_NPI_csv_2",
-    "MUP_DPR_RY21_P04_V10_DY15_NPI_csv_3",
-    "MUP_DPR_RY21_P04_V10_DY16_NPI_csv_4",
-    "MUP_DPR_RY21_P04_V10_DY17_NPI_csv_5",
-    "MUP_DPR_RY21_P04_V10_DY18_NPI_csv_6",
-    "MUP_DPR_RY21_P04_V10_DY19_NPI_csv_7",
-    "MUP_DPR_RY22_P04_V10_DY20_NPI_csv_8",
-    "MUP_DPR_RY23_P04_V10_DY21_NPI_csv_9")
-
+# table_names <- table_names[grep("^OP_DTL_GNRL_|^OP_DTL_RSRCH_", table_names)]; table_names
+table_names <- c(
+    # "OP_DTL_GNRL_PGYR2014_P06302021",
+    # "OP_DTL_GNRL_PGYR2015_P06302021",
+    # "OP_DTL_GNRL_PGYR2016_P01182024",
+    # "OP_DTL_GNRL_PGYR2017_P01182024",
+    # "OP_DTL_GNRL_PGYR2018_P01182024",
+    # "OP_DTL_GNRL_PGYR2019_P01182024",
+    "OP_DTL_GNRL_PGYR2020_P01182024",
+    "OP_DTL_GNRL_PGYR2021_P01182024",
+    "OP_DTL_GNRL_PGYR2022_P01182024")
+    # "OP_DTL_OWNRSHP_PGYR2016_P01182024",
+    # "OP_DTL_OWNRSHP_PGYR2017_P01182024",
+    # "OP_DTL_OWNRSHP_PGYR2018_P01182024",
+    # "OP_DTL_OWNRSHP_PGYR2019_P01182024",
+    # "OP_DTL_OWNRSHP_PGYR2020_P01182024",
+    # "OP_DTL_OWNRSHP_PGYR2021_P01182024",
+    # "OP_DTL_OWNRSHP_PGYR2022_P01182024",
+    # "OP_DTL_RSRCH_PGYR2016_P01182024",
+    # "OP_DTL_RSRCH_PGYR2017_P01182024",
+    # "OP_DTL_RSRCH_PGYR2018_P01182024",
+    # "OP_DTL_RSRCH_PGYR2019_P01182024",
+    # "OP_DTL_RSRCH_PGYR2020_P01182024",
+    # "OP_DTL_RSRCH_PGYR2021_P01182024",
+    # "OP_DTL_RSRCH_PGYR2022_P01182024")
 
 # `open_payments` Synchronizing column names ----------------------------------------------
-# Initialize an empty list to store column names for each table
-all_column_names <- list()
-
-# Iterate over table names and retrieve column names
-for (table_name in table_names) {
-  # Read table from the database
-  table_data <- dbReadTable(con, table_name)
-  
-  # Get column names
-  column_names <- names(table_data)
-  
-  # Store column names in the list
-  all_column_names[[table_name]] <- column_names
-}
-
-# Print column names for each table
-for (table_name in table_names) {
-  print(paste("Column names for table", table_name, ":", paste(all_column_names[[table_name]], collapse = ", ")))
-}
 
 
 # `open_payments` filtering ------------------------------------------
 duckdb_file_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
 con <- dbConnect(duckdb::duckdb(), duckdb_file_path)
 
-output_csv_path <- "/Volumes/Video Projects Muffly 1/open_payments/unzipped_files/open_payments_merged_data.csv" #This can be loaded into exploratory to see how to use non-duckplyr verbs to clean it.  
+output_csv_path <- "/Volumes/Video Projects Muffly 1/openpayments/unzipped_files/final/open_payments_merged_data.csv" 
 
-# Call the process_duckdb_tables function
+# Custom function to log messages with timestamps
+log_message <- function(message) {
+  cat(sprintf("[%s] %s\n", Sys.time(), message))
+}
+
 process_open_payments_tables <- function(con, table_names, output_csv_path) {
   # Initialize an empty list to store the results
   results <- list()
-  
-  # Initialize an empty data frame to store merged data
-  all_data <- data.frame()
   
   # Check if the directory exists, create it if not
   if (!dir.exists(dirname(output_csv_path))) {
     dir.create(dirname(output_csv_path), recursive = TRUE)
   }
   
+  # Initialize the output file by writing the header
+  write_csv(data.frame(), output_csv_path, append = FALSE, col_names = TRUE)
+  
   # Loop through each table name
-  for (i in 1:length(table_names)) {
+  for (i in seq_along(table_names)) {
     table_name <- table_names[i]
-    cat("Processing table:", table_name, "\n")
+    log_message(sprintf("Processing table: %s", table_name))
     
     # Use tryCatch to handle errors
     tryCatch({
-      # Use duckplyr to create a reference to the table without loading it into R
+      # Use dbplyr to create a reference to the table without loading it into R
       table_ref <- tbl(con, table_name)
       
+      # Log the table structure
+      table_structure <- dbGetQuery(con, sprintf("PRAGMA table_info(%s)", table_name))
+      log_message(sprintf("Table structure of %s: %s", table_name, paste(colnames(table_structure), collapse = ", ")))
+      
+      # Check if the `Covered_Recipient_Specialty_1` column exists
+      if (!"Covered_Recipient_Specialty_1" %in% table_structure$name) {
+        log_message(sprintf("Column 'Covered_Recipient_Specialty_1' does not exist in table: %s", table_name))
+        next
+      }
+      
+      # Log unique values in `Covered_Recipient_Specialty_1` column
+      specialties <- table_ref %>% select(Covered_Recipient_Specialty_1) %>% distinct() %>% collect()
+      log_message(sprintf("Unique values in 'Covered_Recipient_Specialty_1' for table %s: %s", table_name, paste(specialties$Covered_Recipient_Specialty_1, collapse = ", ")))
+      
+      # Check if table has data
+      table_count <- table_ref %>% summarise(count = n()) %>% collect()
+      log_message(sprintf("Number of rows in table %s: %d", table_name, table_count$count))
+      if (table_count$count == 0) {
+        log_message(sprintf("Table is empty: %s", table_name))
+        next
+      }
+      
       # Perform the data processing steps
-      processed_data <- table_ref %>%
-        dplyr::filter(Prscrbr_Type %in% c("Gynecological Oncology", "Obstetrics & Gynecology") & Prscrbr_Cntry == "US") %>%
-        dplyr::select(PRSCRBR_NPI, Tot_Clms) %>%
-        dplyr::filter(Tot_Clms < 50000) %>%
-        dplyr::mutate(Prescribed = "Prescription written") %>%
-        dplyr::distinct(PRSCRBR_NPI, .keep_all = TRUE) %>%
-        dplyr::mutate(year = table_name)  # Add a new column "year" with the table name
+      filtered_data <- table_ref %>%
+        duckplyr::select(-Change_Type, -Teaching_Hospital_CCN, -Teaching_Hospital_ID, -Teaching_Hospital_Name) %>%
+        duckplyr::filter(
+          Covered_Recipient_Specialty_1 %in% c(
+            "Allopathic & Osteopathic Physicians|Obstetrics & Gynecology",
+            "Allopathic & Osteopathic Physicians|Obstetrics & Gynecology|Critical Care Medicine",
+            "Allopathic & Osteopathic Physicians|Obstetrics & Gynecology|Female Pelvic Medicine and Reconstructive Surgery",
+            "Allopathic & Osteopathic Physicians|Obstetrics & Gynecology|Gynecologic Oncology",
+            "Allopathic & Osteopathic Physicians|Obstetrics & Gynecology|Gynecology",
+            "Allopathic & Osteopathic Physicians|Obstetrics & Gynecology|Hospice and Palliative Medicine",
+            "Allopathic & Osteopathic Physicians|Obstetrics & Gynecology|Maternal & Fetal Medicine",
+            "Allopathic & Osteopathic Physicians|Obstetrics & Gynecology|Obstetrics",
+            "Allopathic & Osteopathic Physicians|Obstetrics & Gynecology|Reproductive Endocrinology"
+          ) &
+            Recipient_Country == "United States" &
+            Covered_Recipient_Type == "Covered Recipient Physician"
+        )
+      log_message(sprintf("Filtered data for table: %s", table_name))
       
-      cat("Processed table:", table_name, "\n")
-      cat("Writing processed data to CSV...\n")
+      # Get the count of filtered data
+      filtered_data_count <- filtered_data %>% summarise(count = n()) %>% collect() %>% pull(count)
+      log_message(sprintf("Number of rows in filtered data for table %s: %d", table_name, filtered_data_count))
       
-      # Collect the processed data
-      processed_data_df <- processed_data %>% collect()
+      # Collect and write the filtered data in chunks
+      chunk_size <- 100000  # Define the chunk size
+      num_chunks <- ceiling(filtered_data_count / chunk_size)
       
-      # Append the processed data to the merged data frame
-      all_data <- dplyr::bind_rows(all_data, processed_data_df)
+      for (j in seq_len(num_chunks)) {
+        chunk_start <- (j - 1) * chunk_size + 1
+        chunk_end <- min(j * chunk_size, filtered_data_count)
+        
+        chunk_data <- filtered_data %>%
+          filter(row_number() >= chunk_start & row_number() <= chunk_end) %>%
+          collect()
+        
+        log_message(sprintf("Writing %d rows for table: %s, chunk: %d", nrow(chunk_data), table_name, j))
+        write_csv(chunk_data, output_csv_path, append = TRUE, col_names = FALSE)
+      }
       
       # Store the table name in the results list
-      results[[table_name]] <- processed_data
+      results[[table_name]] <- filtered_data
     }, error = function(e) {
-      cat("Error processing table:", table_name, "\n")
-      message("Error message:", e$message, "\n\n")
+      log_message(sprintf("Error processing table: %s", table_name))
+      log_message(sprintf("Error message: %s", e$message))
     })
   }
   
-  cat("All tables processed.\n")
-  
-  # Write the merged data frame to disk
-  tryCatch({
-    write_csv(all_data, output_csv_path)
-    print(output_csv_path)
-  }, error = function(e) {
-    cat("Error writing to CSV:", e$message, "\n")
-  })
+  log_message("All tables processed.")
   
   # Return the list of processed tables
   return(results)
 }
 
 processed_tables <- process_open_payments_tables(con, table_names, output_csv_path)
+
+head(read_csv(output_csv_path))
 
 # `open_payments` sanity check --------------------------------------------
 # Opens up the first table in the list that is 2017

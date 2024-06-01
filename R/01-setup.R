@@ -37,6 +37,7 @@ library(ggalluvial)
 library(ggplot2)         # Data visualization package based on the Grammar of Graphics
 library(ggthemes)        # Additional themes for ggplot2
 library(glue)
+library(here)
 library(hereR)           # Helps manage file paths and project directories
 library(htmltools)       # Tools for working with HTML widgets
 library(htmlwidgets)     # Create interactive HTML widgets from R
@@ -47,6 +48,7 @@ library(mapview)         # Interactive viewing of spatial data
 library(maps)            # Draw maps and add map-based data
 library(memoise)         # Provides memoization functions for caching results
 library(npi)             # Tools for working with National Provider Identifier (NPI) numbers
+library(parallel)
 library(purrr)           # Functional programming toolkit
 library(provider)        # Access to healthcare provider data
 library(progress)        # Creates progress bars to monitor code execution progress
@@ -95,6 +97,9 @@ data_folder <- here::here("data")
 results_folder <- here::here("results")
 images_folder <- here::here("figures")
 code_folder <- here::here("R")
+
+# number of threads to use in the R script
+threads = parallel::detectCores()
 
 ########### Bespoke Functions ----
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
