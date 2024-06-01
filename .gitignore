@@ -13,3 +13,4 @@ figures/*
 api_keys.R
 data/04-geocode/geocoded_batch/raw/*.csv
 data/06-isochrones/isochrones_*_chunk_*/
+data/02.5-subspecialists_over_time/retrieve_clinician_data_chunk_results/*
