@@ -12,6 +12,30 @@
 # ### File Management and Data Export
 # Lastly, the script is geared towards robust output management by writing the processed data back into shapefiles—a popular format in geographic information systems (GIS) that supports geometric location and attribute information. This step ensures that the spatial data, now enriched and validated, is stored in a standardized format ready for further analysis or sharing.
 
+# Required Input Files for Script Execution
+
+# 1. Setup Script:
+#    - R Script: "R/01-setup.R"
+
+# 2. Input and Output Directories:
+#    - Output Directory: "data/06-isochrones/"
+#    - File Path: "data/04-geocode/end_geocoded_data_nominatim.csv"
+
+# 3. GOBA Unrestricted Data:
+#    - RDS File: "data/06-isochrones/goba/goba_unrestricted.rds"
+
+# 4. Geocoded Data:
+#    - CSV File: "data/04-geocode/end_geocoded_data_nominatim.csv"
+
+# 5. ACOG Districts Data:
+#    - Data Source: `tyler::ACOG_Districts`
+
+# 6. Shapefiles:
+#    - Shapefile: "data/06-isochrones/end_isochrones_sf_clipped/isochrones.shp"
+
+# 7. Leaflet Map Output:
+#    - HTML File: "figures/isochrone_map_<timestamp>.html"
+#    - PNG File: "figures/isochrone_map_<timestamp>.png"
 
 
 #######################
