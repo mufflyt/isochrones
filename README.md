@@ -754,25 +754,15 @@ Merlin
 
 # Retirement
 * ACOG Committee Opinion No. 739: The Late-Career Obstetrician-Gynecologist
-I am not sure how to determine when people retire?  What is on my retirement list of to-dos:  
 * NPPES listing seems to continue forever even when they are retired (Chris Carey listed in 2022.  Sue Davidson listed in 2022.  Karlotta Davis listed in 2022.)
-* I do not have the year they stopped completing MOC.
 * Maybe Physician Compare because if they do not bill for Medicare patients they would not be in there?  There is what I think is an early version of Physician Compare at NBER but it does not have the year for each row.
-
-* Malpractice insurance coverage????
-* Medicare PArt D Prescribing data: https://data.cms.gov/provider-summary-by-type-of-service/medicare-part-d-prescribers/medicare-part-d-prescribers-by-provider
+* See python code.  
+* www.docinfo.org through FSMB search only tells you if they have a license or not
+* Future idea:  Opioid prescription as a marker for surgeons who are actively practicing.  Malpractice insurance coverage????
+  * Medicare PArt D Prescribing data: https://data.cms.gov/provider-summary-by-type-of-service/medicare-part-d-prescribers/medicare-part-d-prescribers-by-provider
 The 'provider' package (SWEET 📦 ) has:
 ```r
 prescribers(year = 2021,
             type = 'Provider',
             npi = 1003000423)
 ```
-* www.docinfo.org through FSMB search only tells you if they have a license or not
-* Opioid prescription as a marker for surgery.
-* certificationmatters.org.  https://www.certificationmatters.org/find-my-doctor/?dsearch=1&lname=Muffly&fname=&state=CO&specialty=obstetrics-gynecology.
-  You can search without a state.  https://www.certificationmatters.org/find-my-doctor/?dsearch=1&lname=Muffly&fname=&state=&specialty=obstetrics-gynecology
-  The last name search requires 5 letters
-  You can search without a first name
-  You can search without a state if you delete it
-  You are allowed 15 searches per day, and you will be kicked out after that.  Incognito mode does not work either.  
-  You can't get more than 25 results at a time
