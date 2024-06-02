@@ -20,6 +20,46 @@ source("R/01-setup.R")
 # 
 # Overall, this script demonstrates a thorough approach to handling and analyzing spatial data with the goal of assessing coverage by isochrones across block groups. This type of analysis is integral in fields such as urban planning, environmental studies, and logistics.
 
+# Required Input Files for Script Execution
+# 
+# 1. Setup Script:
+#   - R Script: `R/01-setup.R`
+# 
+# 2. Block Groups Data:
+#   - Shapefile: `data/07.5-prep-get-block-group-overlap/block_groups_tigris_2022.shp`
+# 
+# 3. Isochrones Data:
+#   - Shapefile: `data/06-isochrones/end_isochrones_sf_clipped/isochrones.shp`
+# 
+# 4. Output Directory:
+#   - Directory: `data/08-get-block-group-overlap`
+# 
+# 5. Cleaned Intersection Data (For Drive Times):
+#   - CSV File: `data/08-get-block-group-overlap/intersect_block_group_cleaned_30minutes.csv`
+# - CSV File: `data/08-get-block-group-overlap/intersect_block_group_cleaned_60minutes.csv`
+# - CSV File: `data/08-get-block-group-overlap/intersect_block_group_cleaned_120minutes.csv`
+# - CSV File: `data/08-get-block-group-overlap/intersect_block_group_cleaned_180minutes.csv`
+# 
+# 6. Combined Overlap Data:
+#   - CSV File: `data/08-get-block-group-overlap/combined_df.csv`
+# 
+# 7. Isochrone Shapefiles (Filtered by Drive Times):
+#   - Shapefile: `data/08-get-block-group-overlap/isochrone_files/filtered_isochrones_30_minutes.shp`
+# - Shapefile: `data/08-get-block-group-overlap/isochrone_files/filtered_isochrones_60_minutes.shp`
+# - Shapefile: `data/08-get-block-group-overlap/isochrone_files/filtered_isochrones_120_minutes.shp`
+# - Shapefile: `data/08-get-block-group-overlap/isochrone_files/filtered_isochrones_180_minutes.shp`
+# 
+# 8. Colorado Block Groups:
+#   - Shapefile: `data/08-get-block-group-overlap/simplified/block_groups.shp`
+
+#######################
+source("R/01-setup.R")
+#######################
+
+# Load block groups and isochrones data
+block_groups_file <- "data/07.5-prep-get-block"
+
+
 block_groups_file <- "data/07.5-prep-get-block-group-overlap/block_groups_tigris_2022.shp" #For full project 
 isochrones_file <- "data/06-isochrones/end_isochrones_sf_clipped/isochrones.shp"
 drive_time_variable <- "60"
