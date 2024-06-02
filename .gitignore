@@ -10,7 +10,7 @@ data/tigris/*
 figures/*
 *.mp4
 .here
-api_keys.R
+api*.R
 data/04-geocode/geocoded_batch/raw/*.csv
 data/06-isochrones/isochrones_*_chunk_*/
 data/02.33-nber_nppes_data/dataframe_*
