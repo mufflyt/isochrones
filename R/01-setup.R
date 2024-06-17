@@ -50,7 +50,7 @@ library(memoise)         # Provides memoization functions for caching results
 library(npi)             # Tools for working with National Provider Identifier (NPI) numbers
 library(parallel)
 library(purrr)           # Functional programming toolkit
-library(provider)        # Access to healthcare provider data
+#library(provider)        # Access to healthcare provider data
 library(progress)        # Creates progress bars to monitor code execution progress
 library(readxl)          # Read Excel files
 library(rnaturalearth)   # Access Natural Earth data for mapping
@@ -433,7 +433,7 @@ create_and_save_physician_dot_map <- function(physician_data, jitter_range = 0.0
 test_and_process_isochrones <- function(input_file) {
   input_file
   input_file <- input_file %>%
-    mutate(id = row_number())# %>%
+    dplyr::mutate(id = row_number())# %>%
     #filter(postmastr.name.x != "Hye In Park, MD")
 
   input_file$lat <- as.numeric(input_file$lat)
@@ -749,8 +749,8 @@ postico_database_obgyns_by_year <- function(year, db_details) {
   # Fetch and process the data from the database
   nppes_data <- nppes_table %>%
     distinct(NPI, .keep_all = TRUE) %>%
-    mutate(`Zip Code` = str_sub(`Zip Code`,1 ,5)) %>%
-    filter(`Primary Specialty` %in% c("GYNECOLOGICAL ONCOLOGY", "OBSTETRICS/GYNECOLOGY")) %>% 
+    dplyr::mutate(`Zip Code` = str_sub(`Zip Code`,1 ,5)) %>%
+    dplyr::filter(`Primary Specialty` %in% c("GYNECOLOGICAL ONCOLOGY", "OBSTETRICS/GYNECOLOGY")) %>% 
     collect()
   
   # Write the processed data to a CSV file
@@ -884,7 +884,7 @@ retrieve_clinician_data <- function(input_data, chunk_size = 100, output_dir = "
   for (i in seq(1, n, by = chunk_size)) {  # Loop through the data in chunks
     df_chunk <- df[i:min(i + chunk_size - 1, n), ]  # Extract a chunk of data
     chunk_results <- df_chunk %>%
-      mutate(clinician_data = purrr::map(.x = npi, .f = get_clinician_data)) %>%
+      dplyr::mutate(clinician_data = purrr::map(.x = npi, .f = get_clinician_data)) %>%
       unnest(clinician_data, names_sep = "_") %>%
       distinct(npi, .keep_all = TRUE)  # Process the chunk: retrieve clinician data, unnest, and remove duplicates
     
@@ -1111,7 +1111,7 @@ process_tables <- function(con, table_names) {
           `Healthcare Provider Taxonomy Code_2`, # ptaxcode2,
           `Is Sole Proprietor`# soleprop,
         ) %>%
-        filter(
+        dplyr::filter(
           `Entity Type Code` == 1,
           `Provider Business Mailing Address Country Code (If outside U.S.)` == "US",
           `Provider Business Practice Location Address Country Code (If outside U.S.)` == "US",
@@ -1119,9 +1119,9 @@ process_tables <- function(con, table_names) {
             `Healthcare Provider Taxonomy Code_2` %in% c("207V00000X", "207VC0200X", "207VE0102X", "207VF0040X", "207VG0400X", "207VM0101X", "207VX0000X", "207VX0201X")
         ) %>%
         select(-`Entity Type Code`, -`Provider Other First Name`, -`Provider Business Practice Location Address Country Code (If outside U.S.)`, -`Provider Business Mailing Address Country Code (If outside U.S.)`) %>%
-        mutate(across(c(`Provider First Name`, `Provider Last Name (Legal Name)`, `Provider First Line Business Practice Location Address`, `Provider Business Practice Location Address City Name`, `Provider First Line Business Mailing Address`, `Provider Business Mailing Address City Name`), ~str_to_upper(.))) %>%
+        dplyr::mutate(across(c(`Provider First Name`, `Provider Last Name (Legal Name)`, `Provider First Line Business Practice Location Address`, `Provider Business Practice Location Address City Name`, `Provider First Line Business Mailing Address`, `Provider Business Mailing Address City Name`), ~str_to_upper(.))) %>%
         distinct(NPI, `Provider Business Practice Location Address City Name`, `Provider Business Practice Location Address State Name`, .keep_all = TRUE) %>%
-        mutate(year = table_name) # Add a new column "year" with the table name
+        dplyr::mutate(year = table_name) # Add a new column "year" with the table name
       
       cat("Processed table:", table_name, "\n")
       cat("Writing processed data to CSV...\n")
@@ -1157,7 +1157,7 @@ calculate_intersection_overlap_and_save <- function(block_groups_file, isochrone
   
   # Read block groups shapefile and process it
   block_groups <- sf::st_read(block_groups_file) %>%
-    mutate(bg_area = st_area(.)) %>%  # Calculate area for each block group
+    dplyr::mutate(bg_area = st_area(.)) %>%  # Calculate area for each block group
     sf::st_transform(2163) %>%
     sf::st_make_valid() %>%
     sf::st_simplify(preserveTopology = FALSE, dTolerance = 1000)
@@ -1176,8 +1176,8 @@ calculate_intersection_overlap_and_save <- function(block_groups_file, isochrone
   
   # Filter isochrones for the specified drive time
   isochrones_filtered <- isochrones %>%
-    filter(drive_time == drive_time_variable) %>%
-    mutate(isochrones_drive_time = drive_time_variable) 
+    dplyr::filter(drive_time == drive_time_variable) %>%
+    dplyr::mutate(isochrones_drive_time = drive_time_variable) 
   
   # Log the progress
   message(paste("Plot of Isochrones for", drive_time_variable, "minutes..."))
@@ -1230,23 +1230,23 @@ calculate_intersection_overlap_and_save <- function(block_groups_file, isochrone
   
   # Calculate intersection between block groups and isochrones
   intersect <- st_intersection(block_groups, isochrones_filtered) %>%
-    mutate(intersect_area = st_area(.)) %>%
+    dplyr::mutate(intersect_area = st_area(.)) %>%
     select(GEOID, intersect_area) %>%
     st_drop_geometry()
   
   # Assign intersect_drive_time after calculating intersection
   intersect <- intersect %>%
-    mutate(intersect_drive_time = drive_time_variable)
+    dplyr::mutate(intersect_drive_time = drive_time_variable)
   
   # Log the progress
   message(paste("Calculating intersection for", drive_time_variable, "minutes..."))
   
   # Merge intersection area with block groups
-  intersect_block_group <- left_join(block_groups, intersect, by = "GEOID")
+  intersect_block_group <- dplyr::left_join(block_groups, intersect, by = "GEOID")
   
   # Calculate overlap and save cleaned data
   intersect_block_group_cleaned <- intersect_block_group %>% 
-    mutate(
+    dplyr::mutate(
       intersect_area = ifelse(is.na(intersect_area), 0, intersect_area),  # Assign 0 to NA intersect_area values
       overlap = as.numeric(intersect_area / bg_area)  # Calculate overlap as a proportion
     )
@@ -1256,7 +1256,7 @@ calculate_intersection_overlap_and_save <- function(block_groups_file, isochrone
     {
       # Calculate area in all block groups
       block_groups_intersected <- intersect_block_group_cleaned %>%
-        mutate(bg_area = st_area(.))
+        dplyr::mutate(bg_area = st_area(.))
       
       # Summary of the overlap percentiles
       summary_bg <- summary(block_groups_intersected$overlap)
@@ -1274,7 +1274,7 @@ calculate_intersection_overlap_and_save <- function(block_groups_file, isochrone
 #
 add_drive_time_column <- function(file_path, drive_time) {
   df <- readr::read_csv(file_path)
-  df <- df %>% mutate(intersect_drive_time = as.character(drive_time))
+  df <- df %>% dplyr::mutate(intersect_drive_time = as.character(drive_time))
   readr::write_csv(df, file_path)
 }
 
@@ -1282,7 +1282,7 @@ add_drive_time_column <- function(file_path, drive_time) {
 # Redefine the function to use within a dplyr chain
 assign_lastupdate <- function(npi, year, updates) {
   update_values <- updates %>%
-    filter(npi == npi) %>%
+    dplyr::filter(npi == npi) %>%
     arrange(lastupdatestr) %>%
     pull(lastupdatestr) %>%
     na.omit() %>%
