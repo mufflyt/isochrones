@@ -137,6 +137,7 @@ transport_mode <- "car"
 fc <- cache_filesystem(file.path(".cache"))
 
 # Process and Save Isochrones Function
+conflicted::conflicts_prefer(base::setdiff)
 isochrones_sf <- process_and_save_isochrones(
   input_file = input_file_no_error_rows,
   chunk_size = chunk_size,
@@ -176,7 +177,7 @@ merged_data <- input_file_no_error_rows %>%
 merged_data <- merged_data[, !(names(merged_data) %in% c("id.x", "id.y"))] # Remove duplicate ID columns
 
 merged_data <- merged_data %>%
-  mutate(range = range/60L)
+  dplyr::mutate(range = range/60L)
 #View(merged_data)
 
 # Check the merged data
@@ -265,3 +266,4 @@ map <- map %>%
 
 # Save the map as an HTML file
 htmlwidgets::saveWidget(map, paste0(output_iso_path, "map.html"))
+
