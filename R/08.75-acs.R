@@ -20,33 +20,26 @@ us_fips_list <- tigris::fips_codes %>%
   dplyr::filter(state_code < 56) %>%
   dplyr::select(state_code) %>%
   dplyr::pull()
+# us_fips_list <- c("08")  # Example FIPS codes for COLORADO for TESTING
 
 #https://api.census.gov/data/2022/acs/acs1/variables.html
 #************************************
 # GET THE ACS CENSUS VARIABLES
 #************************************
-get_acs_data <- function(us_fips_list, vintage = 2019, acs_variables) {
-state_data <- list()
-for (fips_code in us_fips_list) {
-  stateget <- paste("state:", fips_code, "&in=county:*&in=tract:*", sep = "")
-  state_data[[fips_code]] <- getCensus(name = "acs/acs5", vintage = vintage,
-                                       vars = c("NAME", acs_variables),
-                                       region = "block group:*", regionin = stateget,
-                                       key = "485c6da8987af0b9829c25f899f2393b4bb1a4fb")
-}
-acs_raw <- dplyr::bind_rows(state_data)
-acs_raw <- acs_raw %>%
-  mutate(year = vintage)
-Sys.sleep(1)
+# Total female populations
+acs_variables <- c(
+  "B01001_001E",   # Total female population
+  "B02001_001E",   # Total female population by race
+  "B02001_002E",   # Female Population of one race: White alone
+  "B02001_003E",   # Female Population of one race: Black or African American alone
+  "B02001_004E",   # Female Population of one race: American Indian and Alaska Native alone
+  "B02001_005E",   # Female Population of one race: Asian alone
+  "B02001_006E"    # Female Population of one race: Native Hawaiian and Other Pacific Islander alone
+)# Example ACS variables for TESTING
 
-readr::write_csv(acs_raw, paste0("data/08.75-acs/08.75-acs_", vintage, "vintage.csv"))
-return(acs_raw)
-}
-
-# Example usage
-us_fips_list <- c("08")  # Example FIPS codes
-acs_variables <- c("B01001_001E", "B02001_001E", "B02001_002E", "B02001_003E", "B02001_004E", "B02001_005E", "B02001_006E")  # Example ACS variables
-acs_data <- get_acs_data(us_fips_list, vintage = 2021, acs_variables); acs_data
+acs_data <- get_acs_data(us_fips_list, 
+                         vintage = 2021, 
+                         acs_variables); acs_data
 readr::write_csv(acs_data, "data/08.75-acs/acs-data.csv")
 # acs_data <- readr::read_csv("data/08.75-acs/acs-data.csv") #for testing
 

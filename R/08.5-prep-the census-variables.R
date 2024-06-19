@@ -33,7 +33,9 @@ source("R/01-setup.R")
 # Crosswalk of variables to descriptions downloaded from the ACS API web site.
 #https://api.census.gov/data/2020/dec/dhc/variables.html
 #write_csv(vars, "data/09-get-census-population/census_DHC.csv") #sorted in Workforce Exploratory.io , named CENSUS_DHC
-vars <- load_variables(year = 2020, "dhc") #Demographic and Housing Characteristics summary files
+
+# "Demographic and Housing Characteristics summary files" are indeed part of the American Community Survey (ACS). These summary files provide detailed demographic and housing information at various geographic levels (such as state, county, tract, etc.) and are produced annually by the U.S. Census Bureau. They include data on population characteristics (such as age, sex, race, ethnicity), housing characteristics (such as occupancy, tenure, structure type), and other social and economic variables derived from the ACS survey data. These files are widely used for research, policy-making, and decision-making purposes across various sectors.
+vars <- tidycensus::load_variables(year = 2020, "dhc") #Demographic and Housing Characteristics summary files
 
 
 #***********************************************************************
@@ -42,40 +44,40 @@ vars <- load_variables(year = 2020, "dhc") #Demographic and Housing Characterist
 #*
 census_variables_prepped <- vars %>%
   # variables with only the prefix of P12_ are SEX BY AGE FOR SELECTED AGE CATEGORIES.  They are summary variables.
-  filter(!str_detect(name, fixed("P12_"))) %>%
+  dplyr::filter(!stringr::str_detect(name, fixed("P12_"))) %>%
   # We only want "SEX BY AGE" vars
-  filter(str_detect(concept, fixed("SEX BY AGE"))) %>%
+  dplyr::filter(stringr::str_detect(concept, fixed("SEX BY AGE"))) %>%
   # No males.
-  filter(!str_detect(label, fixed("!!Male:!!", ignore_case=TRUE))) %>%
+  dplyr::filter(!stringr::str_detect(label, fixed("!!Male:!!", ignore_case=TRUE))) %>%
   # No annotations.
-  filter(!str_detect(label, fixed("Annotation of Margin of Error", ignore_case=TRUE))) %>%
-  mutate(label = str_remove(label, regex("^Annotation of Estimate!!Total:!!Female:!!", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
-  filter(!str_detect(label, fixed("Margin of Error!!", ignore_case=TRUE))) %>%
+  dplyr::filter(!stringr::str_detect(label, fixed("Annotation of Margin of Error", ignore_case=TRUE))) %>%
+  dplyr::mutate(label = exploratory::str_remove(label, regex("^Annotation of Estimate!!Total:!!Female:!!", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
+  dplyr::filter(!stringr::str_detect(label, fixed("Margin of Error!!", ignore_case=TRUE))) %>%
   # Removing the fucking !! that are all over this document.  Jesus.
-  mutate(label = str_remove(label, regex("^Annotation of Estimate!!Total:!!Female:!!", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
-  mutate(label = str_remove(label, regex("^Estimate!!Total:!!Female:!!", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
-  filter(!str_detect(name, fixed("EA")) & !str_detect(label, fixed("!!Male:"))) %>%
-  mutate(label = str_remove(label, regex("!!", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
-  mutate(label = str_remove(label, regex("!!", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
-  mutate(label = str_remove(label, regex("(!!)", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
+  dplyr::mutate(label = exploratory::str_remove(label, regex("^Annotation of Estimate!!Total:!!Female:!!", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
+  dplyr::mutate(label = exploratory::str_remove(label, regex("^Estimate!!Total:!!Female:!!", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
+  dplyr::filter(!stringr::str_detect(name, fixed("EA")) & !stringr::str_detect(label, fixed("!!Male:"))) %>%
+  dplyr::mutate(label = exploratory::str_remove(label, regex("!!", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
+  dplyr::mutate(label = exploratory::str_remove(label, regex("!!", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
+  dplyr::mutate(label = exploratory::str_remove(label, regex("(!!)", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
   # Keep only females.
-  filter(str_detect(label, fixed("female", ignore_case=TRUE))) %>%
-  mutate(label = str_remove(label, regex("^Total:", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
-  arrange(concept) %>%
+  dplyr::filter(stringr::str_detect(label, fixed("female", ignore_case=TRUE))) %>%
+  dplyr::mutate(label = exploratory::str_remove(label, regex("^Total:", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
+  dplyr::arrange(concept) %>%
   # Remove QUARTERS.
-  filter(!str_detect(concept, fixed("QUARTERS"))) %>%
-  mutate(concept = str_replace_all(concept, regex("AMERICAN INDIAN AND ALASKA NATIVE", ignore_case = TRUE), "AI/AN")) %>%
-  mutate(concept = str_replace(concept, regex("NATIVE HAWAIIAN AND OTHER PACIFIC ISLANDER", ignore_case = TRUE), "NHPI")) %>%
-  filter(!str_detect(concept, fixed("HOUSEHOLDS")) & !str_detect(concept, fixed("SOME OTHER RACE")) & !str_detect(concept, fixed("FOR THE POPULATION UNDER 20 YEARS"))) %>%
-  mutate(concept = recode(concept, "SEX BY AGE FOR SELECTED AGE CATEGORIES" = "total female population", type_convert = TRUE)) %>%
+  dplyr::filter(!stringr::str_detect(concept, fixed("QUARTERS"))) %>%
+  dplyr::mutate(concept = str_replace_all(concept, regex("AMERICAN INDIAN AND ALASKA NATIVE", ignore_case = TRUE), "AI/AN")) %>%
+  dplyr::mutate(concept = str_replace(concept, regex("NATIVE HAWAIIAN AND OTHER PACIFIC ISLANDER", ignore_case = TRUE), "NHPI")) %>%
+  dplyr::filter(!stringr::str_detect(concept, fixed("HOUSEHOLDS")) & !stringr::str_detect(concept, fixed("SOME OTHER RACE")) & !stringr::str_detect(concept, fixed("FOR THE POPULATION UNDER 20 YEARS"))) %>%
+  dplyr::mutate(concept = exploratory::recode(concept, "SEX BY AGE FOR SELECTED AGE CATEGORIES" = "total female population", type_convert = TRUE)) %>%
   # variables with only the prefix of P12_ are SEX BY AGE FOR SELECTED AGE CATEGORIES.  "P12_" are summary variables.
-  filter(!str_detect(name, fixed("P12_"))) %>%
+  dplyr::filter(!stringr::str_detect(name, fixed("P12_"))) %>%
   # All ages included, all races included.
-  mutate(concept = str_remove_all(concept, "^SEX BY AGE FOR SELECTED AGE CATEGORIES \\(", remove_extra_space = TRUE)) %>%
+  dplyr::mutate(concept = exploratory::str_remove_all(concept, "^SEX BY AGE FOR SELECTED AGE CATEGORIES \\(", remove_extra_space = TRUE)) %>%
   rename(description = concept) %>%
-  unite(complete_description, label, description, sep = ", ", remove = FALSE, na.rm = FALSE) %>%
-  mutate(abbreviated = word(description, 1, sep = "\\s+"), .after = ifelse("description" %in% names(.), "description", last_col())) %>%
-  select(-label, -description) %>%
+  tidyr::unite(complete_description, label, description, sep = ", ", remove = FALSE, na.rm = FALSE) %>%
+  dplyr::mutate(abbreviated = word(description, 1, sep = "\\s+"), .after = ifelse("description" %in% names(.), "description", last_col())) %>%
+  dplyr::select(-label, -description) %>%
   reorder_cols(abbreviated); census_variables_prepped
   # Age and Race included, 696 rows included
 ##
@@ -89,12 +91,16 @@ census_variables_prepped <- vars %>%
 
 write_csv(census_variables_prepped, "data/08.5-prep-the-census-variables/end_census_variables_prepped.csv"); head(census_variables_prepped)
 
+# Creating the series of names
+census_variables_prepped_series <- census_variables_prepped$name %>% as.character()
+
+
 #***********************************************************************
 # CLEAN THE DECENNIAL CENSUS VARIABLES FOR TOTALS ONLY
 #***********************************************************************
 # Totals only
 totals_census_variables_prepped <- census_variables_prepped %>%
-  filter(str_detect(name, fixed("_026N"))) %>%
+  dplyr::filter(stringr::str_detect(name, fixed("_026N"))) %>%
   # Only totals by Race.  29 rows
   write_csv(., "data/08.5-prep-the-census-variables/end_totals_census_variables_prepped.csv"); head(totals_census_variables_prepped)
 
@@ -116,7 +122,7 @@ totals_census_variables_prepped <- census_variables_prepped %>%
 # `branching_point_1`<- exploratory::read_delim_file("data/08.5-prep-the-census-variables/temp_bg.csv", delim = NULL, quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) #%>%
 #   readr::type_convert() %>%
 #   exploratory::clean_data_frame() %>%  # On the Census Demographic Profile they do a "Total races tallied" using "White alone or in combination with one or more races" so I will try that here.
-# filter(str_ends(complete_description, fixed(", NOT HISPANIC OR LATINO)")) & str_detect(complete_description, fixed("OR IN COMBINATION WITH ONE OR MORE OTHER RACES"))) %>%
+# filter(str_ends(complete_description, fixed(", NOT HISPANIC OR LATINO)")) & stringr::str_detect(complete_description, fixed("OR IN COMBINATION WITH ONE OR MORE OTHER RACES"))) %>%
 #   reorder_cols(variable, abbreviated)
 # 
 # # Steps to produce temp_bg_1
@@ -125,20 +131,20 @@ totals_census_variables_prepped <- census_variables_prepped %>%
 # 
 #   # Bring all of one race together (White, White non-Hispanic, White Hispanic, White Other)
 #   summarize_group(group_cols = c(`abbreviated` = "abbreviated",  `geoid` = "geoid"),group_funs = c("none",  "none"),population = sum(population, na.rm = TRUE)) %>%
-#   arrange(geoid) %>%
+#   dplyr::arrange(geoid) %>%
 #   rename(all_types_of_race_together_population = population)
 # 
 # # Steps to produce the output
 # `branching_point_1` %>%
 #   left_join(`temp_bg_1`, by = join_by(`abbreviated` == `abbreviated`, `geoid` == `geoid`)) %>%
 #   distinct(abbreviated, geoid, .keep_all = TRUE) %>%
-#   select(-complete_description) %>%
+#   dplyr::select(-complete_description) %>%
 #   mutate(abbreviated = recode(abbreviated, "BLACK" = "race_black_number", "AI/AN" = "race_aian_number", "ASIAN" = "race_asian_number", "NHPI" = "race_nhpi_number", "WHITE" = "race_white_number", type_convert = TRUE)) %>% 
 #   #"HISPANIC" = "race_hispanic_number", "TWO" = "race_two_number",
-#   select(-variable, -population) %>%
+#   dplyr::select(-variable, -population) %>%
 #   pivot_longer(cols = c(`abbreviated`), values_to = 'value', names_to = c("key"), values_drop_na = TRUE, names_repair = 'unique') %>%
 #   pivot_wider(names_from = c(value), values_from = c(all_types_of_race_together_population)) %>%
-#   select(-key) %>%
+#   dplyr::select(-key) %>%
 #   reorder_cols(race_aian_number, race_asian_number, race_black_number, #race_hispanic_number, race_two_number,
 #                race_nhpi_number, race_white_number, overlap, geoid, variable, name, block_group, tract, county, fips_state, fips_block_group, complete_description) %>%
 #   group_by(geoid) %>%
@@ -172,33 +178,33 @@ totals_census_variables_prepped <- census_variables_prepped %>%
 #   mutate(across(starts_with("within_"),
 #                 list(pct = ~ . / get(paste0("population_", sub("within_", "", cur_column())))),
 #                 .names = "{.col}_pct")) %>%
-#   # select(ends_with("_pct"), everything()) %>%
+#   # dplyr::select(ends_with("_pct"), everything()) %>%
 #   write_csv(., "data/08.5-prep-the-census-variables/demographics_bg.csv") -> abc
 # 
 # read_csv("data/08.5-prep-the-census-variables/demographics_bg.csv")
 # abc
 #TODO:  This is broken:  within_total
 
-# Generate descriptions for each column in abc with thousandths commas
-descriptions <- c(
-  paste0("within_total: ", format(abc[[1]], big.mark = ",", scientific = FALSE), ". This column represents the total population count within the specified areas of interest, considering all races and ethnicities."),
-  paste0("population_total: ", format(abc[[2]], big.mark = ",", scientific = FALSE), ". This column represents the total population count for the entire dataset, irrespective of the areas of interest or race/ethnicity."),
-  paste0("within_black: ", format(abc[[3]], big.mark = ",", scientific = FALSE), ". This column represents the population count within the specified areas belonging to the Black or African American racial group."),
-  paste0("population_black: ", format(abc[[4]], big.mark = ",", scientific = FALSE), ". This column represents the total population count for the Black or African American racial group in the entire dataset."),
-  paste0("within_white: ", format(abc[[5]], big.mark = ",", scientific = FALSE), ". This column represents the population count within the specified areas belonging to the White racial group."),
-  paste0("population_white: ", format(abc[[6]], big.mark = ",", scientific = FALSE), ". This column represents the total population count for the White racial group in the entire dataset."),
-  paste0("within_nhpi: ", format(abc[[7]], big.mark = ",", scientific = FALSE), ". This column represents the population count within the specified areas belonging to the Native Hawaiian and Other Pacific Islander (NHPI) racial group."),
-  paste0("population_nhpi: ", format(abc[[8]], big.mark = ",", scientific = FALSE), ". This column represents the total population count for the NHPI racial group in the entire dataset."),
-  paste0("within_total_pct: ", format(abc[[9]], big.mark = ",", scientific = FALSE), ". This column represents the percentage of the total population within the specified areas relative to the total population in the dataset."),
-  paste0("within_black_pct: ", format(abc[[10]], big.mark = ",", scientific = FALSE), ". This column represents the percentage of the Black or African American population within the specified areas relative to the total Black or African American population in the dataset."),
-  paste0("within_white_pct: ", format(abc[[11]], big.mark = ",", scientific = FALSE), ". This column represents the percentage of the White population within the specified areas relative to the total White population in the dataset."),
-  paste0("within_nhpi_pct: ", format(abc[[12]], big.mark = ",", scientific = FALSE), ". This column represents the percentage of the NHPI population within the specified areas relative to the total NHPI population in the dataset.")
-)
-
-# Print the descriptions
-for (desc in descriptions) {
-  cat(desc, "\n\n")
-}
+# # Generate descriptions for each column in abc with thousandths commas
+# descriptions <- c(
+#   paste0("within_total: ", format(abc[[1]], big.mark = ",", scientific = FALSE), ". This column represents the total population count within the specified areas of interest, considering all races and ethnicities."),
+#   paste0("population_total: ", format(abc[[2]], big.mark = ",", scientific = FALSE), ". This column represents the total population count for the entire dataset, irrespective of the areas of interest or race/ethnicity."),
+#   paste0("within_black: ", format(abc[[3]], big.mark = ",", scientific = FALSE), ". This column represents the population count within the specified areas belonging to the Black or African American racial group."),
+#   paste0("population_black: ", format(abc[[4]], big.mark = ",", scientific = FALSE), ". This column represents the total population count for the Black or African American racial group in the entire dataset."),
+#   paste0("within_white: ", format(abc[[5]], big.mark = ",", scientific = FALSE), ". This column represents the population count within the specified areas belonging to the White racial group."),
+#   paste0("population_white: ", format(abc[[6]], big.mark = ",", scientific = FALSE), ". This column represents the total population count for the White racial group in the entire dataset."),
+#   paste0("within_nhpi: ", format(abc[[7]], big.mark = ",", scientific = FALSE), ". This column represents the population count within the specified areas belonging to the Native Hawaiian and Other Pacific Islander (NHPI) racial group."),
+#   paste0("population_nhpi: ", format(abc[[8]], big.mark = ",", scientific = FALSE), ". This column represents the total population count for the NHPI racial group in the entire dataset."),
+#   paste0("within_total_pct: ", format(abc[[9]], big.mark = ",", scientific = FALSE), ". This column represents the percentage of the total population within the specified areas relative to the total population in the dataset."),
+#   paste0("within_black_pct: ", format(abc[[10]], big.mark = ",", scientific = FALSE), ". This column represents the percentage of the Black or African American population within the specified areas relative to the total Black or African American population in the dataset."),
+#   paste0("within_white_pct: ", format(abc[[11]], big.mark = ",", scientific = FALSE), ". This column represents the percentage of the White population within the specified areas relative to the total White population in the dataset."),
+#   paste0("within_nhpi_pct: ", format(abc[[12]], big.mark = ",", scientific = FALSE), ". This column represents the percentage of the NHPI population within the specified areas relative to the total NHPI population in the dataset.")
+# )
+# 
+# # Print the descriptions
+# for (desc in descriptions) {
+#   cat(desc, "\n\n")
+# }
 
 #************************************
 # GET THE ACS CENSUS VARIABLES

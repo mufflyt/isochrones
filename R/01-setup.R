@@ -1301,3 +1301,24 @@ assign_lastupdate <- function(npi, year, updates) {
 
 # fin
 print("Setup is complete!")
+
+# 0.8.5 
+get_acs_data <- function(us_fips_list, vintage = 2019, acs_variables) {
+  state_data <- list()
+  for (fips_code in us_fips_list) {
+    stateget <- paste("state:", fips_code, "&in=county:*&in=tract:*", sep = "")
+    state_data[[fips_code]] <- getCensus(name = "acs/acs5", vintage = vintage,
+                                         vars = c("NAME", acs_variables),
+                                         region = "block group:*", regionin = stateget,
+                                         key = "485c6da8987af0b9829c25f899f2393b4bb1a4fb")
+  }
+  acs_raw <- dplyr::bind_rows(state_data)
+  acs_raw <- acs_raw %>%
+    dplyr::mutate(year = vintage)
+  Sys.sleep(1)
+  
+  readr::write_csv(acs_raw, paste0("data/08.75-acs/08.75-acs_", vintage, "vintage.csv"))
+  return(acs_raw)
+}
+
+

@@ -1,9 +1,5 @@
-#######################
-source("R/01-setup.R")
-#######################
-# #The script you've shared orchestrates a complex process involving spatial data analysis, specifically focused on determining the coverage of isochrones over block groups in Colorado. This is particularly useful in urban planning or geography to assess accessibility or coverage areas.
-# 
-# ### Initial Setup and Data Preparation
+############
+#####. Initial Setup and Data Preparation
 # The code initiates by setting up the environment and loading necessary R scripts and packages. It reads shapefiles for block groups (specifically for Colorado) and isochrones from predefined paths. These shapefiles contain geographic data that can represent areas within a city or county that are accessible within a given drive time from a certain point.
 # 
 # ### Data Transformation and Simplification

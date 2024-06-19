@@ -42,6 +42,9 @@
 source("R/01-setup.R")
 #######################
 
+# install.packages("devtools")
+devtools::install_github("mufflyt/tyler")
+library(tyler)
 ACOG_Districts <- tyler::ACOG_Districts
 
 # Assuming subspecialists_lat_long and isochrones are both sf dataframes
