@@ -125,6 +125,8 @@ if (!"nber_all" %in% dbListTables(con)) {
 nber_all <- dplyr::tbl(con, "nber_all"); glimpse(nber_all)
 
 # 'nber_all' filtering ----------------------------------------------------
+conflicted::conflicts_prefer(lubridate::year)
+
 nber_all_basic <- nber_all %>%
   duckplyr::select(
     npi,
@@ -175,18 +177,22 @@ nber_all_basic %>%
 # 'nber_all' collect the data --------------------------------------------
 nber_all_collected <- nber_all_basic %>%
   duckplyr::collect() %>%
-  filter(pmailstatename %nin% c("AA", "ae", "AE", "AP", "APO", "GU", "VI", "FM", "MP", "AS") & plocstatename %nin% c("AA", "ae", "AE", "AP", "APO", "AS", "GU", "MP", "VI", "FM")) %>%
+  duckplyr::filter(pmailstatename %nin% c("AA", "ae", "AE", "AP", "APO", "GU", "VI", "FM", "MP", "AS") & plocstatename %nin% c("AA", "ae", "AE", "AP", "APO", "AS", "GU", "MP", "VI", "FM")) %>%
   mutate(pcredential = stringr::str_remove_all(pcredential, "[[\\p{P}][\\p{S}]]")) %>%
   # Remove MD punctuation.  
   mutate(pcredential = stringr::str_remove_all(pcredential, "[:blank:]")) %>%
   mutate(across(c(pmailzip, ploczip), .fns = ~stringr::str_sub(.,1 ,5))) %>%
   tidyr::unite(address, plocline1, ploccityname, plocstatename, ploczip, sep = ", ", remove = FALSE, na.rm = FALSE) %>%
   mutate(pcredential = str_to_upper(pcredential)) %>%
-  mutate(pgender = recode(pgender, "F" = "Female", "M" = "Male")) %>%
+  mutate(pgender = dplyr::recode(pgender, "F" = "Female", "M" = "Male")) %>%
   dplyr::arrange(npi) %>%
   group_by(npi) %>%
   fill(pcredential, .direction = "down") %>%
   ungroup()
+
+# 'nber_all' sanity check --------------------------------------------
+nber_all_collected %>% 
+  dplyr::filter(plname == "MUFFLY") #There are three MUFFLY versions here.  CORRECT
 
 nber_all_collected <- nber_all_collected[grepl("MD|DO", nber_all_collected$pcredential), , drop = FALSE]
 
@@ -200,7 +206,7 @@ nber_all_collected <- nber_all_collected %>%
 
 # 'nber_all' Sanity Check ------------------------------------------------------------
 nber_all_collected %>% 
-  filter(plname == "MUFFLY") #!!!!!!!!!!!! TRIPLE CHECK
+  dplyr::filter(plname == "MUFFLY") #!!!!!!!!!!!! TRIPLE CHECK
 
 glimpse(nber_all_collected)
 
@@ -215,7 +221,7 @@ nber_all_collected <- readr::read_csv("~/Dropbox (Personal)/isochrones/data/02.3
 #     report_title = "EDA Report - NBER"
 #   )
 
-nber <- arsenal::tableby(~., data = nber_all_collected %>% dplyr::select(penumdatestr, lastupdatestr, pgender, pcredential, soleprop))
+nber <- arsenal::tableby(~., data = nber_all_collected %>% dplyr::select(penumdatestr, lastupdatestr, pgender, pcredential, soleprop, plocstatename))
 
 nber_summary <- summary(nber, text=T, pfootnote=TRUE); nber_summary
 
@@ -299,8 +305,8 @@ table_names <- dbListTables(con)
 # Run the function
 tables_processed <- process_tables(con, table_names)
 # Writes to 
-all_data_NPPES <- readr::read_csv("~/Dropbox (Personal)/isochrones/data/02.33-nber_nppes_data/nppes_years/all_nppes_files.csv")
-
+# all_data_NPPES <- readr::read_csv("~/Dropbox (Personal)/isochrones/data/02.33-nber_nppes_data/nppes_years/all_nppes_files.csv")
+# View(all_data_NPPES)
 
 
 # 'nppes_2024' read in one file at a time file to DuckDB ----
@@ -547,8 +553,7 @@ facility_affiliation_combined_df <- processed_tables %>%
   dplyr::ungroup()
 
 
-# facility_affiliation_combined_df <- 
-#   readr::read_csv("/Volumes/Video Projects Muffly 1/facility_affiliation/unzipped_files/facility_affiliation_merged/end_facility_affiliation_combined_df.csv")
+# facility_affiliation_combined_df <- readr::read_csv("/Volumes/Video Projects Muffly 1/facility_affiliation/unzipped_files/facility_affiliation_merged/end_facility_affiliation_combined_df.csv")
 
 facility_affiliation_combined_df %>%
   dplyr::filter(NPI == 1689603763L)
@@ -592,6 +597,7 @@ last_consecutive_year %>%
 
 write_csv(last_consecutive_year, "/Volumes/Video Projects Muffly 1/facility_affiliation/unzipped_files/facility_affiliation_merged/end_facility_affiliation_last_consecutive_year.csv")
 
+# last_consecutive_year <- read_csv("/Volumes/Video Projects Muffly 1/facility_affiliation/unzipped_files/facility_affiliation_merged/end_facility_affiliation_last_consecutive_year.csv")
 
 # ' -----------------------------------------------------------------------
 # ' -----------------------------------------------------------------------
@@ -685,6 +691,7 @@ duckdb_file_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads
 con <- dbConnect(duckdb::duckdb(), duckdb_file_path)
 
 output_csv_path <- "/Volumes/Video Projects Muffly 1/Medicare_part_D_prescribers/unzipped_files/Medicare_part_D_prescribers_merged_data.csv" #This can be loaded into exploratory to see how to use non-duckplyr verbs to clean it.  
+#read_csv("/Volumes/Video Projects Muffly 1/Medicare_part_D_prescribers/unzipped_files/Medicare_part_D_prescribers_merged_data.csv")
 
 # Call the process_duckdb_tables function
 process_Medicare_part_D_prescribers_tables <- function(con, table_names, output_csv_path) {
@@ -777,8 +784,7 @@ Medicare_part_D_prescribers_combined_df <- processed_tables %>%
   dplyr::ungroup()
 
 
-# Medicare_part_D_prescribers_combined_df <- 
-#   readr::read_csv("/Volumes/Video Projects Muffly 1/Medicare_part_D_prescribers/unzipped_files/Medicare_part_D_prescribers_merged/end_Medicare_part_D_prescribers_combined_df.csv")
+# Medicare_part_D_prescribers_combined_df <- readr::read_csv("/Volumes/Video Projects Muffly 1/Medicare_part_D_prescribers/unzipped_files/Medicare_part_D_prescribers_merged/end_Medicare_part_D_prescribers_combined_df.csv")
 
 Medicare_part_D_prescribers_combined_df %>%
   dplyr::filter(PRSCRBR_NPI == 1689603763L)
@@ -789,7 +795,7 @@ Medicare_part_D_prescribers_combined_df %>%
 # 'Medicare_part_D_prescribers' write csv --------------------------------------------
 Medicare_part_D_prescribers_combined_df %>%
   readr::write_csv("/Volumes/Video Projects Muffly 1/MedicarePartDPrescribersbyProvider/final/end_Medicare_part_D_prescribers_combined_df.csv"); gc()
-
+# readr::read_csv("/Volumes/Video Projects Muffly 1/MedicarePartDPrescribersbyProvider/final/end_Medicare_part_D_prescribers_combined_df.csv")
 
 
 # 'Medicare_part_D_prescribers' Consecutive function ----------------------------------------------------
@@ -1532,3 +1538,12 @@ c(
   `replacement_npi` = `Replacement NPI`
 )
 
+
+################
+# NPI Deactivation file: https://download.cms.gov/nppes/NPPESDeactivatedNPIReport040824.zip
+npi_deactivation = file.path(data_dir, 'retirement_NPPES Deactivated NPI Report 20240408.csv')
+if (!file.exists(npi_deactivation)) stop(glue::glue("The file '{npi_deactivation}' does not exist!"))
+
+# Loading Data ----
+threads = 4L
+npi_deactivation = data.table::fread(file = npi_deactivation, header = T, stringsAsFactors = F, nThread = threads)

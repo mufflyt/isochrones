@@ -37,7 +37,7 @@ source("R/01-setup.R")
 # https://download.cms.gov/nppes/NPI_Files.html
 # https://download.cms.gov/nppes/NPPES_Data_Dissemination_April_2024.zip
 base_url <- "https://download.cms.gov/nppes/"
-file_names <- c("NPPES_Data_Dissemination_April_2024.zip")
+file_names <- c("NPPES_Data_Dissemination_July_2024.zip")
 dest_dir <- "Video Projects Muffly 1/nppes_historical_downloads"
 
 # Ensure the destination directory exists - create using system call
@@ -124,8 +124,6 @@ for (file_name in file_names) {
 
 
 #### UNZIP
-library(tidyverse)
-
 # Destination directory on the external hard drive, without escaping spaces
 dest_dir <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads"
 

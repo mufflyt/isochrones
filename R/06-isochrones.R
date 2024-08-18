@@ -101,6 +101,7 @@ input_file <-
 #   dplyr::filter(!id %in% error_rows)
 
 input_file_no_error_rows <- input_file 
+dim(input_file)
 
 #**************************
 #* HERE API CREATES ISOCHRONES

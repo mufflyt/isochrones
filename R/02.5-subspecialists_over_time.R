@@ -116,14 +116,16 @@ dataframe_i_have <- tbl(con, "npi_all_collected")
 # Sample for demonstration (Consider efficiency for large data)
 sample_data <- dataframe_i_have %>%
   dplyr::filter(plname == "MUFFLY") %>%
-  collect()
+  collect(); sample_data
 
+
+###???????????????????????????????????????????????
 # Apply the function to each row
 dataframe_final <- sample_data %>%
-  rowwise() %>%
-  mutate(lastupdatestr = assign_lastupdate(npi, year, dataframe_i_have)) %>%
-  ungroup() %>%
-  arrange(npi, year)
+  dplyr::rowwise() %>%
+  dplyr::mutate(lastupdatestr = assign_lastupdate(npi, year, dataframe_i_have)) %>%
+  dplyr::ungroup() %>%
+  dplyr::arrange(npi, year)
 
 print(dataframe_final, n=100)
 
@@ -135,6 +137,8 @@ print(sample_data)
 
 # Describe NBER data ------------------------------------------------------
 # Calculate the needed values
+
+###???????????????????????????????????????????????
 total_physicians <- nrow(nber_all_collected)
 start_year <- min(nber_all_collected$lastupdatestr)
 end_year <- max(nber_all_collected$lastupdatestr)
