@@ -82,11 +82,6 @@ glimpse(read_csv("data/08-get-block-group-overlap/intersect_block_group_cleaned_
 
 add_drive_time_column("data/08-get-block-group-overlap/intersect_block_group_cleaned_180minutes.csv", "180")
 glimpse(read_csv("data/08-get-block-group-overlap/intersect_block_group_cleaned_180minutes.csv"))
-# 
-# glimpse(readr::read_csv("data/08-get-block-group-overlap/intersect_block_group_cleaned_30minutes.csv"))
-# glimpse(readr::read_csv("data/08-get-block-group-overlap/intersect_block_group_cleaned_60minutes.csv"))
-# glimpse(readr::read_csv("data/08-get-block-group-overlap/intersect_block_group_cleaned_120minutes.csv"))
-# glimpse(readr::read_csv("data/08-get-block-group-overlap/intersect_block_group_cleaned_180minutes.csv"))
 
 # Read the CSV files
 df_30 <- read_csv("data/08-get-block-group-overlap/intersect_block_group_cleaned_30minutes.csv")
@@ -95,7 +90,7 @@ df_120 <- read_csv("data/08-get-block-group-overlap/intersect_block_group_cleane
 df_180 <- read_csv("data/08-get-block-group-overlap/intersect_block_group_cleaned_180minutes.csv")
 
 # Bind rows
-combined_df <- bind_rows(df_30, df_60, df_120, df_180) %>% 
+combined_df <- dplyr::bind_rows(df_30, df_60, df_120, df_180) %>% 
   select(-LSAD) %>%
   reorder_cols(overlap)
 
@@ -127,6 +122,7 @@ shapefile180 <- st_read("data/08-get-block-group-overlap/isochrone_files/filtere
   leaflet() %>%
   addProviderTiles("CartoDB.Positron") %>%
   addPolygons(); shapefile180
+
 ############ All the stuff below here was incorporated into the calculate_intersection_overlap_and_save function 
 # Define file paths
 # The shp directory has general use files.  
