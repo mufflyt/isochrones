@@ -1,55 +1,3 @@
-### 01-setup
-[Setup file](https://youtu.be/4eStfNf9qjk)
-
-### 02-search_taxonomy
-[Setup file](https://youtu.be/4eStfNf9qjk)
-
-### 02.5-subspecialists_over_time
-[subspecialists over time](https://youtu.be/-WfEeK8gpH8)
-
-### 03-search_and_process_npi
-[search_and_process_npi](https://youtu.be/AZVw-7y01BE)
-
-### 04-geocode
-[04-geocode](https://youtu.be/S2vXh8-fzKs)
-
-### 05-geocode-cleaning
-[05-geocode-cleaning](https://youtu.be/CwUaD5tRWo4)
-
-### 06-isochrones
-[isochrones](https://youtu.be/crZuELWtrTA)
-
-### 07-isochrone-mapping
-[07-isochrone-mapping](https://youtu.be/Hs2Nab7Imoc)
-
-### 07.5-prep-get-block-group-overlap
-[07.5-prep-get-block-group-overlap]()
-
-### 08-get-block-group-overlap
-
-### 08.5-prep-the census-variables
-
-### 09-get-census-population
-
-### 10-calculate-polygon-demographcs
-
-# Geography
-
-#TODO: 
-1) 01-setup: Setup will need to be updated with any changes you make to the bespoke functions.  Teh get_census_data function is not working.  
-2) 02.5-subspecialists_over_time: Year-specific physicians should be contained in "data/02.5-subspecialists_over_time/distinct_year_by_year_nppes_data_validated_npi.csv".  This file was run on a different machine with a Postico database so the file does not need to be run.  
-3) 03-search_and_process_npi.R should not need to be run.  
-4) 04-geocode: We need to geocode all the physicians from "distinct_year_by_year_nppes_data_validated_npi.csv."  I would like to avoid doing too much geocoding as using the hereR package can get expensive, so I would prefer we only code distinct addresses.  There is an error at this line of code that needs help: "merged_data_sp <- as(merged_data, "Spatial")".  
-5) 05-geocode-cleaning: This file is a very hacky workaround to parse then match the address parts, and now that we have a unique identifier going in and coming out of the 06-isochrones.R file.  I get an error in the sanity check section with I get an error:  Error in leaflet::addLegend(., position = "bottomright", colors = district_colors,  :  'colors' and 'labels' must be of the same length
- In addition: Warning message: Unknown or uninitialised column: `ACOG_District`. 
-
-5) 05-geocode-cleaning: Running this file may not be necessary.
-6) 06-isochrones: Please fix the process_and_save_isochrones function to give it multiple dates (`iso_datetime_yearly`).  
-7) 07-isochrone-mapping: To make year-specific physicians, we must figure out the "subspecialists_lat_long" variable.  
-7) 07.5-prep-get-block-group-overlap: This contains the year-specific block groups and should work well as it is.  
-8) 08-get-block-group-overlap: We need to look at the entire USA.  Currently, the code reads "Colorado" as a smaller state for the toy example.
-8) 08.5-prep-the census-variables: Please download all races ("BLACK", "American Indian/Alaska Native (AI/AN)", "ASIAN", "NHPI" = "Native Hawaiian/Pacific Islander", "WHITE") of the total female population per block group for all years.  This is going to need some work.  We will need to find the American Community Survey (ACS) variables associated with the races.  
-
 I am interested in looking at the availability of access to over 5,000 OBGYN subspecialists over time (2013 to 2022) in the United States.  The subspecialists include: Female Pelvic Medicine and Reconstructive Surgery/Urogynecology, Gynecologic Oncology, Maternal-Fetal Medicine, and Reproductive Endocrinology and Infertility.  The topic is physician workforce planning, where there is the greatest need for more physicians to serve women 18 years and older.  Patients will be driving by car to create the isochrones.  I do not have access to ArcGIS due to cost and so I would like to create everything using R.  Ideally we would use the “sf” package as “sp” is being deprecated.  I'm hiring because I have too much work to do alone. I would like to start work next week.  
 
 What I am providing:
@@ -766,3 +714,61 @@ prescribers(year = 2021,
             type = 'Provider',
             npi = 1003000423)
 ```
+
+
+### 01-setup
+[Setup file](https://youtu.be/4eStfNf9qjk)
+
+### 02-search_taxonomy
+[Setup file](https://youtu.be/4eStfNf9qjk)
+
+### 02.5-subspecialists_over_time
+[subspecialists over time](https://youtu.be/-WfEeK8gpH8)
+
+### 03-search_and_process_npi
+[search_and_process_npi](https://youtu.be/AZVw-7y01BE)
+
+### 04-geocode
+[04-geocode](https://youtu.be/S2vXh8-fzKs)
+
+### 05-geocode-cleaning
+[05-geocode-cleaning](https://youtu.be/CwUaD5tRWo4)
+
+### 06-isochrones
+[isochrones](https://youtu.be/crZuELWtrTA)
+
+### 07-isochrone-mapping
+[07-isochrone-mapping](https://youtu.be/Hs2Nab7Imoc)
+
+### 07.5-prep-get-block-group-overlap
+[07.5-prep-get-block-group-overlap]()
+
+### 08-get-block-group-overlap
+
+### 08.5-prep-the census-variables
+
+### 09-get-census-population
+
+### 10-calculate-polygon-demographcs
+
+# Geography
+
+#TODO: 
+1) 01-setup: Setup will need to be updated with any changes you make to the bespoke functions.  Teh get_census_data function is not working.  
+2) 02.5-subspecialists_over_time: Year-specific physicians should be contained in "data/02.5-subspecialists_over_time/distinct_year_by_year_nppes_data_validated_npi.csv".  This file was run on a different machine with a Postico database so the file does not need to be run.  
+3) 03-search_and_process_npi.R should not need to be run.  
+4) 04-geocode: We need to geocode all the physicians from "distinct_year_by_year_nppes_data_validated_npi.csv."  I would like to avoid doing too much geocoding as using the hereR package can get expensive, so I would prefer we only code distinct addresses.  There is an error at this line of code that needs help: "merged_data_sp <- as(merged_data, "Spatial")".  
+5) 05-geocode-cleaning: This file is a very hacky workaround to parse then match the address parts, and now that we have a unique identifier going in and coming out of the 06-isochrones.R file.  I get an error in the sanity check section with I get an error:  Error in leaflet::addLegend(., position = "bottomright", colors = district_colors,  :  'colors' and 'labels' must be of the same length
+ In addition: Warning message: Unknown or uninitialised column: `ACOG_District`. 
+
+5) 05-geocode-cleaning: Running this file may not be necessary.
+6) 06-isochrones: Please fix the process_and_save_isochrones function to give it multiple dates (`iso_datetime_yearly`).  
+7) 07-isochrone-mapping: To make year-specific physicians, we must figure out the "subspecialists_lat_long" variable.  
+7) 07.5-prep-get-block-group-overlap: This contains the year-specific block groups and should work well as it is.  
+8) 08-get-block-group-overlap: We need to look at the entire USA.  Currently, the code reads "Colorado" as a smaller state for the toy example.
+8) 08.5-prep-the census-variables: Please download all races ("BLACK", "American Indian/Alaska Native (AI/AN)", "ASIAN", "NHPI" = "Native Hawaiian/Pacific Islander", "WHITE") of the total female population per block group for all years.  This is going to need some work.  We will need to find the American Community Survey (ACS) variables associated with the races.  
+# SMBA 
+To run this program, you must install PyCharm, Python, Scrapy framework, and API-Credits in your system. And how to use all these, you must have to take knowledge of all these.  I downloaded the data in 5/2024.  The nice thing is that the data says if the physician is retired or not and the year.  
+
+
+
