@@ -768,7 +768,7 @@ prescribers(year = 2021,
 8) 08-get-block-group-overlap: We need to look at the entire USA.  Currently, the code reads "Colorado" as a smaller state for the toy example.
 8) 08.5-prep-the census-variables: Please download all races ("BLACK", "American Indian/Alaska Native (AI/AN)", "ASIAN", "NHPI" = "Native Hawaiian/Pacific Islander", "WHITE") of the total female population per block group for all years.  This is going to need some work.  We will need to find the American Community Survey (ACS) variables associated with the races.  
 # SMBA 
-To run this program, you must install PyCharm, Python, Scrapy framework, and API-Credits in your system. And how to use all these, you must have to take knowledge of all these.  I downloaded the data in 5/2024.  The nice thing is that the data says if the physician is retired or not and the year.  
+To run this program, you must install PyCharm, Python, Scrapy framework, and API-Credits in your system. And how to use all these, you must have to take knowledge of all these.  I downloaded the data in 5/2024.  The nice thing is that the data says if the physician is retired or not and the year of most recent certification.  Never got this working.  
 
-
+![Screenshot 2024-08-18 at 1 53 28 PM](https://github.com/user-attachments/assets/fa875d1b-6618-449b-8672-37b652ffda46)
 
