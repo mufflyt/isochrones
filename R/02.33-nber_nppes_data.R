@@ -595,6 +595,15 @@ last_consecutive_year %>%
 last_consecutive_year %>%
   dplyr::filter(NPI == 1548363484)
 
+
+last_consecutive_year <- last_consecutive_year %>%
+  dplyr::mutate(last_consecutive_year = exploratory::recode(last_consecutive_year, `25` = 15, `26` = 16, `27` = 17, type_convert = TRUE)) %>%
+  dplyr::rename(facility_affiliation_last_consecutive_year = last_consecutive_year) %>%
+  
+  # Removes 2023 and 2024 because those people likely have a facility affiliation.  
+  dplyr::filter(facility_affiliation_last_consecutive_year <= 23) %>%
+  dplyr::mutate(facility_affiliation_last_consecutive_year = facility_affiliation_last_consecutive_year + 2000L)
+
 write_csv(last_consecutive_year, "/Volumes/Video Projects Muffly 1/facility_affiliation/unzipped_files/facility_affiliation_merged/end_facility_affiliation_last_consecutive_year.csv")
 
 # last_consecutive_year <- read_csv("/Volumes/Video Projects Muffly 1/facility_affiliation/unzipped_files/facility_affiliation_merged/end_facility_affiliation_last_consecutive_year.csv")
@@ -853,13 +862,6 @@ conflicted::conflicts_prefer(lubridate::year)
 directory_path <- "/Volumes/Video Projects Muffly 1/openpayments/unzipped_files"
 duckdb_file_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
 con <- dbConnect(duckdb::duckdb(), duckdb_file_path)
-library(dplyr)
-library(stringr)
-library(DBI)
-library(tools)
-library(readr)
-library(conflicted)
-library(beepr)
 
 create_open_payments_tables <- function(directory_path, con, clean_names = TRUE, overwrite = FALSE, notify_every = 10) {
   # Ensure str_remove_all from stringr is preferred in case of conflicts
@@ -978,38 +980,79 @@ dbListTables(con)
 # table_names <- dbListTables(con)
 # table_names <- table_names[grep("^OP_DTL_GNRL_|^OP_DTL_RSRCH_", table_names)]; table_names
 table_names <- c(
-    # "OP_DTL_GNRL_PGYR2014_P06302021",
-    # "OP_DTL_GNRL_PGYR2015_P06302021",
-    # "OP_DTL_GNRL_PGYR2016_P01182024",
-    # "OP_DTL_GNRL_PGYR2017_P01182024",
-    # "OP_DTL_GNRL_PGYR2018_P01182024",
-    # "OP_DTL_GNRL_PGYR2019_P01182024",
+    "OP_DTL_GNRL_PGYR2014_P06302021",
+    "OP_DTL_GNRL_PGYR2015_P06302021",
+    "OP_DTL_GNRL_PGYR2016_P01182024",
+    "OP_DTL_GNRL_PGYR2017_P01182024",
+    "OP_DTL_GNRL_PGYR2018_P01182024",
+    "OP_DTL_GNRL_PGYR2019_P01182024",
     "OP_DTL_GNRL_PGYR2020_P01182024",
     "OP_DTL_GNRL_PGYR2021_P01182024",
-    "OP_DTL_GNRL_PGYR2022_P01182024")
-    # "OP_DTL_OWNRSHP_PGYR2016_P01182024",
-    # "OP_DTL_OWNRSHP_PGYR2017_P01182024",
-    # "OP_DTL_OWNRSHP_PGYR2018_P01182024",
-    # "OP_DTL_OWNRSHP_PGYR2019_P01182024",
-    # "OP_DTL_OWNRSHP_PGYR2020_P01182024",
-    # "OP_DTL_OWNRSHP_PGYR2021_P01182024",
-    # "OP_DTL_OWNRSHP_PGYR2022_P01182024",
-    # "OP_DTL_RSRCH_PGYR2016_P01182024",
-    # "OP_DTL_RSRCH_PGYR2017_P01182024",
-    # "OP_DTL_RSRCH_PGYR2018_P01182024",
-    # "OP_DTL_RSRCH_PGYR2019_P01182024",
-    # "OP_DTL_RSRCH_PGYR2020_P01182024",
-    # "OP_DTL_RSRCH_PGYR2021_P01182024",
-    # "OP_DTL_RSRCH_PGYR2022_P01182024")
+    "OP_DTL_GNRL_PGYR2022_P01182024",
+    "OP_DTL_OWNRSHP_PGYR2016_P01182024",
+    "OP_DTL_OWNRSHP_PGYR2017_P01182024",
+    "OP_DTL_OWNRSHP_PGYR2018_P01182024",
+    "OP_DTL_OWNRSHP_PGYR2019_P01182024",
+    "OP_DTL_OWNRSHP_PGYR2020_P01182024",
+    "OP_DTL_OWNRSHP_PGYR2021_P01182024",
+    "OP_DTL_OWNRSHP_PGYR2022_P01182024",
+    "OP_DTL_RSRCH_PGYR2016_P01182024",
+    "OP_DTL_RSRCH_PGYR2017_P01182024",
+    "OP_DTL_RSRCH_PGYR2018_P01182024",
+    "OP_DTL_RSRCH_PGYR2019_P01182024",
+    "OP_DTL_RSRCH_PGYR2020_P01182024",
+    "OP_DTL_RSRCH_PGYR2021_P01182024",
+    "OP_DTL_RSRCH_PGYR2022_P01182024")
 
 # `open_payments` Synchronizing column names ----------------------------------------------
 
+# Load necessary libraries
+library(tidyverse)
+library(openxlsx)
 
+# Function to convert the list into a data frame with each column name in a separate column
+convert_list_to_df_expanded <- function(column_list) {
+  filtered_list <- column_list[grep("^OP_DTL_GNRL_", names(column_list))]
+  
+  # Create a data frame with Table names
+  df <- tibble(Table = names(filtered_list))
+  
+  # Add each column name as a separate column in the data frame
+  max_cols <- max(sapply(filtered_list, length))
+  for (i in seq_len(max_cols)) {
+    df[[paste0("Column_", i)]] <- sapply(filtered_list, function(x) if (length(x) >= i) x[i] else NA)
+  }
+  
+  return(df)
+}
+
+# Convert the filtered and expanded list to a data frame
+columns_df_expanded <- convert_list_to_df_expanded(all_columns_list)
+
+# Specify the output path for the Excel file
+output_excel_path <- "/Users/tylermuffly/Dropbox (Personal)/isochrones/data/02.33-nber_nppes_data/retirement/op_dtl_gnrl_columns_list.xlsx"
+
+# Save the data frame as an Excel file
+write.xlsx(columns_df_expanded, file = output_excel_path, asTable = TRUE)
+
+# Log that the file has been saved
+log_message(sprintf("The columns list has been saved to: %s", output_excel_path))
+
+
+################################
 # `open_payments` filtering ------------------------------------------
 duckdb_file_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
 con <- dbConnect(duckdb::duckdb(), duckdb_file_path)
 
 output_csv_path <- "/Volumes/Video Projects Muffly 1/openpayments/unzipped_files/final/open_payments_merged_data.csv" 
+
+# All these tables had the same columns.  See "/Users/tylermuffly/Dropbox (Personal)/isochrones/data/02.33-nber_nppes_data/retirement/op_dtl_gnrl_columns_list.xlsx"
+table_names <- c("OP_DTL_GNRL_PGYR2017_P01182024",
+                   "OP_DTL_GNRL_PGYR2018_P01182024",
+                   "OP_DTL_GNRL_PGYR2019_P01182024",
+                   "OP_DTL_GNRL_PGYR2020_P01182024",
+                   "OP_DTL_GNRL_PGYR2021_P01182024",
+                   "OP_DTL_GNRL_PGYR2022_P01182024")
 
 # Custom function to log messages with timestamps
 log_message <- function(message) {
@@ -1038,31 +1081,29 @@ process_open_payments_tables <- function(con, table_names, output_csv_path) {
       # Use dbplyr to create a reference to the table without loading it into R
       table_ref <- tbl(con, table_name)
       
+      log_message(sprintf("Successfully created table reference for: %s", table_name))
+      
       # Log the table structure
       table_structure <- dbGetQuery(con, sprintf("PRAGMA table_info(%s)", table_name))
       log_message(sprintf("Table structure of %s: %s", table_name, paste(colnames(table_structure), collapse = ", ")))
       
-      # Check if the `Covered_Recipient_Specialty_1` column exists
-      if (!"Covered_Recipient_Specialty_1" %in% table_structure$name) {
-        log_message(sprintf("Column 'Covered_Recipient_Specialty_1' does not exist in table: %s", table_name))
-        next
+      # Check if 'Recipient_Country' exists in the table structure
+      if ("Recipient_Country" %in% table_structure$name) {
+        country_filter <- table_ref %>%
+          duckplyr::filter(Recipient_Country == "United States")
+        log_message(sprintf("'Recipient_Country' filter applied for table: %s", table_name))
+      } else {
+        country_filter <- table_ref
+        log_message(sprintf("'Recipient_Country' column does not exist in table: %s. Skipping this filter.", table_name))
       }
       
-      # Log unique values in `Covered_Recipient_Specialty_1` column
-      specialties <- table_ref %>% select(Covered_Recipient_Specialty_1) %>% distinct() %>% collect()
-      log_message(sprintf("Unique values in 'Covered_Recipient_Specialty_1' for table %s: %s", table_name, paste(specialties$Covered_Recipient_Specialty_1, collapse = ", ")))
-      
-      # Check if table has data
-      table_count <- table_ref %>% summarise(count = n()) %>% collect()
-      log_message(sprintf("Number of rows in table %s: %d", table_name, table_count$count))
-      if (table_count$count == 0) {
-        log_message(sprintf("Table is empty: %s", table_name))
-        next
-      }
-      
-      # Perform the data processing steps
-      filtered_data <- table_ref %>%
-        duckplyr::select(-Change_Type, -Teaching_Hospital_CCN, -Teaching_Hospital_ID, -Teaching_Hospital_Name) %>%
+      # Perform the data processing steps to extract NPI/PPI and payment date
+      filtered_data <- country_filter %>%
+        duckplyr::select(
+          Covered_Recipient_NPI, 
+          Date_of_Payment, 
+          Covered_Recipient_Specialty_1
+        ) %>%
         duckplyr::filter(
           Covered_Recipient_Specialty_1 %in% c(
             "Allopathic & Osteopathic Physicians|Obstetrics & Gynecology",
@@ -1074,9 +1115,7 @@ process_open_payments_tables <- function(con, table_names, output_csv_path) {
             "Allopathic & Osteopathic Physicians|Obstetrics & Gynecology|Maternal & Fetal Medicine",
             "Allopathic & Osteopathic Physicians|Obstetrics & Gynecology|Obstetrics",
             "Allopathic & Osteopathic Physicians|Obstetrics & Gynecology|Reproductive Endocrinology"
-          ) &
-            Recipient_Country == "United States" &
-            Covered_Recipient_Type == "Covered Recipient Physician"
+          )
         )
       log_message(sprintf("Filtered data for table: %s", table_name))
       
@@ -1084,24 +1123,29 @@ process_open_payments_tables <- function(con, table_names, output_csv_path) {
       filtered_data_count <- filtered_data %>% summarise(count = n()) %>% collect() %>% pull(count)
       log_message(sprintf("Number of rows in filtered data for table %s: %d", table_name, filtered_data_count))
       
-      # Collect and write the filtered data in chunks
-      chunk_size <- 100000  # Define the chunk size
-      num_chunks <- ceiling(filtered_data_count / chunk_size)
-      
-      for (j in seq_len(num_chunks)) {
-        chunk_start <- (j - 1) * chunk_size + 1
-        chunk_end <- min(j * chunk_size, filtered_data_count)
+      # If filtered data is not empty, proceed to save it
+      if (filtered_data_count > 0) {
+        # Collect and write the filtered data in chunks
+        chunk_size <- 100000  # Define the chunk size
+        num_chunks <- base::ceiling(filtered_data_count / chunk_size)  # Use base::ceiling to avoid conflicts
         
-        chunk_data <- filtered_data %>%
-          filter(row_number() >= chunk_start & row_number() <= chunk_end) %>%
-          collect()
+        for (j in seq_len(num_chunks)) {
+          chunk_start <- (j - 1) * chunk_size + 1
+          chunk_end <- min(j * chunk_size, filtered_data_count)
+          
+          chunk_data <- filtered_data %>%
+            filter(row_number() >= chunk_start & row_number() <= chunk_end) %>%
+            collect()
+          
+          log_message(sprintf("Writing %d rows for table: %s, chunk: %d", nrow(chunk_data), table_name, j))
+          write_csv(chunk_data, output_csv_path, append = TRUE, col_names = (i == 1 && j == 1))
+        }
         
-        log_message(sprintf("Writing %d rows for table: %s, chunk: %d", nrow(chunk_data), table_name, j))
-        write_csv(chunk_data, output_csv_path, append = TRUE, col_names = FALSE)
+        # Store the table name in the results list
+        results[[table_name]] <- filtered_data
+      } else {
+        log_message(sprintf("No filtered data to write for table: %s", table_name))
       }
-      
-      # Store the table name in the results list
-      results[[table_name]] <- filtered_data
     }, error = function(e) {
       log_message(sprintf("Error processing table: %s", table_name))
       log_message(sprintf("Error message: %s", e$message))
@@ -1116,6 +1160,14 @@ process_open_payments_tables <- function(con, table_names, output_csv_path) {
 
 processed_tables <- process_open_payments_tables(con, table_names, output_csv_path)
 
+# Check if there is data written to the CSV file
+file_info <- file.info(output_csv_path)
+if (file_info$size == 0) {
+  log_message("The output CSV file is empty. No data was written.")
+} else {
+  log_message("Data successfully written to the output CSV file.")
+}
+
 head(read_csv(output_csv_path))
 
 # `open_payments` sanity check --------------------------------------------
@@ -1124,7 +1176,7 @@ first_processed_table <- processed_tables[[1]]
 
 # Filter the data frame
 first_processed_table %>%
-  dplyr::filter(PRSCRBR_NPI == 1689603763L)
+  dplyr::filter(Covered_Recipient_NPI == 1689603763L)
 
 # 'open_payments' collect the data --------------------------------------------
 # Function to ensure full collection of each table
@@ -1138,30 +1190,29 @@ collect_and_convert <- function(tbl) {
 open_payments_combined_df <- processed_tables %>%
   lapply(collect_and_convert) %>%
   dplyr::bind_rows() %>%
-  dplyr::mutate(year = str_extract_after(year, "DY")) %>%
-  dplyr::mutate(year = factor(year)) %>%
-  dplyr::distinct(PRSCRBR_NPI, year, .keep_all = TRUE) %>%
-  dplyr::ungroup()
+  dplyr::mutate(Payment_Year = lubridate::year(Date_of_Payment)) %>%
+  group_by(Covered_Recipient_NPI) %>%
+  summarize(Latest_Payment_Year = max(Payment_Year, na.rm = TRUE)); open_payments_combined_df
 
+readr::write_csv(open_payments_combined_df, "/Volumes/Video Projects Muffly 1/openpayments/unzipped_files/open_payments_merged/end_open_payments_combined_df.csv")
 
-# open_payments_combined_df <- 
-#   readr::read_csv("/Volumes/Video Projects Muffly 1/open_payments/unzipped_files/open_payments_merged/end_open_payments_combined_df.csv")
-
-open_payments_combined_df %>%
-  dplyr::filter(PRSCRBR_NPI == 1689603763L)
+# open_payments_combined_df <- readr::read_csv("/Volumes/Video Projects Muffly 1/openpayments/unzipped_files/open_payments_merged/end_open_payments_combined_df.csv")
 
 open_payments_combined_df %>%
-  dplyr::filter(PRSCRBR_NPI == 1508953654)
+  dplyr::filter(Covered_Recipient_NPI == 1689603763L)
+
+open_payments_combined_df %>%
+  dplyr::filter(Covered_Recipient_NPI == 1508953654)
 
 # 'open_payments' write csv --------------------------------------------
 open_payments_combined_df %>%
-  readr::write_csv("/Volumes/Video Projects Muffly 1/MedicarePartDPrescribersbyProvider/final/end_open_payments_combined_df.csv"); gc()
+  readr::write_csv("/Volumes/Video Projects Muffly 1/openpayments/unzipped_files/final/end_open_payments_combined_df.csv"); gc()
 
 
 
 # 'open_payments' Consecutive function ----------------------------------------------------
 # Read the data from the CSV file
-data <- read.csv("/Volumes/Video Projects Muffly 1/MedicarePartDPrescribersbyProvider/final/end_open_payments_combined_df.csv")
+data <- read.csv("/Volumes/Video Projects Muffly 1/openpayments/unzipped_files/final/end_open_payments_combined_df.csv")
 
 # Convert year to numeric if it's read as character
 data$year <- sub(".*RY(\\d+).*", "\\1", data$year)
@@ -1173,8 +1224,8 @@ data$year <- as.numeric(data$year)
 
 # Group by NPI and calculate the last consecutive year
 last_consecutive_year <- data %>%
-  arrange(PRSCRBR_NPI, year) %>%
-  group_by(PRSCRBR_NPI) %>%
+  arrange(Covered_Recipient_NPI, Date_of_Payment) %>%
+  group_by(Covered_Recipient_NPI) %>%
   summarise(last_consecutive_year_open_payments = max(base::cumsum(c(0, diff(year) != 1)) + year))
 
 # Print the result
@@ -1182,29 +1233,23 @@ print(last_consecutive_year)
 
 # Me :)
 last_consecutive_year %>%
-  dplyr::filter(PRSCRBR_NPI == 1689603763L)
+  dplyr::filter(Covered_Recipient_NPI == 1689603763L)
 
 # Sue Davidson
 last_consecutive_year %>%
-  dplyr::filter(PRSCRBR_NPI == 1508953654)
+  dplyr::filter(Covered_Recipient_NPI == 1508953654)
 
 # Chris Carey
 last_consecutive_year %>%
-  dplyr::filter(PRSCRBR_NPI == 1972523165)
+  dplyr::filter(Covered_Recipient_NPI == 1972523165)
 
 # Karlotta
 last_consecutive_year %>%
-  dplyr::filter(PRSCRBR_NPI == 1548363484)
+  dplyr::filter(Covered_Recipient_NPI == 1548363484)
 
-write_csv(last_consecutive_year, "/Volumes/Video Projects Muffly 1/MedicarePartDPrescribersbyProvider/final/end_open_payments_last_consecutive_year.csv")
+write_csv(last_consecutive_year, "/Volumes/Video Projects Muffly 1/openpayments/unzipped_files/final/end_open_payments_last_consecutive_year.csv")
 
-
-
-
-open_payments(year  = 2021, 
-              npi   = 1023630738, 
-              na.rm = TRUE) |> 
-  glimpse()
+#last_consecutive_year <- read_csv("/Volumes/Video Projects Muffly 1/MedicarePartDPrescribersbyProvider/final/end_open_payments_last_consecutive_year.csv")
 
 # Disconnect from the database when it is no longer needed ----------------
 dbDisconnect(con)

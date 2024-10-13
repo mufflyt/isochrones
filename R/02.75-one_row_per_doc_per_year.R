@@ -1,3 +1,9 @@
+# The script begins by sourcing setup configurations and resolving conflicts between functions from the dplyr package. It initializes a toy dataset `toy_df` representing physician information over multiple years. The main dataset `dataframe_i_have` is loaded and expanded to include every year from 2005 to 2020 for each unique NPI (National Provider Identifier). This expanded dataset `dataframe_expanded` ensures comprehensive coverage across all years for analysis.
+# 
+# A custom function `assign_lastupdate` is defined to assign `lastupdatestr` values based on historical updates for each NPI-year combination. This function dynamically determines the appropriate update year using sorted data from `dataframe_i_have`. The function is then applied to each row of `dataframe_expanded` to generate `dataframe_final`, which organizes the data by NPI and year.
+# 
+# Following the data manipulation, the script calculates geographical distances using latitude and longitude coordinates between specified rows using the geosphere package. It defines a function `calculate_distances_within_group` to compute distances within groups of data based on common identifiers. These calculations are demonstrated with example data, showing practical use of the geosphere functions for spatial analysis.
+
 # Required Input Files for Script Execution
 
 # 1. NBER Historical Downloads:
@@ -78,82 +84,62 @@ dataframe_final <- dataframe_expanded %>%
 
 print(dataframe_final, n=100)
 
+dataframe_final$lastupdatestr
 
 
+# Could be cool feature later on.  
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#####################################################################################
-# Install and load the geosphere package if not already installed
-if (!requireNamespace("geosphere", quietly = TRUE)) {
-  install.packages("geosphere")
-}
-library(geosphere)
-
-# Define the latitude and longitude coordinates for row 1 and row 3
-row1_coords <- c(-95.458038987339, 29.039289000928)  # Latitude, Longitude for row 1
-row3_coords <- c(-95.456838, 29.04013185)            # Latitude, Longitude for row 3
-
-# Calculate the distance between the coordinates using the haversine formula
-distance <- distHaversine(row1_coords, row3_coords)
-
-# Print the distance
-print(distance)
-
-
-
-# Example data
-data <- data.frame(
-  npi = c(1003002627, 1003002627),
-  ploccityname = c("LAKE JACKSON", "LAKE JACKSON"),
-  State = c("TX", "TX"),
-  lat = c(29.039289000928, 29.04013185),
-  long = c(-95.458038987339, -95.456838)
-)
-
-# Install and load the geosphere package if not already installed
-if (!requireNamespace("geosphere", quietly = TRUE)) {
-  install.packages("geosphere")
-}
-library(geosphere)
-
-# Define a function to calculate distances within each group
-calculate_distances_within_group <- function(group_data) {
-  # If there's only one row in the group, return NA
-  if (nrow(group_data) == 1) {
-    return(NA)
-  }
-  
-  # Calculate the distance between the first and second rows in the group
-  distance <- distHaversine(
-    c(group_data$long[1], group_data$lat[1]),
-    c(group_data$long[2], group_data$lat[2])
-  )
-  
-  return(distance)
-}
-
-# Group data by npi, ploccityname, and State, then calculate distances within each group
-distances <- data %>%
-  group_by(npi, ploccityname, State) %>%
-  summarize(distance = calculate_distances_within_group(.))
+# #####################################################################################
+# # Install and load the geosphere package if not already installed
+# if (!requireNamespace("geosphere", quietly = TRUE)) {
+#   install.packages("geosphere")
+# }
+# library(geosphere)
+# 
+# # Define the latitude and longitude coordinates for row 1 and row 3
+# row1_coords <- c(-95.458038987339, 29.039289000928)  # Latitude, Longitude for row 1
+# row3_coords <- c(-95.456838, 29.04013185)            # Latitude, Longitude for row 3
+# 
+# # Calculate the distance between the coordinates using the haversine formula
+# distance <- distHaversine(row1_coords, row3_coords)
+# 
+# # Print the distance
+# print(distance)
+# 
+# 
+# 
+# # Example data
+# data <- data.frame(
+#   npi = c(1003002627, 1003002627),
+#   ploccityname = c("LAKE JACKSON", "LAKE JACKSON"),
+#   State = c("TX", "TX"),
+#   lat = c(29.039289000928, 29.04013185),
+#   long = c(-95.458038987339, -95.456838)
+# )
+# 
+# # Install and load the geosphere package if not already installed
+# if (!requireNamespace("geosphere", quietly = TRUE)) {
+#   install.packages("geosphere")
+# }
+# library(geosphere)
+# 
+# # Define a function to calculate distances within each group
+# calculate_distances_within_group <- function(group_data) {
+#   # If there's only one row in the group, return NA
+#   if (nrow(group_data) == 1) {
+#     return(NA)
+#   }
+#   
+#   # Calculate the distance between the first and second rows in the group
+#   distance <- distHaversine(
+#     c(group_data$long[1], group_data$lat[1]),
+#     c(group_data$long[2], group_data$lat[2])
+#   )
+#   
+#   return(distance)
+# }
+# 
+# # Group data by npi, ploccityname, and State, then calculate distances within each group
+# distances <- data %>%
+#   group_by(npi, ploccityname, State) %>%
+#   summarize(distance = calculate_distances_within_group(.))

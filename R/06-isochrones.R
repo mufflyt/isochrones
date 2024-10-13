@@ -48,26 +48,48 @@
 #    - HTML File: "data/06-isochrones/map.html"
 
 
+# Load setup script
 #######################
 source("R/01-setup.R")
+
+# Define CRS and file paths
 #######################
 crs <- 4326
 output_iso_path <- "data/06-isochrones/"
-file_path <- "data/04-geocode/geocoded_batch/end_rejoined_geocoded_data_nominatim.csv"
-iso_ranges <- c(30 * 60, 60 * 60, 120 * 60, 180 * 60)
-goba_unrestricted <- read_rds("data/06-isochrones/goba/goba_unrestricted.rds")
+file_path_unique_address <- "end_rejoined_geocoded_data_nominatim_go_unique_address.csv"
+
+# Define Isochrone ranges (in seconds)
+#######################
+iso_ranges <- c(30 * 60, 60 * 60, 120 * 60, 180 * 60) # 30 min, 60 min, 120 min, 180 min
+
+# Load required datasets
+#######################
+goba_unrestricted <- readr::read_rds("data/06-isochrones/goba/goba_unrestricted.rds")
+
+# Prepare unique address dataset and save
+end_rejoined_geocoded_data_nominatim_go_unique_address <- readr::read_csv("data/04-geocode/end_rejoined_geocoded_data_nominatim_go.csv") %>%
+  distinct(address, .keep_all = TRUE) %>%
+  write_csv("end_rejoined_geocoded_data_nominatim_go_unique_address.csv")
+
+end_rejoined_geocoded_data_nominatim_go_unique_address <- read_csv("end_rejoined_geocoded_data_nominatim_go_unique_address.csv")
+file_path <- "end_rejoined_geocoded_data_nominatim_go_unique_address.csv"
 
 # Validate the file of geocoded data.
 
 ##### To do the actual gathering of the isochrones: `process_and_save_isochrones`.  We do this in chunks of 25 because we were losing the entire searched isochrones when one error hit.  There is a 1:1 relationship between isochrones and rows in the `input_file` so to match exactly on row we need no errors.  Lastly, we save as a shapefile so that we can keep the MULTIPOLYGON geometry setting for the sf object making it easier to work with the spatial data in the future for plotting, etc.  I struggled because outputing the data as a dataframe was not easy to write it back to a MULTIPOLYGON.
 
 # https://platform.here.com/
-#145293
-track_api_calls_and_cost(iso_ranges = iso_ranges, num_rows = 31647)
+#######################
+# Track API Calls & Cost Estimate
+#######################
+track_api_calls_and_cost(iso_ranges = iso_ranges, num_rows = nrow(read_csv(file_path_unique_address)))
 
-# Generate a random seed to sample the input_file randomnly.  
-random_seed <- sample.int(10000, 1)  # Choose any range you prefer, here 1 to 10000
+
+# Generate a random seed to sample the input file randomly
+#######################
+random_seed <- sample.int(10000, 1)
 set.seed(random_seed)
+
 
 input_file <- 
   readr::read_csv(file_path) %>%
@@ -79,9 +101,9 @@ input_file <-
   #dplyr::filter(State %in% c("CO")) %>% # & ploccityname == "AURORA") # For testing with a small sample.  ALL CAPS.  
   #dplyr::sample_n(size = 100) %>%
   exploratory::left_join(`goba_unrestricted`, by = join_by(`npi` == `NPI_goba`), target_columns = c("NPI_goba", "sub1", "sub1startDate", "Medical school namePhysicianCompare", "Graduation yearPhysicianCompare", "Number of Group Practice membersPhysicianCompare", "Professional accepts Medicare AssignmentPhysicianCompare", "num_org_mem", "honorrific_end")) %>%
-  dplyr::filter(sub1 %in% c("FPM", "MFM", "ONC", "REI")) %>%
-  dplyr::distinct(address, .keep_all = TRUE) %>%
-  dplyr::filter(sub1 == "ONC")
+  #dplyr::filter(sub1 %in% c("FPM", "MFM", "ONC", "REI")) %>%
+  dplyr::distinct(address, .keep_all = TRUE) #%>%
+  #dplyr::filter(sub1 == "ONC")
   # Unique addresses here.  To send to the HERE API.  
   #select(address, sub1, id, lat, long, pnmdtst) %>%
   #dplyr::sample_n(size = 100) 

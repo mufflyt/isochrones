@@ -105,7 +105,7 @@ nber_all_collected <- nber_all_collected %>%
   duckplyr::select(npi, pfname, plname, address, plocline1, ploccityname, plocstatename, ploczip, ploctel, pmailline1, pmailcityname, pmailstatename, pmailzip, pgender, pcredential, ptaxcode1, ptaxcode2, soleprop)
 
 # Create table with all years from 2005 to 2020
-years <- tibble(year = 2005:2020)
+years <- tibble(year = 2005:2023)
 dbWriteTable(con, "year_series", years, overwrite = TRUE)
 year_series <- dplyr::tbl(con, "year_series")
 
@@ -188,7 +188,7 @@ year_by_year_physician_compare_data_collected <- exploratory::searchAndReadDelim
 quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
   readr::type_convert() %>%
   exploratory::clean_data_frame() %>%
-  mutate(year_1 = list_to_text(str_extract_all(id.new, "[:digit:]+")), .after = ifelse("id.new" %in% names(.), "id.new", last_col())) %>%
+  mutate(year_1 = exploratory::list_to_text(str_extract_all(id.new, "[:digit:]+")), .after = ifelse("id.new" %in% names(.), "id.new", last_col())) %>%
   select(-id.new) %>%
   arrange(NPI) %>%
   mutate(`Primary Specialty` = coalesce(`Primary Specialty`, `Primary Speciality`)) %>%

@@ -73,8 +73,9 @@ library(rnaturalearth)
 
 devtools::install_github("cysouw/qlcMatrix")
 devtools::install_github("paulhendricks/anonymizer")
-devtools::install_github("exploratory-io/exploratory_func")
-library(exploratory)
+
+#devtools::install_github("exploratory-io/exploratory_func")
+#library(exploratory)
 
 #Of note this is a personal package with some bespoke functions and data that we will use occasionally.  It is still under development and it is normal for it to give multiple warnings at libary(tyler).
 # devtools::install_github("mufflyt/tyler")

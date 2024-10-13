@@ -49,7 +49,6 @@
 source("R/01-setup.R")
 #######################
 
-library(tidyverse)
 states <- c("Alaska", "Alabama", "American Samoa", "Arizona", "Arkansas", "California", "Colorado", "Connecticut", 
             "Delaware", "District of Columbia", "Florida", "Georgia", "Guam", "Hawaii", "Idaho", "Illinois", 
             "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts", 
@@ -59,43 +58,20 @@ states <- c("Alaska", "Alabama", "American Samoa", "Arizona", "Arkansas", "Calif
             "South Dakota", "Tennessee", "Texas", "U.S. Virgin Islands", "Utah", "Vermont", "Virginia", "Washington", 
             "West Virginia", "Wisconsin", "Wyoming")
 
-# Huge thanks to Lampros for this work.  
-
-#Provenance: GOBA file.  
-#readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds") %>% #This is nice because it is merged with the NPPES file so there is more address data there.  
-
-#TODO make specific to the year of the data.  
-a <- readr::read_csv("data/02.5-subspecialists_over_time/goba_unrestricted_cleaned.csv") %>%
-  tidyr::unite(address, `Provider First Line Business Practice Location Address.y`, city_goba, state_goba, `Provider Business Practice Location Address Postal Code.y`, sep = ", ", remove = FALSE, na.rm = TRUE) %>%
-  select(-lat, -long) %>%
-  distinct(address, .keep_all = TRUE) %>%
-  readr::write_csv(., "data/04-geocode/for_geocoding_with_nominatim__results_clinician_data.csv")
-
-
-readr::read_csv("data/04-geocode/for_geocoding_with_nominatim__results_clinician_data.csv") %>% head(5) %>%
-  write_csv("data/04-geocode/short_for_testing_for_geocoding_with_nominatim__results_clinician_data.csv")
-
 ACOG_Districts <- tyler::ACOG_Districts
 
 #**********************************************
 # PREGEOCODING DATA QUALITY CHECK
 #**********************************************
-csv_file <- "data/04-geocode/short_for_testing_for_geocoding_with_nominatim__results_clinician_data.csv"
+csv_file <- "data/02.5-subspecialists_over_time/nber_all_collected_go_pre_geocode.csv"
 
 # Read the original CSV data
 original_data <- read_csv(csv_file)
 
 conflicted::conflicts_prefer(dplyr::filter)
-# Filter rows based on the State column
-unmatched <- read_csv(csv_file) %>%
-  rename(State = state_goba) %>%
-  filter(State %nin% states)
 
 input_lat_long <- read_csv(csv_file) %>%
-  distinct(npi, .keep_all = TRUE) 
-
-# Display the count of unmatched rows
-paste0("There were ", nrow(input_lat_long), " distinct NPI numbers represented in the data BEFORE it was geocoded. There are ", nrow(unmatched), " rows that will not able to be geocoded. Mainly because they have NA for the state and are out of the country.")
+  distinct(npi, lastupdatestr, address, .keep_all = TRUE) 
 
 #################
 #GEOCODING
@@ -171,8 +147,8 @@ simple_create_geocode_nominatim <- memoise(function(csv_file, output_file) {
 })
 
 # Example usage
-csv_file <- "data/02.33-nber_nppes_data/end_sp_duckdb_npi_all.csv"
-output_file <- "data/04-geocode/end_sp_duckdb_npi_all_geocoded_data_nominatim.csv"
+csv_file <- "data/02.5-subspecialists_over_time/nber_all_collected_go_pre_geocode.csv"
+output_file <- "data/04-geocode/end_sp_duckdb_nber_all_collected_go_pre_geocode_nominatim.csv"
 geocoded_results_df <- simple_create_geocode_nominatim(csv_file, output_file)
 
 # Read the output data
@@ -181,7 +157,7 @@ temp <- read_csv(output_file) %>%
 dim(temp)
 
 data <- read_csv(csv_file)
-paste0("The input file contained ", nrow(read_csv(csv_file)))
+paste0("The input file contained ", nrow(read_csv(csv_file)), "rows of unique addresses.")
 
 # Plot the output data
 ggplot(temp, aes(x = long, y = lat, color = query)) +
@@ -195,7 +171,7 @@ joined_data <- read_csv(csv_file) %>%
   dplyr::rename ("State" = "plocstatename") %>%
   #dplyr::left_join(ACOG_Districts, by = "State") %>%
   #filter(State %in% states) %>%
-  readr::write_csv("data/04-geocode/end_rejoined_geocoded_data_nominatim.csv")
+  readr::write_csv("data/04-geocode/end_rejoined_geocoded_data_nominatim_go.csv")
 
 paste0("There were ", nrow(joined_data), " rows where the state column MATCHED CORRECTLY to a US state name.")
 
@@ -213,7 +189,7 @@ output_lat_long <- read_csv(output_file) %>%
 output_rows_with_missing_coords <- output_lat_long %>%
   filter(is.na(lat) | is.na(long)); nrow(output_rows_with_missing_coords) 
 
-paste0("There were ", nrow(output_lat_long), " distinct NPI numbers represented in the data AFTER it was geocoded.  There were ", nrow(output_rows_with_missing_coords), " observations with NA in the latitude of longitude.") 
+paste0("There were ", nrow(output_lat_long), " distinct NPI numbers represented in the data AFTER it was geocoded.  There were ", nrow(output_rows_with_missing_coords), " observations with NA in the latitude or longitude.") 
 
 glimpse(output_rows_with_missing_coords)
 

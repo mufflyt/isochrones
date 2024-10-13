@@ -17,13 +17,13 @@ iso_datetime_yearly <- tibble(
 )
 
 # For the real paper
-# iso_datetime_yearly <- tibble(
-#   date = c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-16 09:00:00",
-#            "2016-10-21 09:00:00", "2017-10-20 09:00:00", "2018-10-19 09:00:00",
-#            "2019-10-18 09:00:00", "2020-10-16 09:00:00", "2021-10-15 09:00:00",
-#            "2022-10-21 09:00:00", "2023-10-20 09:00:00"),
-#   year = c("2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023")
-# )
+iso_datetime_yearly <- tibble(
+  date = c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-16 09:00:00",
+           "2016-10-21 09:00:00", "2017-10-20 09:00:00", "2018-10-19 09:00:00",
+           "2019-10-18 09:00:00", "2020-10-16 09:00:00", "2021-10-15 09:00:00",
+           "2022-10-21 09:00:00", "2023-10-20 09:00:00"),
+  year = c("2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023")
+)
 
 ### Generate isochrones for each of the two dates
 # We need the following intervals:
@@ -56,11 +56,11 @@ physician_isos_2023 <- physician_sf %>%
     range = c(30, 60, 120, 180) * 60
   ) 
 
+# Unique is all isochrones put together. 
 physician_isos_2023_unique <- physician_isos_2023 %>%
   group_by(range) %>%
   summarise()
 
-# Unique is all isochrones put together.  
 mapview(arrange(physician_isos_2023_unique, desc(range)),
         zcol = "range", layer.name = "Isochrones seconds") +
   mapview(filter(physician_sf, year == 2023), legend = FALSE)
@@ -126,7 +126,6 @@ mapview(us)
 
 # These are the ages of interest from the ACS:
 female_vars <- c(
-  total_female_026 = "B01001_026",
   female_less_than_5 = "B01001_027",
   female_5_to_9 = "B01001_028",
   female_10_to_14 = "B01001_029",
@@ -154,13 +153,12 @@ female_vars <- c(
 
 # These are the block group race/ethnicities of interest from the ACS:
 acs_variables <- c(
-  total_female = "B01001_001E",   # Total female population
-  total_female_race = "B02001_001E",   # Total female population by race
-  total_female_white = "B02001_002E",   # Female Population of one race: White alone
-  total_female_black = "B02001_003E",   # Female Population of one race: Black or African American alone
-  total_female_aian = "B02001_004E",   # Female Population of one race: American Indian and Alaska Native alone
-  total_female_asian = "B02001_005E",   # Female Population of one race: Asian alone
-  total_female_hipi = "B02001_006E"    # Female Population of one race: Native Hawaiian and Other Pacific Islander alone
+  total_female_race = "B01001_026",   # Total female population by race, This variable represents the total number of females across all age groups and all racial categories in the United States
+  total_female_white = "B01001A_026",   # Female Population of one race: White alone
+  total_female_black = "B01001B_026",   # Female Population of one race: Black or African American alone
+  total_female_aian = "B01001C_026",   # Female Population of one race: American Indian and Alaska Native alone
+  total_female_asian = "B01001D_026",   # Female Population of one race: Asian alone
+  total_female_hipi = "B01001E_026"    # Female Population of one race: Native Hawaiian and Other Pacific Islander alone
 )
 
 # I'll combine these into a single vector so we can make one pull.
@@ -220,7 +218,7 @@ tabulated_2010 <- physician_isos_2010 %>%
   st_join(centroids_2010, left = FALSE) %>%
   st_drop_geometry() %>%
   group_by(physician, range) %>%
-  summarize(across(total_female:total_female_hipi,
+  summarize(across(total_female_race:total_female_hipi,
                    .fns = ~sum(.x, na.rm = TRUE))) %>%
   ungroup()
 
@@ -238,24 +236,26 @@ tabulated_2020 <- physician_isos_2023 %>%
   st_join(centroids_2020, left = FALSE) %>%
   st_drop_geometry() %>%
   group_by(physician, range) %>%
-  summarize(across(total_female:total_female_hipi,
+  summarize(across(total_female_race:total_female_hipi,
                    .fns = ~sum(.x, na.rm = TRUE))) %>%
   ungroup()
 
 ## For table, total number of women within each isochrones
 #total_female_white is the numerator
 # Center of the mid-year of the sample.  2020 and later use 18-22 ACS.  
-tabulated_2020 <- physician_isos_2023_unique %>%
-  st_transform("ESRI:102003") %>%
-  select(range) %>%
-  st_join(centroids_2020, left = FALSE) %>%
-  st_drop_geometry() %>%
-  group_by(range) %>%
-  summarize(across(total_female:total_female_hipi,
-                   .fns = ~sum(.x, na.rm = TRUE))) %>%
-  ungroup() %>%
-  mutate(range = range/60L) %>%
-  select(-total_female_race); tabulated_2020
+
+
+# ????????????????????????????
+# tabulated_2020 <- physician_isos_2023_unique %>%
+#   st_transform("ESRI:102003") %>%
+#   select(range) %>%
+#   st_join(centroids_2020, left = FALSE) %>%
+#   st_drop_geometry() %>%
+#   group_by(range) %>%
+#   summarize(across(total_female_race:total_female_hipi,
+#                    .fns = ~sum(.x, na.rm = TRUE))) %>%
+#   ungroup() %>%
+#   mutate(range = range/60L); tabulated_2020
 
 
 
