@@ -2,6 +2,7 @@
 .Rhistory
 .RData
 .Ruserdata
+*.cache
 *.log
 *.shp
 *.dbf
@@ -11,12 +12,13 @@
 *.xlsx
 *.pdf
 data/07-isochrone-mapping/*
+data/04-geocode/geocoded_batch/*
+data/02.5-subspecialists_over_time/retrieve_clinician_data_chunk_results/*
 data/tigris/*
 figures/*
 *.mp4
 .here
 api*.R
-data/04-geocode/geocoded_batch/raw/*.csv
 data/06-isochrones/isochrones_*_chunk_*/
 data/02.33-nber_nppes_data/dataframe_*
 data/02.5-subspecialists_over_time/retrieve_clinician_data_chunk_results/*
