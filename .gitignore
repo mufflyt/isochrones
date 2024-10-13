@@ -5,6 +5,10 @@
 *.shp
 *.dbf
 *.html
+*.csv
+*.shx
+*.xlsx
+*.pdf
 data/07-isochrone-mapping/*
 data/tigris/*
 figures/*
