@@ -502,12 +502,94 @@ test_and_process_isochrones <- function(input_file) {
 # Define cache filesystem
 fc <- cache_filesystem(file.path(".cache"))
 
+# process_and_save_isochrones <- memoise::memoise(function(input_file, chunk_size = 25, 
+#                                         iso_datetime_yearly,
+#                                         iso_ranges = c(30*60, 60*60, 120*60, 180*60),
+#                                         crs = 4326, 
+#                                         transport_mode = "car",
+#                                         file_path_prefix = "data/06-isochrones/isochrones_") {
+#   message("Starting isochrones processing...")
+#   conflicted::conflicts_prefer(base::setdiff)
+#   
+#   # Convert latitude and longitude to numeric
+#   input_file <- input_file %>%
+#     dplyr::mutate(across(c(lat, long), as.numeric))
+#   
+#   # Convert input file to sf object
+#   input_file_sf <- sf::st_as_sf(input_file, coords = c("long", "lat"), crs = crs)
+#   
+#   num_chunks <- ceiling(nrow(input_file_sf) / chunk_size)
+#   isochrones_list <- list()
+#   
+#   message("Number of chunks to process: ", num_chunks)
+#   for (i in 1:num_chunks) {
+#     message("Processing chunk ", i, " of ", num_chunks)
+#     start_idx <- (i - 1) * chunk_size + 1
+#     end_idx <- min(i * chunk_size, nrow(input_file_sf))
+#     chunk_data <- input_file_sf[start_idx:end_idx, ]
+#     
+#     year_index <- match(format(as.POSIXct(iso_datetime_yearly$date), "%Y"), iso_datetime_yearly$year)
+#     posix_time <- as.POSIXct(iso_datetime_yearly$date[year_index], format = "%Y-%m-%d %H:%M:%S")
+#     
+#     # Process isochrones
+#     isochrones <- tryCatch(
+#       {
+#         hereR::isoline(
+#           poi = chunk_data,
+#           range = iso_ranges,
+#           datetime = posix_time,
+#           routing_mode = "fast",
+#           range_type = "time",
+#           transport_mode = transport_mode,
+#           url_only = FALSE,
+#           optimize = "balanced",
+#           traffic = TRUE,   # We do want traffic to factor in
+#           aggregate = FALSE # DO NOT CHANGE
+#         )
+#       },
+#       error = function(e) {
+#         message("Error processing chunk ", i, ": ", e$message)
+#         return(NULL)
+#       }
+#     )
+#     
+#     if (!is.null(isochrones)) {
+#       current_datetime <- format(Sys.time(), "%Y%m%d%H%M%S")
+#       
+#       # Generate file name
+#       file_name <- paste(file_path_prefix, current_datetime, "_chunk_", min(chunk_data$id), "_to_", max(chunk_data$id))
+#       
+#       isochrones <- isochrones %>%
+#         dplyr::mutate(arrival = as.POSIXct(arrival, format = "%Y-%m-%d %H:%M:%S"))
+#       
+#       # Write isochrones to shapefile
+#       message("Writing chunk ", i, " to file: ", file_name)
+#       sf::st_write(
+#         isochrones,
+#         dsn = file_name,
+#         layer = "isochrones",
+#         driver = "ESRI Shapefile",
+#         quiet = FALSE
+#       )
+#       
+#       isochrones_list[[i]] <- isochrones
+#     }
+#   }
+#   # Combine isochrones from all chunks
+#   isochrones_data <- base::do.call(rbind, isochrones_list)
+#   
+#   message("Finished processing all chunks.")
+#   return(isochrones_data)
+# }, cache = fc) #cache argument here
+
 process_and_save_isochrones <- memoise::memoise(function(input_file, chunk_size = 25, 
-                                        iso_datetime_yearly,
-                                        iso_ranges = c(30*60, 60*60, 120*60, 180*60),
-                                        crs = 4326, 
-                                        transport_mode = "car",
-                                        file_path_prefix = "data/06-isochrones/isochrones_") {
+                                                         iso_datetime_yearly,
+                                                         iso_ranges = c(30*60, 60*60, 120*60, 180*60),
+                                                         crs = 4326, 
+                                                         transport_mode = "car",
+                                                         file_path_prefix = "data/06-isochrones/isochrones_",
+                                                         output_csv_path = "data/06-isochrones/",
+                                                         output_sf_path = "data/06-isochrones/") {
   message("Starting isochrones processing...")
   conflicted::conflicts_prefer(base::setdiff)
   
@@ -578,9 +660,42 @@ process_and_save_isochrones <- memoise::memoise(function(input_file, chunk_size 
   # Combine isochrones from all chunks
   isochrones_data <- base::do.call(rbind, isochrones_list)
   
+  # Generate timestamp for output files
+  current_datetime <- format(Sys.time(), "%Y%m%d%H%M%S")
+  
+  # Write output CSV if specified
+  if (!is.null(output_csv_path)) {
+    output_csv_full_path <- paste0(output_csv_path, "isochrones_data_", current_datetime, ".csv")
+    message("Writing combined isochrones data to CSV: ", output_csv_full_path)
+    tryCatch(
+      {
+        readr::write_csv(isochrones_data, output_csv_full_path)
+        message("Output CSV successfully written to ", output_csv_full_path)
+      },
+      error = function(e) {
+        message("Failed to write output CSV: ", e$message)
+      }
+    )
+  }
+  
+  # Write output SF file if specified
+  if (!is.null(output_sf_path)) {
+    output_sf_full_path <- paste0(output_sf_path, "isochrones_data_", current_datetime, ".shp")
+    message("Writing combined isochrones data to SF file: ", output_sf_full_path)
+    tryCatch(
+      {
+        sf::st_write(isochrones_data, dsn = output_sf_full_path, layer = "isochrones", driver = "ESRI Shapefile", append = FALSE)
+        message("Output SF file successfully written to ", output_sf_full_path)
+      },
+      error = function(e) {
+        message("Failed to write output SF file: ", e$message)
+      }
+    )
+  }
+  
   message("Finished processing all chunks.")
   return(isochrones_data)
-}, cache = fc) #cache argument here
+}, cache = fc)
 
 ##############################
 ###############################
@@ -1300,9 +1415,6 @@ assign_lastupdate <- function(npi, year, updates) {
   return(last_value)
 }
 
-# fin
-print("Setup is complete!")
-
 # 0.8.5 
 get_acs_data <- function(us_fips_list, vintage = 2019, acs_variables) {
   state_data <- list()
@@ -1322,4 +1434,7 @@ get_acs_data <- function(us_fips_list, vintage = 2019, acs_variables) {
   return(acs_raw)
 }
 
+
+# fin
+print("Setup is complete!")
 
