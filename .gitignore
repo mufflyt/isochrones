@@ -1,12 +1,82 @@
-.Rproj.user
+# R specific files
+.Rproj.user/
 .Rhistory
 .RData
 .Ruserdata
+.Rapp.history
+.RDataTmp
+.Rproj
+
+# knitr and R markdown default cache directories
+*_cache/
+/cache/
+*_files/
+
+# Output files and directories
+*.html
+*.pdf
+*.docx
+*.log
+figures/
+output/
+*.mp4
+*.jpeg
+*.jpg
+*.png
+*.gif
+*.tiff
+
+# Geospatial files
 *.shp
 *.dbf
-*.html
-data/07-isochrone-mapping/*
-data/tigris/*
-figures/*
-*.mp4
+*.shx
+*.prj
+*.sbn
+*.sbx
+*.cpg
+*.xml
+*.qpj
+
+# Large data files and folders
+data/07-isochrone-mapping/
+data/tigris/
+data/temp/
+*.rds
+*.csv
+*.tsv
+*.gz
+*.zip
+*.feather
+*.parquet
+*.fst
+
+# Authentication and configuration
 .here
+.env
+.Renviron
+.Rprofile
+*.key
+*.pem
+*secret*
+*token*
+*api_key*
+
+# OS specific files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# PostgreSQL
+*.dump
+*.sql
+
+# Package specific
+tyler_*.tar.gz
+
+# Large File Storage (only if you're using Git LFS)
+.gitattributes
+
+# Temporary files
+*.tmp
+*~
+.~lock.*
