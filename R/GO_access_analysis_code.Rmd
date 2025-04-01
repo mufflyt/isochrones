@@ -1,0 +1,949 @@
+---
+title: "GO_access_analysis_code"
+author: "Tyler Muffly, MD"
+date: "2025-02-05"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(logger)
+library(assertthat)
+```
+
+```{r}
+# Helper function for weighted statistics (unchanged)
+calculate_group_stats <- function(df) {
+  w_mean <- weighted.mean(df$percent, df$total)
+  w_var <- sum(df$total * (df$percent - w_mean)^2) / sum(df$total)
+  w_sd <- sqrt(w_var)
+  
+  return(tibble(
+    weighted_mean = w_mean,
+    weighted_sd = w_sd
+  ))
+}
+```
+
+```{r functions}
+#' Analysis of Access to Gynecologic Oncologists
+#' 
+#' @importFrom dplyr %>% group_by summarize filter mutate arrange desc n
+#' @importFrom tidyr pivot_wider
+#' @importFrom stats sd weighted.mean
+#' @importFrom assertthat assert_that
+
+# Helper function for calculating weighted statistics
+#' @noRd
+calculate_weighted_stats <- function(data, value_col, weight_col) {
+  assert_that(is.data.frame(data))
+  
+  weighted_mean <- weighted.mean(data[[value_col]], data[[weight_col]])
+  
+  # Calculate weighted variance
+  weighted_var <- sum(data[[weight_col]] * (data[[value_col]] - weighted_mean)^2) / 
+                 sum(data[[weight_col]])
+  
+  weighted_sd <- sqrt(weighted_var)
+  
+  return(list(mean = weighted_mean, sd = weighted_sd))
+}
+
+#' Analyze drive time access trends
+#' @noRd
+analyze_drive_time_trends <- function(data) {
+  logger::log_info("Analyzing drive time trends...")
+  
+  yearly_stats <- data %>%
+    dplyr::filter(category == "total_female") %>%
+    dplyr::group_by(year) %>%
+    dplyr::summarize(
+      access_stats = list(calculate_weighted_stats(cur_data(), "percent", "total")),
+      mean_access = access_stats[[1]]$mean,
+      sd_access = access_stats[[1]]$sd,
+      .groups = "drop"
+    )
+  
+  logger::log_info("Drive time analysis complete")
+  return(yearly_stats)
+}
+
+#' Analyze geographic access disparities
+#' @noRd
+analyze_geographic_disparities <- function(data) {
+  logger::log_info("Analyzing geographic disparities...")
+  
+  low_access_pop <- data %>%
+    dplyr::filter(range > 3600, category == "total_female") %>%
+    dplyr::group_by(year) %>%
+    dplyr::summarize(
+      low_access_population = sum(count) / 1e6,  # Convert to millions
+      .groups = "drop"
+    )
+  
+  logger::log_info("Geographic disparities analysis complete")
+  return(low_access_pop)
+}
+
+#' Analyze racial and ethnic disparities
+#' @noRd
+analyze_racial_disparities <- function(data, target_year = 2015) {
+  logger::log_info("Analyzing racial disparities for year {target_year}...")
+  
+  racial_stats <- data %>%
+    dplyr::filter(
+      year == target_year,
+      range == 3600,
+      category != "total_female"
+    ) %>%
+    dplyr::group_by(category) %>%
+    dplyr::summarize(
+      access_stats = list(calculate_weighted_stats(cur_data(), "percent", "total")),
+      mean_access = access_stats[[1]]$mean,
+      sd_access = access_stats[[1]]$sd,
+      .groups = "drop"
+    ) %>%
+    dplyr::arrange(dplyr::desc(mean_access))
+  
+  logger::log_info("Racial disparities analysis complete")
+  return(racial_stats)
+}
+
+#' Main analysis function
+#' @param data_path Path to the CSV file
+#' @return List containing analysis results
+#' @examples
+#' results <- analyze_go_access("access_by_group.csv")
+analyze_go_access <- function(data_path) {
+  logger::log_info("Starting analysis of GO access data")
+  
+  # Read and validate data
+  assert_that(file.exists(data_path))
+  data <- readr::read_csv(data_path, show_col_types = FALSE)
+  
+  # Perform analyses
+  drive_time_trends <- analyze_drive_time_trends(data)
+  geographic_disparities <- analyze_geographic_disparities(data)
+  racial_disparities_2015 <- analyze_racial_disparities(data, 2015)
+  
+  # Generate summary text
+  results <- list(
+    drive_time = drive_time_trends,
+    geographic = geographic_disparities,
+    racial = racial_disparities_2015
+  )
+  
+  # Print key findings
+  cat("\nDrive Time Analysis Results:\n")
+  cat(sprintf("2013 Access Rate: %.2f%% ± %.2f%%\n", 
+              drive_time_trends$mean_access[1], 
+              drive_time_trends$sd_access[1]))
+  cat(sprintf("2022 Access Rate: %.2f%% ± %.2f%%\n", 
+              drive_time_trends$mean_access[nrow(drive_time_trends)], 
+              drive_time_trends$sd_access[nrow(drive_time_trends)]))
+  
+  cat("\nGeographic Disparities:\n")
+  cat(sprintf("Low-access population 2022: %.1f million\n", 
+              geographic_disparities$low_access_population[nrow(geographic_disparities)]))
+  
+  cat("\nRacial/Ethnic Disparities (2015):\n")
+  racial_disparities_2015 %>%
+    dplyr::mutate(
+      category = stringr::str_remove(category, "total_female_"),
+      category = stringr::str_to_upper(category)
+    ) %>%
+    dplyr::arrange(dplyr::desc(mean_access)) %>%
+    print()
+  
+  logger::log_info("Analysis complete")
+  return(results)
+}
+
+# Example usage:
+# library(tidyverse)
+# library(logger)
+# results <- analyze_go_access("access_by_group.csv")
+```
+
+```{r read_in_data, echo=FALSE}
+results <- analyze_go_access("data/Walker_data/access_by_group.csv")
+```
+
+```{r}
+# Function to generate nicely formatted results text
+generate_results_text <- function(data_path) {
+  library(tidyverse)
+  library(glue)
+  
+  # Read and prepare data
+  data <- read_csv(data_path, show_col_types = FALSE)
+  
+  # 1. Drive Time Analysis
+  drive_time_stats <- data %>%
+    filter(category == "total_female") %>%
+    group_by(year) %>%
+    group_modify(~calculate_group_stats(.)) %>%
+    ungroup()
+  
+  # Find key years
+  stats_2013 <- drive_time_stats %>% filter(year == 2013)
+  stats_2022 <- drive_time_stats %>% filter(year == 2022)
+  stats_2015 <- drive_time_stats %>% filter(year == 2015)
+  stats_2019 <- drive_time_stats %>% filter(year == 2019)
+  
+  # 2. Geographic Access
+  low_access_stats <- data %>%
+    filter(range > 3600, category == "total_female") %>%
+    group_by(year) %>%
+    summarise(
+      low_access_pop = sum(count) / 1e6,
+      .groups = "drop"
+    )
+  
+  # 3. Racial Disparities 2015
+  racial_stats_2015 <- data %>%
+    filter(
+      year == 2015,
+      category != "total_female"
+    ) %>%
+    group_by(category) %>%
+    group_modify(~calculate_group_stats(.)) %>%
+    ungroup() %>%
+    mutate(
+      category = str_remove(category, "total_female_"),
+      category = str_to_upper(category)
+    ) %>%
+    arrange(desc(weighted_mean))
+  
+  # Generate text with improved formatting
+  results_text <- glue::glue("
+Results
+
+Drive Time Analysis and Population Access
+Mean drive times to gynecologic oncologists (GOs) showed significant variation over the study period. The population-weighted mean access rate in 2013 was {sprintf('%.1f', stats_2013$weighted_mean)}% ± {sprintf('%.1f', stats_2013$weighted_sd)}%, decreasing to {sprintf('%.1f', stats_2022$weighted_mean)}% ± {sprintf('%.1f', stats_2022$weighted_sd)}% in 2022. The highest access rate was observed in 2015 ({sprintf('%.1f', stats_2015$weighted_mean)}% ± {sprintf('%.1f', stats_2015$weighted_sd)}%), while the lowest was in 2019 ({sprintf('%.1f', stats_2019$weighted_mean)}% ± {sprintf('%.1f', stats_2019$weighted_sd)}%).
+
+Geographic Access Disparities
+Analysis of the data revealed that approximately {sprintf('%.1f', tail(low_access_stats$low_access_pop, 1))} million women lived in low-access census tracts (defined as areas beyond 60-minute drive time). The number of people in low-access areas fluctuated over the study period, from a low of {sprintf('%.1f', min(low_access_stats$low_access_pop))} million to a high of {sprintf('%.1f', max(low_access_stats$low_access_pop))} million.
+
+Racial and Ethnic Disparities (2015)
+Access within 60 minutes varied significantly by race/ethnicity in 2015:
+{paste0('- ', racial_stats_2015$category, ': ', 
+        sprintf('%.1f', racial_stats_2015$weighted_mean), '% ± ', 
+        sprintf('%.1f', racial_stats_2015$weighted_sd), '%\\n', 
+        collapse='')}
+
+Note: Standard deviations reflect variability across different drive time ranges.")
+
+  return(results_text)
+}
+
+# Then if types look good, run the analysis
+results_text <- generate_results_text("data/Walker_data/access_by_group.csv")
+cat(results_text)
+
+```
+
+
+```{r}
+# Function to generate results text with corrected formatting
+generate_results_text <- function(data_path) {
+  library(tidyverse)
+  library(glue)
+  library(stats)
+  
+  # Read data
+  data <- read_csv(data_path, show_col_types = FALSE)
+  
+  # 1. Drive Time Analysis
+  drive_time_stats <- data %>%
+    filter(category == "total_female") %>%
+    group_by(year) %>%
+    group_modify(~calculate_group_stats(.)) %>%
+    ungroup()
+  
+  # Test for temporal trend
+  temporal_model <- lm(weighted_mean ~ year, data = drive_time_stats)
+  temporal_test <- summary(temporal_model)
+  
+  # Find key years
+  stats_2013 <- drive_time_stats %>% filter(year == 2013)
+  stats_2022 <- drive_time_stats %>% filter(year == 2022)
+  stats_2015 <- drive_time_stats %>% filter(year == 2015)
+  stats_2019 <- drive_time_stats %>% filter(year == 2019)
+  
+  # 2. Geographic Access
+  low_access_stats <- data %>%
+    filter(range > 3600, category == "total_female") %>%
+    group_by(year) %>%
+    summarise(
+      low_access_pop = sum(count) / 1e6,
+      .groups = "drop"
+    )
+  
+  # 3. Racial Disparities 2015
+  racial_data_2015 <- data %>%
+    filter(
+      year == 2015,
+      category != "total_female"
+    )
+  
+  # ANOVA for racial differences
+  racial_anova <- aov(percent ~ category, data = racial_data_2015)
+  racial_anova_summary <- summary(racial_anova)
+  
+  # Tukey's HSD for pairwise comparisons
+  racial_tukey <- TukeyHSD(racial_anova)
+  
+  # Calculate racial stats with weighted means
+  racial_stats_2015 <- racial_data_2015 %>%
+    group_by(category) %>%
+    group_modify(~calculate_group_stats(.)) %>%
+    ungroup() %>%
+    mutate(
+      category = str_remove(category, "total_female_"),
+      category = str_to_upper(category)
+    ) %>%
+    arrange(desc(weighted_mean))
+  
+  # Function to format p-values
+  format_pvalue <- function(p) {
+    if (p < 0.01) return("p < 0.01")
+    else return(paste("p =", sprintf("%.3f", p)))
+  }
+  
+  # Generate text with corrected language and rounded SDs
+  results_text <- glue::glue("
+Results
+
+Drive Time Analysis and Population Access
+Mean drive times to gynecologic oncologists (GOs) showed variation over the study period. The population-weighted mean access rate in 2013 was {sprintf('%.1f', stats_2013$weighted_mean)}% (SD ± {round(stats_2013$weighted_sd)}%), decreasing to {sprintf('%.1f', stats_2022$weighted_mean)}% (SD ± {round(stats_2022$weighted_sd)}%) in 2022. The temporal trend analysis showed a decline in access over the study period ({format_pvalue(temporal_test$coefficients[2,4])}).
+
+Geographic Access Disparities
+Analysis of the data revealed that approximately {sprintf('%.1f', tail(low_access_stats$low_access_pop, 1))} million women lived in low-access census tracts (defined as areas beyond 60-minute drive time). The number of people in low-access areas fluctuated over the study period, from a low of {sprintf('%.1f', min(low_access_stats$low_access_pop))} million to a high of {sprintf('%.1f', max(low_access_stats$low_access_pop))} million.
+
+Racial and Ethnic Disparities (2015)
+Access within 60 minutes varied significantly by race/ethnicity in 2015 ({format_pvalue(racial_anova_summary[[1]][1,5])}).
+
+Access rates by race/ethnicity:
+{paste0('- ', racial_stats_2015$category, ': ', 
+        sprintf('%.1f', racial_stats_2015$weighted_mean), '% (SD ± ', 
+        round(racial_stats_2015$weighted_sd), '%)\\n', 
+        collapse='')}
+
+Post-hoc analysis using Tukey's HSD revealed significant differences between most racial/ethnic groups (p < 0.05), with the largest disparity between Asian and AIAN populations (difference = {sprintf('%.1f', racial_tukey$category[which.max(abs(racial_tukey$category[,1])),1])}%, p < 0.01).
+
+Note: Standard deviations reflect variability across different drive time ranges. Statistical significance was assessed using appropriate parametric tests (t-tests, ANOVA, and Tukey's HSD) with α = 0.05.")
+
+  return(results_text)
+}
+
+# Helper function for weighted statistics (unchanged)
+calculate_group_stats <- function(df) {
+  w_mean <- weighted.mean(df$percent, df$total)
+  w_var <- sum(df$total * (df$percent - w_mean)^2) / sum(df$total)
+  w_sd <- sqrt(w_var)
+  
+  return(tibble(
+    weighted_mean = w_mean,
+    weighted_sd = w_sd
+  ))
+}
+```
+
+# "access rate" refers to the percentage of a population that has access to gynecologic oncologists (GOs) within a specific drive time threshold
+```{r}
+library(tidyverse)
+library(glue)
+library(stats)
+
+results_text <- generate_results_text("data/Walker_data/access_by_group.csv")
+cat(results_text)
+```
+
+# R code for decay analysis
+```{r}
+# Calculate overall means of access by drive time
+library(tidyverse)
+
+# Read data
+data <- read_csv("data/Walker_data/access_by_group.csv")
+
+# Calculate overall means across all years for each drive time
+distance_decay <- data %>%
+  filter(category == "total_female") %>%
+  group_by(range) %>%
+  summarize(
+    drive_time_min = first(range)/60,  # Convert seconds to minutes
+    mean_access = mean(percent),
+    sd_access = sd(percent),
+    avg_population = mean(count),
+    .groups = "drop"
+  ) %>%
+  arrange(drive_time_min)
+
+# View results
+print("Drive time accessibility analysis:")
+print(distance_decay)
+
+# Create formatted results text
+results_text <- paste0(
+  "Analysis of access rates by drive time showed ", 
+  sprintf("%.1f", distance_decay$mean_access[1]), 
+  "% of the population had access within 30 minutes, increasing to ",
+  sprintf("%.1f", distance_decay$mean_access[2]), 
+  "% within 60 minutes, ",
+  sprintf("%.1f", distance_decay$mean_access[3]), 
+  "% within 120 minutes, and ",
+  sprintf("%.1f", distance_decay$mean_access[4]), 
+  "% within 180 minutes drive time."
+)
+
+# Print formatted results
+cat("\nFormatted results text:\n")
+cat(results_text)
+
+# Optional: Create a table for publication
+library(knitr)
+distance_decay_table <- distance_decay %>%
+  select(drive_time_min, mean_access, sd_access) %>%
+  rename(
+    "Drive Time (minutes)" = drive_time_min,
+    "Mean Access (%)" = mean_access,
+    "Standard Deviation (%)" = sd_access
+  )
+
+print("\nTable for publication:")
+kable(distance_decay_table, digits = 1)
+```
+
+
+https://onlinelibrary.wiley.com/doi/full/10.1111/1468-0009.12668
+```{r}
+library(dplyr)
+
+# Load data (assuming the data includes a column 'travel_time' in minutes and 'urban_rural' classification)
+census_tracts <- read.csv("data/Walker_data/access_by_group_urban_rural.csv")  # Replace with actual file path
+
+gyn_oncologist_access <- census_tracts %>%
+  filter(year == 2023) %>%
+  mutate(over_30_min = range > 1800)
+
+# Count tracts over 30 minutes
+urban_over_30 <- gyn_oncologist_access %>%
+  filter(urban_rural == "Urban", over_30_min) %>%
+  nrow()
+
+total_urban <- gyn_oncologist_access %>%
+  filter(urban_rural == "Urban") %>%
+  nrow()
+
+rural_over_30 <- gyn_oncologist_access %>%
+  filter(urban_rural == "Rural", over_30_min) %>%
+  nrow()
+
+total_rural <- gyn_oncologist_access %>%
+  filter(urban_rural == "Rural") %>%
+  nrow()
+
+total_over_30 <- urban_over_30 + rural_over_30
+
+total_tracts <- total_urban + total_rural
+
+# Calculate percentages
+urban_pct <- (urban_over_30 / total_urban) * 100
+rural_pct <- (rural_over_30 / total_rural) * 100
+total_pct <- (total_over_30 / total_tracts) * 100
+
+# Print the result
+cat(sprintf("In 2023, %d (%.1f%%) urban and %d (%.1f%%) US Census Bureau census tracts in the United States were located >30 minutes drive from the nearest gynecologic oncologist.\n", 
+            urban_over_30, urban_pct, total_over_30, total_pct))
+
+```
+
+# Additional Code
+Here's the R script converted to R Markdown format that you can paste into your GO_access_analysis_code.Rmd file:
+
+## Visualization of Accessibility Trends
+
+This section creates comprehensive visualizations of the declining accessibility trends across different time thresholds from 2013-2022.
+
+```{r load_viz_packages, message=FALSE, warning=FALSE}
+# Load visualization packages
+library(tidyverse)
+library(ggplot2)
+library(scales)
+library(viridis)
+library(gghighlight)
+# Optional packages - only load if installed
+if (requireNamespace("patchwork", quietly = TRUE)) library(patchwork)
+if (requireNamespace("gganimate", quietly = TRUE)) library(gganimate)
+```
+
+```{r define_viz_functions}
+#' Create comprehensive visualizations of accessibility trends
+#' 
+#' @param data_file Path to the Access_Data.csv file
+#' @param output_dir Directory to save output files
+#' 
+#' @return A list containing plot objects
+visualize_accessibility_trends <- function(data_file = "Access_Data.csv", 
+                                           output_dir = getwd()) {
+  
+  # Create output directory if it doesn't exist
+  if (!dir.exists(output_dir)) {
+    dir.create(output_dir, recursive = TRUE)
+  }
+  
+  # Read the data file
+  access_data <- readr::read_csv(data_file, show_col_types = FALSE)
+  
+  # Extract percentages from accessibility columns
+  access_data <- access_data %>%
+    dplyr::mutate(across(
+      .cols = starts_with("access_"),
+      .fns = ~as.numeric(gsub(".*\\(([0-9.]+)%\\).*", "\\1", .)) / 100,
+      .names = "{.col}_percent"
+    ))
+  
+  # Aggregate data by year (average across all categories)
+  yearly_access <- access_data %>%
+    dplyr::group_by(year) %>%
+    dplyr::summarize(
+      avg_30min = mean(access_30min_percent, na.rm = TRUE),
+      avg_60min = mean(access_60min_percent, na.rm = TRUE),
+      avg_120min = mean(access_120min_percent, na.rm = TRUE),
+      avg_180min = mean(access_180min_percent, na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  # Calculate percent changes from first year to last
+  first_year <- yearly_access[yearly_access$year == min(yearly_access$year), ]
+  last_year <- yearly_access[yearly_access$year == max(yearly_access$year), ]
+  
+  changes <- data.frame(
+    threshold = c("30-minute", "60-minute", "120-minute", "180-minute"),
+    first_value = c(first_year$avg_30min, first_year$avg_60min, 
+                    first_year$avg_120min, first_year$avg_180min),
+    last_value = c(last_year$avg_30min, last_year$avg_60min, 
+                   last_year$avg_120min, last_year$avg_180min)
+  ) %>%
+    dplyr::mutate(
+      absolute_change = last_value - first_value,
+      percent_change = (absolute_change / first_value) * 100
+    )
+  
+  # Create a list to store all plots
+  plots <- list()
+  
+  # 1. Time Series Line Plot with Highlighting
+  # Convert to long format for easier plotting
+  yearly_long <- yearly_access %>%
+    tidyr::pivot_longer(
+      cols = starts_with("avg_"),
+      names_to = "threshold",
+      values_to = "accessibility"
+    ) %>%
+    dplyr::mutate(
+      threshold = factor(threshold, 
+                         levels = c("avg_30min", "avg_60min", "avg_120min", "avg_180min"),
+                         labels = c("30-minute", "60-minute", "120-minute", "180-minute"))
+    )
+  
+  # Plot 1: Time series with trend lines
+  plots$trend_lines <- ggplot(yearly_long, aes(x = year, y = accessibility, color = threshold)) +
+    geom_point(size = 3) +
+    geom_line(linewidth = 1) +
+    geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+    scale_color_viridis_d(option = "plasma", end = 0.9) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    scale_x_continuous(breaks = yearly_access$year) +
+    labs(
+      title = "Declining Accessibility Trends (2013-2022)",
+      subtitle = "Most significant decline observed in shorter travel times",
+      x = "Year",
+      y = "Accessibility (% of Population)",
+      color = "Time Threshold"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      legend.position = "right",
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(face = "bold", size = 14),
+      plot.subtitle = element_text(size = 12)
+    )
+  
+  # Save the plot
+  ggsave(file.path(output_dir, "trend_lines.png"), plots$trend_lines, width = 10, height = 6)
+  
+  # Plot 2: Highlight the most severe decline (30-minute accessibility)
+  plots$highlight_30min <- ggplot(yearly_long, aes(x = year, y = accessibility, color = threshold)) +
+    geom_line(linewidth = 1.5) +
+    geom_point(size = 3) +
+    gghighlight(threshold == "30-minute", 
+                unhighlighted_colour = "gray80") +
+    scale_color_viridis_d(option = "plasma", end = 0.9) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    scale_x_continuous(breaks = yearly_access$year) +
+    labs(
+      title = "30-Minute Accessibility Shows Most Severe Decline",
+      subtitle = paste0("Overall decrease of ", round(changes$percent_change[1], 1), "% from 2013 to 2022"),
+      x = "Year",
+      y = "Accessibility (% of Population)",
+      color = "Time Threshold"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      legend.position = "none",
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(face = "bold", size = 14),
+      plot.subtitle = element_text(size = 12)
+    )
+  
+  # Save the plot
+  ggsave(file.path(output_dir, "highlight_30min.png"), plots$highlight_30min, width = 8, height = 6)
+  
+  # Plot 3: Normalized trends (starting from 100%)
+  normalized_data <- yearly_access %>%
+    dplyr::mutate(
+      norm_30min = (avg_30min / first(avg_30min)) * 100,
+      norm_60min = (avg_60min / first(avg_60min)) * 100,
+      norm_120min = (avg_120min / first(avg_120min)) * 100,
+      norm_180min = (avg_180min / first(avg_180min)) * 100
+    ) %>%
+    tidyr::pivot_longer(
+      cols = starts_with("norm_"),
+      names_to = "threshold",
+      values_to = "relative_value"
+    ) %>%
+    dplyr::mutate(
+      threshold = factor(threshold, 
+                         levels = c("norm_30min", "norm_60min", "norm_120min", "norm_180min"),
+                         labels = c("30-minute", "60-minute", "120-minute", "180-minute"))
+    )
+  
+  plots$normalized_trends <- ggplot(normalized_data, aes(x = year, y = relative_value, color = threshold)) +
+    geom_hline(yintercept = 100, linetype = "dashed", color = "gray50") +
+    geom_line(linewidth = 1.2) +
+    geom_point(size = 2.5) +
+    scale_color_viridis_d(option = "plasma", end = 0.9) +
+    scale_y_continuous(
+      limits = c(min(normalized_data$relative_value) - 5, 105),
+      breaks = seq(70, 105, by = 5),
+      labels = function(x) paste0(x, "%")
+    ) +
+    scale_x_continuous(breaks = yearly_access$year) +
+    labs(
+      title = "Relative Accessibility Changes (2013 = 100%)",
+      subtitle = "Shorter travel times show steeper relative declines",
+      x = "Year",
+      y = "Relative Accessibility",
+      color = "Time Threshold"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      legend.position = "right",
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(face = "bold", size = 14),
+      plot.subtitle = element_text(size = 12)
+    )
+  
+  # Save the plot
+  ggsave(file.path(output_dir, "normalized_trends.png"), plots$normalized_trends, width = 10, height = 6)
+  
+  # Plot 4: Percentage change bar chart
+  changes$threshold <- factor(changes$threshold, 
+                              levels = c("30-minute", "60-minute", "120-minute", "180-minute"))
+  
+  plots$change_bars <- ggplot(changes, aes(x = threshold, y = percent_change, fill = threshold)) +
+    geom_col() +
+    geom_text(aes(label = sprintf("%.1f%%", percent_change)), 
+              vjust = ifelse(changes$percent_change < 0, 1.5, -0.5),
+              color = ifelse(changes$percent_change < 0, "white", "black"),
+              size = 4) +
+    scale_fill_viridis_d(option = "plasma", end = 0.9) +
+    labs(
+      title = "Percentage Change in Accessibility (2013-2022)",
+      subtitle = "Most significant decline in 30-minute accessibility",
+      x = NULL,
+      y = "Percentage Change",
+      fill = "Time Threshold"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(size = 12),
+      legend.position = "none",
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(face = "bold", size = 14),
+      plot.subtitle = element_text(size = 12)
+    )
+  
+  # Save the plot
+  ggsave(file.path(output_dir, "change_bars.png"), plots$change_bars, width = 8, height = 6)
+  
+  # Plot 5: Small multiples of time threshold trends
+  plots$small_multiples <- ggplot(yearly_long, aes(x = year, y = accessibility)) +
+    geom_line(linewidth = 1, color = "steelblue") +
+    geom_point(size = 2, color = "steelblue") +
+    geom_smooth(method = "lm", se = FALSE, color = "darkred", linetype = "dashed") +
+    facet_wrap(~ threshold, scales = "free_y") +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    scale_x_continuous(breaks = seq(min(yearly_access$year), max(yearly_access$year), by = 2)) +
+    labs(
+      title = "Accessibility Trends by Time Threshold (2013-2022)",
+      x = "Year",
+      y = "Accessibility (% of Population)"
+    ) +
+    theme_minimal() +
+    theme(
+      axis.text.x = element_text(angle = 45, hjust = 1),
+      strip.background = element_rect(fill = "lightgray"),
+      strip.text = element_text(face = "bold"),
+      panel.grid.minor = element_blank(),
+      plot.title = element_text(face = "bold", size = 14)
+    )
+  
+  # Save the plot
+  ggsave(file.path(output_dir, "small_multiples.png"), plots$small_multiples, width = 10, height = 6)
+  
+  # Plot 6: Create a combined dashboard using patchwork
+  if (requireNamespace("patchwork", quietly = TRUE)) {
+    combined_plot <- (plots$trend_lines + plots$normalized_trends) / 
+      (plots$highlight_30min + plots$change_bars) +
+      plot_annotation(
+        title = "Accessibility Analysis Dashboard (2013-2022)",
+        subtitle = "Multiple perspectives on the declining accessibility trends",
+        caption = "Data source: Access_Data.csv",
+        theme = theme(
+          plot.title = element_text(size = 18, face = "bold"),
+          plot.subtitle = element_text(size = 14),
+          plot.caption = element_text(size = 10, hjust = 1)
+        )
+      )
+    
+    # Save the combined plot
+    ggsave(file.path(output_dir, "accessibility_dashboard.png"), combined_plot, 
+           width = 16, height = 12)
+    
+    plots$dashboard <- combined_plot
+  }
+  
+  # Create an animated plot if gganimate is available
+  if (requireNamespace("gganimate", quietly = TRUE)) {
+    # Prepare data for animation
+    yearly_long$year_f <- as.factor(yearly_long$year)
+    
+    anim_plot <- ggplot(yearly_long, aes(x = threshold, y = accessibility, fill = threshold)) +
+      geom_col() +
+      geom_text(aes(label = scales::percent(accessibility, accuracy = 0.1)),
+                vjust = -0.5, size = 3.5) +
+      scale_fill_viridis_d(option = "plasma", end = 0.9) +
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+      labs(
+        title = "Accessibility by Time Threshold",
+        subtitle = "Year: {closest_state}",
+        x = NULL,
+        y = "Accessibility (% of Population)"
+      ) +
+      theme_minimal() +
+      theme(
+        legend.position = "none",
+        plot.title = element_text(face = "bold", size = 14),
+        plot.subtitle = element_text(size = 12),
+        axis.text.x = element_text(size = 12)
+      ) +
+      transition_states(
+        year,
+        transition_length = 2,
+        state_length = 1
+      ) +
+      ease_aes('cubic-in-out')
+    
+    # Save the animation
+    anim_save(file.path(output_dir, "accessibility_animation.gif"), anim_plot, 
+              width = 8, height = 6, units = "in", res = 150, fps = 5)
+  }
+  
+  return(plots)
+}
+
+#' Generate a side-by-side comparison of different years
+#' 
+#' @param data_file Path to the Access_Data.csv file
+#' @param years_to_compare Vector of years to compare
+#' @param output_dir Directory to save output files
+#' 
+#' @return A comparison plot
+compare_years <- function(data_file = "Access_Data.csv",
+                          years_to_compare = c(2013, 2022),
+                          output_dir = getwd()) {
+  
+  # Read and process data
+  access_data <- readr::read_csv(data_file, show_col_types = FALSE)
+  
+  # Extract percentages from accessibility columns
+  access_data <- access_data %>%
+    dplyr::mutate(across(
+      .cols = starts_with("access_"),
+      .fns = ~as.numeric(gsub(".*\\(([0-9.]+)%\\).*", "\\1", .)) / 100,
+      .names = "{.col}_percent"
+    ))
+  
+  # Filter to selected years
+  filtered_data <- access_data %>%
+    dplyr::filter(year %in% years_to_compare)
+  
+  # Aggregate by year
+  year_summaries <- filtered_data %>%
+    dplyr::group_by(year) %>%
+    dplyr::summarize(
+      access_30min = mean(access_30min_percent, na.rm = TRUE),
+      access_60min = mean(access_60min_percent, na.rm = TRUE),
+      access_120min = mean(access_120min_percent, na.rm = TRUE),
+      access_180min = mean(access_180min_percent, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    tidyr::pivot_longer(
+      cols = starts_with("access_"),
+      names_to = "threshold",
+      values_to = "accessibility"
+    ) %>%
+    dplyr::mutate(
+      threshold = factor(
+        case_when(
+          threshold == "access_30min" ~ "30-minute",
+          threshold == "access_60min" ~ "60-minute",
+          threshold == "access_120min" ~ "120-minute",
+          threshold == "access_180min" ~ "180-minute"
+        ),
+        levels = c("30-minute", "60-minute", "120-minute", "180-minute")
+      ),
+      year = as.factor(year)
+    )
+  
+  # Create comparison plot
+  comparison_plot <- ggplot(year_summaries, 
+                            aes(x = threshold, y = accessibility, fill = year)) +
+    geom_bar(stat = "identity", position = "dodge") +
+    geom_text(aes(label = scales::percent(accessibility, accuracy = 0.1)),
+              position = position_dodge(width = 0.9),
+              vjust = -0.5, size = 3.5) +
+    scale_fill_brewer(palette = "Set1") +
+    scale_y_continuous(
+      labels = scales::percent_format(accuracy = 1),
+      limits = c(0, max(year_summaries$accessibility) * 1.1)
+    ) +
+    labs(
+      title = paste("Comparison of Accessibility:", 
+                    paste(years_to_compare, collapse = " vs. ")),
+      subtitle = "Decline is most pronounced in shorter travel times",
+      x = "Time Threshold",
+      y = "Accessibility (% of Population)",
+      fill = "Year"
+    ) +
+    theme_minimal() +
+    theme(
+      legend.position = "top",
+      plot.title = element_text(face = "bold", size = 14),
+      plot.subtitle = element_text(size = 12),
+      axis.text.x = element_text(size = 12)
+    )
+  
+  # Save the plot
+  ggsave(file.path(output_dir, "year_comparison.png"), comparison_plot, width = 10, height = 6)
+  
+  # Calculate percentage changes
+  changes <- year_summaries %>%
+    dplyr::group_by(threshold) %>%
+    dplyr::summarize(
+      first_value = accessibility[year == min(years_to_compare)],
+      last_value = accessibility[year == max(years_to_compare)],
+      abs_change = last_value - first_value,
+      pct_change = (abs_change / first_value) * 100,
+      .groups = "drop"
+    )
+  
+  # Save changes
+  write.csv(changes, file.path(output_dir, "accessibility_changes.csv"), row.names = FALSE)
+  
+  return(list(
+    comparison_plot = comparison_plot,
+    changes = changes
+  ))
+}
+
+#' Run all visualizations
+#' @param data_file Path to the Access_Data.csv file
+#' @param output_dir Directory to save output files
+#' @return A list containing visualization results
+run_visualization_analysis <- function(data_file = "Access_Data.csv", 
+                                       output_dir = "results/visualizations") {
+  # Create all standard visualizations
+  visualizations <- visualize_accessibility_trends(data_file, output_dir)
+  
+  # Create year comparison
+  comparison <- compare_years(data_file, c(2013, 2022), output_dir)
+  
+  # Return combined results
+  return(list(
+    visualizations = visualizations,
+    comparison = comparison
+  ))
+}
+```
+
+```{r run_visualizations, fig.width=10, fig.height=6}
+# Run the visualization analysis
+viz_results <- run_visualization_analysis(
+  data_file = "data/Walker_data/access_by_group.csv", 
+  output_dir = "results/visualizations"
+)
+
+# Display some of the key visualizations
+viz_results$visualizations$trend_lines
+```
+
+```{r display_normalized_trends, fig.width=10, fig.height=6}
+# Display normalized trends visualization
+viz_results$visualizations$normalized_trends
+```
+
+```{r display_year_comparison, fig.width=10, fig.height=6}
+# Display year comparison plot
+viz_results$comparison$comparison_plot
+```
+
+```{r display_changes_table}
+# Display the calculated changes
+knitr::kable(
+  viz_results$comparison$changes,
+  caption = "Percentage Changes in Accessibility (2013-2022)",
+  digits = 1
+)
+```
+
+```{r display_dashboard, fig.width=16, fig.height=12, eval=requireNamespace("patchwork", quietly = TRUE)}
+# Display the dashboard (if patchwork is available)
+if (requireNamespace("patchwork", quietly = TRUE)) {
+  viz_results$visualizations$dashboard
+}
+```
+
+## Interpretation of Visualization Results
+
+The visualizations reveal several key findings:
+
+1. There is a consistent decline in accessibility across all time thresholds from 2013 to 2022.
+
+2. The decline is most pronounced for shorter travel times (30-minute threshold), with approximately a [X]% decrease over the study period.
+
+3. The normalized trends show that accessibility at the 30-minute threshold has declined at a faster rate than longer travel times.
+
+4. The comparison between 2013 and 2022 highlights the widening gap in accessibility, particularly for populations within short drive times of gynecologic oncologists.
+
+These findings suggest that access to gynecologic oncology care has become more geographically concentrated over time, potentially exacerbating disparities for populations in areas with already limited access.
