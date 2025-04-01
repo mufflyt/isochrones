@@ -1,32 +1,61 @@
-# R specific files
+#--------------------------------------
+# R and RStudio files
+#--------------------------------------
 .Rproj.user/
 .Rhistory
 .RData
 .Ruserdata
 .Rapp.history
 .RDataTmp
-.Rproj
+*.Rproj
+.httr-oauth
+.quarto/
+renv/
+.Renviron
+.Rprofile
 
-# knitr and R markdown default cache directories
+#--------------------------------------
+# knitr and R markdown
+#--------------------------------------
 *_cache/
 /cache/
 *_files/
+*.utf8.md
+*.knit.md
+*.rmarkdown
 
-# Output files and directories
+#--------------------------------------
+# Output files and media
+#--------------------------------------
+# Documents
 *.html
 *.pdf
 *.docx
+*.pptx
+*.xlsx
 *.log
+*.aux
+*.out
+*.tex
+
+# Images and media
 figures/
 output/
+results/
 *.mp4
+*.mp3
+*.wav
 *.jpeg
 *.jpg
 *.png
 *.gif
 *.tiff
+*.bmp
+*.svg
 
+#--------------------------------------
 # Geospatial files
+#--------------------------------------
 *.shp
 *.dbf
 *.shx
@@ -36,47 +65,107 @@ output/
 *.cpg
 *.xml
 *.qpj
+*.gpkg
+*.geojson
+*.topojson
+*.gml
+*.kml
+*.gdb/
+*.mdb
+*.osm
+*.pbf
 
-# Large data files and folders
+#--------------------------------------
+# Data files
+#--------------------------------------
+# Specific data directories
 data/07-isochrone-mapping/
 data/tigris/
 data/temp/
+data/raw/
+data/processed/
+data/02.5-subspecialists_over_time/2024_05_12a/
+data/tabulated_all_years_clean_*.xlsx
+
+# Data file formats
 *.rds
 *.csv
 *.tsv
 *.gz
 *.zip
+*.tar
+*.tar.gz
+*.7z
+*.rar
 *.feather
 *.parquet
 *.fst
+*.dta
+*.sav
+*.sas7bdat
 
-# Authentication and configuration
+#--------------------------------------
+# Credentials and configuration
+#--------------------------------------
 .here
 .env
-.Renviron
-.Rprofile
 *.key
 *.pem
 *secret*
 *token*
 *api_key*
+*credentials*
+*auth*
+*config.json
+*config.yml
 
+#--------------------------------------
 # OS specific files
+#--------------------------------------
+# macOS
 .DS_Store
-Thumbs.db
-desktop.ini
+.AppleDouble
+.LSOverride
+Icon
 
-# PostgreSQL
+# Windows
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+
+# Linux
+*~
+.directory
+.Trash-*
+
+#--------------------------------------
+# Database files
+#--------------------------------------
 *.dump
 *.sql
+*.sqlite
+*.db
+*.duckdb
 
+#--------------------------------------
 # Package specific
+#--------------------------------------
 tyler_*.tar.gz
 
-# Large File Storage (only if you're using Git LFS)
+#--------------------------------------
+# Git and GitHub
+#--------------------------------------
 .gitattributes
+.git/
+.github/
 
+#--------------------------------------
 # Temporary files
+#--------------------------------------
 *.tmp
 *~
 .~lock.*
+tmp/
+temp/
+.temp/
