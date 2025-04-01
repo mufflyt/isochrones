@@ -1,276 +1,233 @@
-### 01-setup
-[Setup file](https://youtu.be/4eStfNf9qjk)
+Gynecologic Oncology Accessibility Project
+================
+Tyler Muffly, MD
+2025-02-09
 
-### 02-search_taxonomy
-[Setup file](https://youtu.be/4eStfNf9qjk)
+<!-- README.md is generated from README.Rmd. Please edit that file -->
 
-### 02.5-subspecialists_over_time
-[subspecialists over time](https://youtu.be/-WfEeK8gpH8)
+## Project Overview
 
-### 03-search_and_process_npi
-[search_and_process_npi](https://youtu.be/AZVw-7y01BE)
+This project analyzes nationwide access to gynecologic oncologists and
+other OBGYN subspecialists using drive time isochrones, demographic
+data, and geospatial analysis. The analysis examines how accessibility
+varies across different geographic areas, demographic groups, and time
+periods (2013-2023).
 
-### 04-geocode
-[04-geocode](https://youtu.be/S2vXh8-fzKs)
+Using the HERE Maps API and census data, we calculate drive time
+isochrones around gynecologic oncologists’ locations and analyze the
+demographics of populations within each drive time threshold. The
+project examines changes in accessibility over time and retirement
+patterns among specialists.
 
-### 05-geocode-cleaning
-[05-geocode-cleaning](https://youtu.be/CwUaD5tRWo4)
+### Subspecialists Analyzed
 
-### 06-isochrones
-[isochrones](https://youtu.be/crZuELWtrTA)
+- Female Pelvic Medicine and Reconstructive Surgery/Urogynecology
+- Gynecologic Oncology
+- Maternal-Fetal Medicine
+- Reproductive Endocrinology and Infertility
 
-### 07-isochrone-mapping
-[07-isochrone-mapping](https://youtu.be/Hs2Nab7Imoc)
+## File Organization
 
-### 07.5-prep-get-block-group-overlap
-[07.5-prep-get-block-group-overlap]()
+### Core Analysis Workflow
 
-### 08-get-block-group-overlap
+#### Data Gathering
 
-### 08.5-prep-the census-variables
+- `Gathering data.R` - Auxiliary script for data compilation
+- `Postico_database_pull.R` - Retrieves physician data from PostgreSQL
+- `getting_isochrones_trying.R` - Alternative method for isochrone
+  generation
+- `retirement.R` - Basic retirement analysis
+- `retirement_adjusted.R` - Improved retirement analysis with multiple
+  data sources
+- `script.R` - Reference script demonstrating the workflow
+- `subspecialists over time.R` - Analysis of subspecialist trends
+- `visualize_fips_inters_isochr.R` - Visualizes FIPS code intersections
+- `fips_blocks_female_proportion.R` - Analyzes female population in FIPS
+  blocks
+- `fips_isochrones_population_intersect.R` - Examines population within
+  isochrones
 
-### 09-get-census-population
+#### 1. Setup and Data Preparation
 
-### 10-calculate-polygon-demographcs
+- `01-setup.R` - Loads packages, sets API keys, defines helper
+  functions, initializes directory structure
+- `02-search_taxonomy.R` - Retrieves gynecologic oncology subspecialists
+  from NPI database
+- `02.5-subspecialists_over_time.R` - Analyzes subspecialist trends over
+  multiple years
+- `03-search_and_process_npi.R` - Processes National Provider Identifier
+  (NPI) data
+- `03a-search_and_process_extra.R` - Additional NPI processing for edge
+  cases
+- `04-geocode.R` - Geocodes provider addresses using the HERE API
+- `05-geocode-cleaning.R` - Cleans and standardizes geocoded data
 
-# Geography
+#### 2. Isochrone Generation and Analysis
 
-#TODO: 
-1) 01-setup: Setup will need to be updated with any changes you make to the bespoke functions.  Teh get_census_data function is not working.  
-2) 02.5-subspecialists_over_time: Year-specific physicians should be contained in "data/02.5-subspecialists_over_time/distinct_year_by_year_nppes_data_validated_npi.csv".  This file was run on a different machine with a Postico database so the file does not need to be run.  
-3) 03-search_and_process_npi.R should not need to be run.  
-4) 04-geocode: We need to geocode all the physicians from "distinct_year_by_year_nppes_data_validated_npi.csv."  I would like to avoid doing too much geocoding as using the hereR package can get expensive, so I would prefer we only code distinct addresses.  There is an error at this line of code that needs help: "merged_data_sp <- as(merged_data, "Spatial")".  
-5) 05-geocode-cleaning: This file is a very hacky workaround to parse then match the address parts, and now that we have a unique identifier going in and coming out of the 06-isochrones.R file.  I get an error in the sanity check section with I get an error:  Error in leaflet::addLegend(., position = "bottomright", colors = district_colors,  :  'colors' and 'labels' must be of the same length
- In addition: Warning message: Unknown or uninitialised column: `ACOG_District`. 
+- `06-isochrones.R` - Generates drive time isochrones (30, 60, 120, 180
+  min)
+- `07-isochrone-mapping.R` - Maps isochrones and performs spatial joins
+- `07.5-prep-get-block-group-overlap.R` - Prepares census block group
+  data
+- `08-get-block-group-overlap.R` - Calculates overlap between isochrones
+  and census blocks
+- `08.5-prep-the-census-variables.R` - Prepares demographic variables
+  from Census
+- `09-get-census-population.R` - Calculates population within/outside
+  isochrones
 
-5) 05-geocode-cleaning: Running this file may not be necessary.
-6) 06-isochrones: Please fix the process_and_save_isochrones function to give it multiple dates (`iso_datetime_yearly`).  
-7) 07-isochrone-mapping: To make year-specific physicians, we must figure out the "subspecialists_lat_long" variable.  
-7) 07.5-prep-get-block-group-overlap: This contains the year-specific block groups and should work well as it is.  
-8) 08-get-block-group-overlap: We need to look at the entire USA.  Currently, the code reads "Colorado" as a smaller state for the toy example.
-8) 08.5-prep-the census-variables: Please download all races ("BLACK", "American Indian/Alaska Native (AI/AN)", "ASIAN", "NHPI" = "Native Hawaiian/Pacific Islander", "WHITE") of the total female population per block group for all years.  This is going to need some work.  We will need to find the American Community Survey (ACS) variables associated with the races.  
+#### 3. Results and Analysis
 
-I am interested in looking at the availability of access to over 5,000 OBGYN subspecialists over time (2013 to 2022) in the United States.  The subspecialists include: Female Pelvic Medicine and Reconstructive Surgery/Urogynecology, Gynecologic Oncology, Maternal-Fetal Medicine, and Reproductive Endocrinology and Infertility.  The topic is physician workforce planning, where there is the greatest need for more physicians to serve women 18 years and older.  Patients will be driving by car to create the isochrones.  I do not have access to ArcGIS due to cost and so I would like to create everything using R.  Ideally we would use the “sf” package as “sp” is being deprecated.  I'm hiring because I have too much work to do alone. I would like to start work next week.  
+- `10-calculate-polygon-demographcs.R` - Analyzes demographic
+  characteristics
+- `10-make-region.R` - Creates regional maps and analyses
+- `analyze_isochrone_data.R` - Framework for analyzing isochrone data
+- `calculate_population_in_isochrones_by_race.R` - Analyzes population
+  by race within isochrones
+- `walker_isochrone_maps.R` - Visualizes isochrone changes over time
 
-What I am providing:
-1) A github repository with the scripts and the data needed to create the code: www.github.com/mufflyt.  Most of this project is based off of two projects by Hannah Recht.  www.github.com/hrecht
+### R Markdown Documents
 
-Deliverables:
-1) Source code in R
-2) Scripts that create year-specific isochrones and year-specific physicians and year specific block groups
-3) Gather Census data for each of the years for all the block groups.  
-4) Create a static map of each year (2013 to 2022) plotting the year-specific physicians and year-specific isochrones
-a. Isochrones of different colors for 15 minutes, 30 minutes, 60 minutes, 180 minutes, and 240 minutes
-b. Physicians as dots with different colors based on specialty (sub1)
-c. ACOG Districts outlined with no fill
-d. A compass rose and a scale bar in miles
-e. Legend of isochrones ordered from 15 minutes on top to 240 minutes on bottom
-f. Title at the top center of the map
-g. Saved as a TIFF file
-5) Leaflet map with the same features as above please
-6) Counts of the number of women (Total, White, Black , Asian, American Indian/Alaska Native, Native Hawaiian/Pacific Islander) who are within each of the 15 minutes, 30 minutes, 60 minutes, 180 minutes, and 240 minutes from each subspecialty(Female Pelvic Medicine and Reconstructive Surgery/Urogynecology, Gynecologic Oncology, Maternal-Fetal Medicine, and Reproductive Endocrinology and Infertility.)
+- `GO_access_analysis_code.Rmd` - Statistical analysis of gynecologic
+  oncology access
+- `for_every_year_script_rmd.Rmd` - Year-by-year analysis of
+  accessibility trends
+- `isochrones.Rmd` - Tutorial on creating and analyzing isochrones
 
-Sample Abstract
+## Execution Order
 
-Geographic Disparities in Potential Accessibility to Gynecologic Oncologists in the United States from 2013 to 2022.  
+For a complete analysis, the files should be executed in approximately
+this order:
 
-Objective: To use a spatial modeling approach to capture potential disparities of gynecologic oncologist accessibility in the United States at the block group level between 2013 and 2022.
+### Setup Phase
 
-Methods: Physician registries identified the 2013 to 2022 gynecologic oncology workforce and were aggregated to each county.  The at-risk cohort (women aged 18 years or older) was stratified by race and rurality demographics.  We computed the distance from at-risk women to physicians.  We set drive time to 30, 60, 180, and 240 minutes.  
+1.  `01-setup.R`
+2.  `Postico_database_pull.R` (if external hardrive with the Positico
+    database access is connected)
 
-Results: Between 2013 and 2022, the gynecologic oncology workforce increased.  By 2022, there were x active physicians, and x% practiced in urban block groups.  Geographic disparities were identified, with x physicians per 100,000 women in urban areas compared with 0.1 physicians per 100,000 women in rural areas.  In total, x block groups (x million at-risk women) lacked a gynecologic oncologist.  Additionally, there was no increase in rural physicians, with only x% practicing in rural areas in 2013-2015 relative to ??% in 2016-2022 (p=?).  Women in racial minority populations exhibited the lowest level of access to physicians across all periods.  For example, xx% of American Indian or Alaska Native women did not have access to a physician with a 3-hour drive from 2013-2015, which did not improve over time.  Black women experience an increase in relative accessibility, with a ??% increase by 2016-2022.  However, Asian or Pacific Islander women exhibited significantly better access than ???  women across all periods.  
+### Data Collection Phase
 
-Conclusion:  Although the US gynecologic oncologist workforce has increased steadily over 20 years, this has not translated into evidence of improved access for many women from rural and underrepresented areas.  However, distance and availability may not influence healthcare utilization and cancer outcomes only.  
+3.  `02-search_taxonomy.R`
+4.  `02.5-subspecialists_over_time.R`
+5.  `03-search_and_process_npi.R`
+6.  `03a-search_and_process_extra.R`
+7.  `04-geocode.R`
+8.  `05-geocode-cleaning.R`
 
+### Isochrone Analysis Phase
 
+9.  `06-isochrones.R`
+10. `07-isochrone-mapping.R`
+11. `07.5-prep-get-block-group-overlap.R`
+12. `08-get-block-group-overlap.R`
+13. `08.5-prep-the-census-variables.R`
+14. `09-get-census-population.R`
 
-Methods:
-There are subspecialists in obstetrics and gynecology across the United States in four categories: Gynecologic Oncology, Female Pelvic Medicine and Reconstructive Surgery, Maternal-Fetal Medicine, and Reproductive Endocrinology and Infertility.  We gathered data from the National Plan and Provider Enumeration System (NPPES) to extract each obstetrician-gynecologist and their address of practice (available at https://www.nber.org/research/data/national-plan-and-provider-enumeration-system-nppes).  The NPPES file contains a list of every physician practicing in the United States and is closest to a physician data clearinghouse.  This data also includes their graduation and license year.  Therefore, we identified the approximate year that each subspecialist entered the workforce as a physician.  We had data for NPPES files from 2013 to 2023.  
+### Results and Additional Analysis Phase
 
-Utilization data for each physician were unavailable, so our analysis focused on at-risk women aged 18 years or older in the United States at the block group level (Appendix 0).  Analysis was also done at the American College of Obstetricians and Gynecologists District level (Appendix 1).  We collected American Community Survey 5-year estimates and decennial census data.  Along with the total adult female population in each cross-section, we also collected population on race to identify potential disparities among women in minority populations (Appendix 2).  The race categories included White, Black, Asian or Pacific Islander, and American Indian or Alaska Native.  
+15. `10-calculate-polygon-demographcs.R`
+16. `10-make-region.R`
+17. `retirement.R`/`retirement_adjusted.R` (if physician retirement
+    analysis is needed)
+18. `walker_isochrone_maps.R`
+19. `analyze_isochrone_data.R`
+20. `calculate_population_in_isochrones_by_race.R`
+21. `for_every_year_script_rmd.Rmd`
+22. `GO_access_analysis_code.Rmd`
 
-To measure the distance between the patient location and the point of care (hospital or emergency department), the shortest or "straight-line" distance (i.e., the geodetic or great circle distance) is commonly used because it can be readily calculated (e.g., through statistical software programs such as SAS®).  An alternative distance metric is the driving distance or driving times obtained from various mapping software such as HERE, Google Maps, MapQuest, OpenStreetMaps, and ArcGIS Network Analyst.  Multiple organizations, such as the Veteran’s Administration and the Department of Transportation, prefer drive time for measuring access.  We use the HERE API to calculate optimal routes and directions for driving with traffic on the third Friday in October at 0900 (Appendix 3). 
+## Methods
 
-Additionally, our analysis examined potential access to obstetrician-gynecologist subspecialists across the United States.  We used drive time isochrones.  
+### Data Sources
 
-Appendix 0:
-Choosing block groups over counties for data analysis could be driven by several factors, depending on the nature of the analysis you are conducting:
+- Physician Data: National Plan and Provider Enumeration System (NPPES)
+  files from 2013 to 2023
+- Population Data: American Community Survey 5-year estimates and
+  decennial census data
+- Geographic Analysis: Used block groups rather than counties for finer
+  data resolution
+- Geographic Regions: American College of Obstetricians and
+  Gynecologists (ACOG) Districts
 
-•	Resolution of Data: Block groups provide a finer data resolution than counties. 
-•	Local Trends and Patterns: Block groups are small enough to reveal local trends and patterns that might be obscured when data is aggregated at the county level.
-•	Socioeconomic Analysis: Block groups can provide more precise information about demographic and economic conditions for studies involving socioeconomic factors since they represent smaller communities.
-•	Policy Impact Assessment: Block groups may be more appropriate when assessing the impact of local policies or interventions because policies might vary significantly within a county.
-•	Spatial Analysis: For spatial analyses that require precision, such as identifying hotspots or conducting proximity analysis, the smaller geographic units of block groups are more valuable.
+### Analysis Approach
 
-We utilized the tigris package to get the block group geometries for different years.  This required downloading each state’s data and joining them into one national file for years 2018 and earlier.  
+- Drive time isochrones (30, 60, 120, 180 minutes) calculated using HERE
+  API
+- Isochrones generated for the third Friday in October at 9:00 AM for
+  each year
+- Demographic analysis by race/ethnicity (White, Black, Asian or Pacific
+  Islander, American Indian/Alaska Native)
+- Comparison of urban vs. rural accessibility
 
-Appendix 1: The American College of Obstetricians and Gynecologists (ACOG) is a professional organization representing obstetricians and gynecologists in the United States.  ACOG divides its membership into various geographical regions known as "ACOG Districts."
+## Prerequisites
 
-```r
-State	        ACOG_District 	State_Abbreviations
-Alabama	District VII	AL
-Alaska		District VIII	AK
-Arizona	District VIII	AZ
-Arkansas	District VII	AR
-California	District IX	CA
-Colorado	District VIII	CO
-Connecticut	District I	CT
-District of Columbia	District IV	DC
-Florida		District XII	FL
-Georgia	District IV	GA
-Hawaii		District VIII	HI
-Illinois		District VI	IL
-Indiana	District V	IN
-Iowa		District VI	IA
-Kansas		District VII	KS
-Kentucky	District V	KY
-Louisiana	District VII	LA
-Maryland	District IV	MD
-Massachusetts	District I	MA
-Michigan	District V	MI
-Minnesota	District VI	MN
-Mississippi	District VII	MS
-Missouri	District VII	MO
-Nebraska	District VI	NE
-Nevada	District VIII	NV
-New Hampshire District I	NH
-New Jersey	District III	NJ
-New Mexico	District VIII	NM
-New York	District II	NY
-North Carolina	District IV	NC
-North Dakota	District VI	ND
-Ohio		District V	OH
-Oklahoma	District VII	OK
-Oregon	District VIII	OR
-Pennsylvania	District III	PA
-Puerto Rico	District IV	PR
-Rhode Island	District I	RI
-South Carolina	District IV	SC
-South Dakota	District VI	SD
-Tennessee	District VII	TN
-Texas		District XI	TX
-Utah		District VIII	UT
-Vermont	District I	VT
-Virginia	District IV	VA
-Washington	District VIII	WA
-West Virginia	District IV	WV
-Wisconsin	District VI	WI
+- R 4.0.0 or higher
+- Required R packages (listed in `01-setup.R`)
+- HERE Maps API key
+- Census API key
+- PostgreSQL database (optional, for historical physician data)
+
+## Tools and Data Management
+
+### HERE API
+
+- Used for geocoding and isochrone generation
+- Geocoding and Search: \$0.83 per 1,000 searches after 30,000 free
+  geocodes
+- Isoline Routing: \$5.50 per 1,000 after 2,500 free isoline routings
+
+### Data Storage
+
+- GitHub LFS (Large File Storage) for managing large files
+- DuckDB for efficient data querying
+- PostgreSQL database for year-specific physician data
+
+### Auxiliary Tools
+
+- tyler package: Custom package for project-specific functions
+- Exploratory.io: Used for data wrangling
+
+## Key Outputs
+
+- Drive time isochrones at multiple thresholds (30, 60, 120, 180
+  minutes)
+- Population statistics within/outside isochrones
+- Demographic analysis by race/ethnicity
+- Temporal trends in accessibility (2013-2023)
+- Visualizations of geographic access patterns
+
+## Development Notes
+
+### TODO Items
+
+1.  Update `01-setup.R` with any changes to bespoke functions. Fix the
+    `get_census_data` function.
+2.  Year-specific physicians are in
+    `data/02.5-subspecialists_over_time/distinct_year_by_year_nppes_data_validated_npi.csv`.
+3.  Fix the error in `04-geocode.R` at this line:
+    `merged_data_sp <- as(merged_data,"Spatial")`.
+4.  Fix error in `05-geocode-cleaning.R` sanity check section with
+    `Error in leaflet::addLegend(., position ="bottomright", colors = district_colors, : 'colors' and 'labels' must be of the same length`.
+5.  Update `06-isochrones.R` to handle multiple dates (using
+    `iso_datetime_yearly`).
+6.  In `07-isochrone-mapping.R`, determine how to use
+    `subspecialists_lat_long` for year-specific physicians.
+7.  Ensure `08-get-block-group-overlap.R` works with the entire USA
+    instead of just Colorado.
+8.  Update `08.5-prep-the-census-variables.R` to download racial
+    demographic data for all years.
+
+## Data Sources
+
+For downloading NPPES files:
+
+``` bash
+wget -P "/Volumes/Video Projects Muffly 1/nppes_historical_downloads" "https://download.cms.gov/nppes/NPPES_Data_Dissemination_April_2024.zip"
 ```
 
-Appendix 2: US Census Bureau Codes Decennial Census and the American Community Survey.
-Decennial Census – Demographic and Housing Characteristics File (API variables: https://api.census.gov/data/2020/dec/dhc/variables.html)
+## License
 
-(https://www2.census.gov/programs-surveys/decennial/2020/technical-documentation/complete-tech-docs/demographic-and-housing-characteristics-file-and-demographic-profile/2020census-demographic-and-housing-characteristics-file-and-demographic-profile-techdoc.pdf )
+\[Specify your license here\]
 
+## Contact
 
-American Community Survey 
-(API variables: https://api.census.gov/data/2022/acs/acs1/variables.html )
-```r
-B01001_026E  Estimate _Total _Female
-    female_10_to_14 = "B01001_029",
-    female_15_to_17 = "B01001_030",
-    female_18_to_19 = "B01001_031",
-    female_20years = "B01001_032",
-    female_21years = "B01001_033",
-    female_22_to_24 = "B01001_034",
-    female_25_to_29 = "B01001_035",
-    female_30_to_34 = "B01001_036",
-    female_35_to_39 = "B01001_037",
-    female_40_to_44 = "B01001_038",
-    female_45_to_49 = "B01001_039",
-    female_50_to_54 = "B01001_040",
-    female_55_to_59 = "B01001_041",
-    female_60_to_61 = "B01001_042",
-    female_62_to_64 = "B01001_043",
-    female_65_to_66 = "B01001_044",
-    female_67_to_69 = "B01001_045",
-    female_70_to_74 = "B01001_046",
-    female_75_to_79 = "B01001_047",
-    female_80_to_84 = "B01001_048",
-    female_85_over = "B01001_049"
-````
-
-## US Decennial Census Demographic and Housing
-```r
-    name	label	concept
-P12Y_026N	Female:	AI/AN ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NOT HISPANIC OR LATINO)
-P12Z_026N	Female:	ASIAN ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NOT HISPANIC OR LATINO)
-P12X_026N	Female:	BLACK OR AFRICAN AMERICAN ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NOT HISPANIC OR LATINO)
-P12AA_026N	Female:	NHPI ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NOT HISPANIC OR LATINO)
-P12W_026N	Female:	WHITE ALONE OR IN COMBINATION WITH ONE OR MORE OTHER RACES, NOT HISPANIC OR LATINO)
-```
-
-Appendix 3: Characteristics of Isochrones
-The bespoke R code generates individual maps for each drive time, visually representing the accessible areas on a map.  The function shapefiles are geospatial data files used for storing geographic information, including the boundaries of the reachable areas.  The HERE API (here.com) was utilized because traffic and time could be standardized yearly.  Each year, the isochrones are built on the third Friday in October at 0900, defined as “posix_time”.  We imagined that patients would see their primary care provider at this time of year for an influenza vaccination or other issues.  The hereR package (https://github.com/munterfi/hereR/ ) is a wrapper around the R code that calls the HERE REST API for isoline routing (platform.here.com) and returns it as an sf object.  There is a cost of $5.50 for every 1,000 isolines created (https://www.here.com/get-started/pricing#here---platform---pricing---page-title ).  
-
-```r
-•	October 18, 2013
-•	October 17, 2014
-•	October 16, 2015
-•	October 21, 2016
-•	October 20, 2017
-•	October 19, 2018
-•	October 18, 2019
-•	October 16, 2020
-•	October 15, 2021
-•	October 21, 2022
-
-c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-16 09:00:00",
-  "2016-10-21 09:00:00", "2017-10-20 09:00:00", "2018-10-19 09:00:00",
-  "2019-10-18 09:00:00", "2020-10-16 09:00:00", "2021-10-15 09:00:00",
-  "2022-10-21 09:00:00")
-```
-
-R code utilizing the hereR package with the isoline library.  The range of isochrones was 30 minutes, 60 minutes, 120 minutes, and 180 minutes.  
-```r
-isochrones_sf <- process_and_save_isochrones(input_file_no_error_rows, 
-                                             chunk_size = 25, 
-                                             iso_datetime = "2023-10-20 09:00:00",
-                                             iso_ranges = c(30*60, 60*60, 120*60, 180*60),
-                                             crs = 4326, 
-                                             transport_mode = "car",
-                                             file_path_prefix = "data/06-isochrones/isochrones_")
-```
-
-![image](https://github.com/mufflyt/Geography/assets/44621942/d246f85e-4b77-463e-9cb9-69c0e6623e2e)
-
-
-####
-# Tools
-
-We used github LFS (large file storage).  2GB is the largest that LFS can handle.  Do NOT exceed. Upload ONE directory at a time after checking the size.  
-
-```r
-git lfs install
-git config http.postBuffer 524288000
-git lfs track "*.dbf" "*.shp"
-git ls-tree -r -t -l HEAD | sort -k 4 -n -r | head -n 10
-git add .gitattributes
-git commit -m "Track large files with Git LFS"
-git push origin main
-```
-
-```r
-git lfs track "bg_shp_joined_intersect_pct.rds"
-git add .gitattributes
-git commit -m "Track bg_shp_joined_intersect_pct.rds with Git LFS"
-git push origin main
-```
-
-```r
-git add .gitattributes
-git add *.shp
-git add *.dbf
-git add *.shx
-git add *.prj
-git commit -m "Reconfigure Git LFS for large files"
-git push origin main
-```
-
-# Postico Database
-We needed a database program to house each of the NPI files from each year due to RAM restrictions.  Postico is a client for PostgreSQL, and it allows you to execute raw SQL queries, including DDL statements._full_
-<img width="1440" alt="Screenshot 2024-01-13 at 8 25 35 PM" src="https://github.com/mufflyt/isochrones/assets/44621942/86e54895-3358-4ff7-96d6-0e3e9b120a46">
-
-# tyler package
-[tyler_1.1.0.tar.gz](https://github.com/mufflyt/isochrones/files/13914538/tyler_1.1.0.tar.gz)
-
+Tyler Muffly, MD - \[Add contact information if appropriate\]
