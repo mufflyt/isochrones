@@ -80,11 +80,18 @@ patterns among specialists.
 
 - `10-calculate-polygon-demographcs.R` - Analyzes demographic
   characteristics
+
 - `10-make-region.R` - Creates regional maps and analyses
+
 - `analyze_isochrone_data.R` - Framework for analyzing isochrone data
+
 - `calculate_population_in_isochrones_by_race.R` - Analyzes population
   by race within isochrones
+
 - `walker_isochrone_maps.R` - Visualizes isochrone changes over time
+
+- `Access_Data.csv` - Data from Tannous that he arranged and is held in
+  `data/`
 
 ### R Markdown Documents
 
@@ -109,10 +116,13 @@ this order:
 
 3.  `02-search_taxonomy.R`
 4.  `02.5-subspecialists_over_time.R`
-5.  `03-search_and_process_npi.R`
+5.  `03-search_and_process_npi.R` - When did physicians start
+    practicing?
 6.  `03a-search_and_process_extra.R`
 7.  `04-geocode.R`
 8.  `05-geocode-cleaning.R`
+9.  `retirement.R`/`retirement_adjusted.R` - When did physicians retire?
+    (if physician retirement analysis is needed)
 
 ### Isochrone Analysis Phase
 
@@ -126,14 +136,72 @@ this order:
 ### Results and Additional Analysis Phase
 
 15. `10-calculate-polygon-demographcs.R`
+
 16. `10-make-region.R`
-17. `retirement.R`/`retirement_adjusted.R` (if physician retirement
-    analysis is needed)
-18. `walker_isochrone_maps.R`
-19. `analyze_isochrone_data.R`
-20. `calculate_population_in_isochrones_by_race.R`
-21. `for_every_year_script_rmd.Rmd`
+
+17. `script2025.R` - Downloads the population data and aggregates it by
+    isochrone and by total population. Creates tables of women within
+    isochrones and total women.  
+
+``` r
+> access_merged
+# A tibble: 240 × 6
+   year  range category              count     total percent
+   <chr> <int> <chr>                 <dbl>     <dbl>   <dbl>
+ 1 2013   1800 total_female       72362517 162649954    44.5
+ 2 2013   1800 total_female_white 46553359 119180751    39.1
+```
+
+19. `analyze_isochrone_data.R` - Measures the slope for access from
+    start 2013 to finish 2022. Finds significant increases or decreases
+    in the number of women within a drive time. Some notable trends:
+
+- Total female white population shows significant declines in access
+  across all time thresholds
+- Some categories like `total_female_asian` show significant increases
+  in longer-time thresholds
+
+``` r
+> isochrone_results$trend_analysis
+                 category        time_threshold         slope    r_squared     p_value start_year end_year start_value
+year         total_female  access_30min_cleaned -7.363956e+05 1.126669e-01 0.343029928       2013     2022    72362517
+year1        total_female  access_60min_cleaned -6.301068e+05 7.221735e-02 0.452792176       2013     2022    98337640
+year2        total_female access_120min_cleaned -1.340719e+05 4.509434e-03 0.853764926       2013     2022   133049027
+year3        total_female access_180min_cleaned -3.015709e+03 2.336200e-06 0.996656494       2013     2022   148447072
+year4   total_female_aian  access_30min_cleaned  8.242703e+03 1.559138e-01 0.258786159       2013     2022      316937
+year5   total_female_aian  access_60min_cleaned  1.109027e+04 1.747050e-01 0.229364327       2013     2022      453807
+```
+
+``` r
+library(knitr)
+knitr::include_graphics("figures/mean_access_by_group.png")
+```
+
+<img src="figures/mean_access_by_group.png" width="3000" />
+
+``` r
+knitr::include_graphics("figures/access_over_time.png")
+```
+
+<img src="figures/access_over_time.png" width="3000" />
+
+``` r
+knitr::include_graphics("figures/access_distribution.png")
+```
+
+<img src="figures/access_distribution.png" width="3000" />
+
 22. `GO_access_analysis_code.Rmd`
+
+23. `walker_isochrone_maps.R` - Creates a faceted map of the US, HI, AK,
+    and PR with the isochrones in place.
+
+24. `zzzcalculate_population_in_isochrones_by_race.R` - I’m unsure if it
+    is needed.  
+
+25. `zzzfor_every_year_script_rmd.Rmd` - This is THE SAME MAP THAT
+    WALKER DID IN `walker_isochrone_maps.R` BUT HE DID IT BETTER.
+    Creates a map of the isochrones for every year.
 
 ## Methods
 
@@ -194,27 +262,6 @@ this order:
 - Demographic analysis by race/ethnicity
 - Temporal trends in accessibility (2013-2023)
 - Visualizations of geographic access patterns
-
-## Development Notes
-
-### TODO Items
-
-1.  Update `01-setup.R` with any changes to bespoke functions. Fix the
-    `get_census_data` function.
-2.  Year-specific physicians are in
-    `data/02.5-subspecialists_over_time/distinct_year_by_year_nppes_data_validated_npi.csv`.
-3.  Fix the error in `04-geocode.R` at this line:
-    `merged_data_sp <- as(merged_data,"Spatial")`.
-4.  Fix error in `05-geocode-cleaning.R` sanity check section with
-    `Error in leaflet::addLegend(., position ="bottomright", colors = district_colors, : 'colors' and 'labels' must be of the same length`.
-5.  Update `06-isochrones.R` to handle multiple dates (using
-    `iso_datetime_yearly`).
-6.  In `07-isochrone-mapping.R`, determine how to use
-    `subspecialists_lat_long` for year-specific physicians.
-7.  Ensure `08-get-block-group-overlap.R` works with the entire USA
-    instead of just Colorado.
-8.  Update `08.5-prep-the-census-variables.R` to download racial
-    demographic data for all years.
 
 ## Data Sources
 

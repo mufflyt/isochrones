@@ -13,7 +13,6 @@
 renv/
 .Renviron
 .Rprofile
-
 #--------------------------------------
 # knitr and R markdown
 #--------------------------------------
@@ -23,7 +22,6 @@ renv/
 *.utf8.md
 *.knit.md
 *.rmarkdown
-
 #--------------------------------------
 # Output files and media
 #--------------------------------------
@@ -37,7 +35,6 @@ renv/
 *.aux
 *.out
 *.tex
-
 # Images and media
 figures/
 output/
@@ -52,7 +49,6 @@ results/
 *.tiff
 *.bmp
 *.svg
-
 #--------------------------------------
 # Geospatial files
 #--------------------------------------
@@ -74,7 +70,6 @@ results/
 *.mdb
 *.osm
 *.pbf
-
 #--------------------------------------
 # Data files
 #--------------------------------------
@@ -86,7 +81,6 @@ data/raw/
 data/processed/
 data/02.5-subspecialists_over_time/2024_05_12a/
 data/tabulated_all_years_clean_*.xlsx
-
 # Data file formats
 *.rds
 *.csv
@@ -103,7 +97,6 @@ data/tabulated_all_years_clean_*.xlsx
 *.dta
 *.sav
 *.sas7bdat
-
 #--------------------------------------
 # Credentials and configuration
 #--------------------------------------
@@ -118,7 +111,6 @@ data/tabulated_all_years_clean_*.xlsx
 *auth*
 *config.json
 *config.yml
-
 #--------------------------------------
 # OS specific files
 #--------------------------------------
@@ -127,18 +119,15 @@ data/tabulated_all_years_clean_*.xlsx
 .AppleDouble
 .LSOverride
 Icon
-
 # Windows
 Thumbs.db
 ehthumbs.db
 desktop.ini
 $RECYCLE.BIN/
-
 # Linux
 *~
 .directory
 .Trash-*
-
 #--------------------------------------
 # Database files
 #--------------------------------------
@@ -147,19 +136,16 @@ $RECYCLE.BIN/
 *.sqlite
 *.db
 *.duckdb
-
 #--------------------------------------
 # Package specific
 #--------------------------------------
 tyler_*.tar.gz
-
 #--------------------------------------
 # Git and GitHub
 #--------------------------------------
 .gitattributes
 .git/
 .github/
-
 #--------------------------------------
 # Temporary files
 #--------------------------------------
