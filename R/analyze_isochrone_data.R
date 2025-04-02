@@ -560,16 +560,63 @@ create_visualization_plots <- function(isochrone_data, group_column, time_thresh
   return(plot_paths)
 }
 
+
 ##
 library(tidyverse)
 
+# Custom function to clean percentage columns
+clean_percentage_column <- function(column) {
+  # Extract numeric values from strings like "72362517 (44.49%)"
+  as.numeric(str_extract(column, "^\\d+"))
+}
+
+# Read and clean the data first
+cleaned_data <- read_csv("data/Tannous/Access_Data.csv") %>%
+  mutate(
+    access_30min_cleaned = clean_percentage_column(access_30min),
+    access_60min_cleaned = clean_percentage_column(access_60min),
+    access_120min_cleaned = clean_percentage_column(access_120min),
+    access_180min_cleaned = clean_percentage_column(access_180min)
+  ) %>%
+  select(-`...8`)  # Remove the empty column
+
+# Write the cleaned data to a new CSV
+write_csv(cleaned_data, "data/Tannous/cleaned_access_data.csv")
+
+# Now use the cleaned CSV in the function
 isochrone_results <- analyze_isochrone_data(
-  data_file_path = "data/Tannous/Access_Data.csv",
+  data_file_path = "data/Tannous/cleaned_access_data.csv",
   group_column = "category",
-  time_thresholds = c("access_30min", "access_60min", "access_120min", "access_180min"),
-  output_dir = getwd(),
+  time_thresholds = c("access_30min_cleaned", "access_60min_cleaned", 
+                      "access_120min_cleaned", "access_180min_cleaned"),
+  output_dir = "figures/",
   create_plots = TRUE,
   calculate_trends = TRUE,
-  verbose = FALSE
+  verbose = TRUE
 )
 
+
+isochrone_results$summary_stats
+#   1. Summary Statistics (`$summary_stats`):
+#   - The dataset covers multiple demographic categories (total_female, total_female_aian, total_female_asian, etc.)
+# - For each category, it provides mean, median, min, max, and standard deviation of access values across different time thresholds (30, 60, 120, and 180 minutes)
+# - For example, for "total_female" category:
+#   * 30-min access: mean of 63,511,863 people
+# * 180-min access: mean of 146,853,211 people
+# 
+
+isochrone_results$trend_analysis
+# 2. Trend Analysis (`$trend_analysis`):
+#   - Analyzes how access changes from 2013 to 2022
+# - Includes slope (trend direction), R-squared (fit of the trend), and p-value
+# - Some notable trends:
+#   * Total female white population shows significant declines in access across all time thresholds
+# * Some categories like total_female_asian show significant increases in longer-time thresholds
+
+##################
+# Potential explanations could include:
+# Demographic shifts
+# Changes in transportation infrastructure
+# Migration patterns
+# Socioeconomic transformations
+# Differential urban/rural development

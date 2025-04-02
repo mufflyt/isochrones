@@ -400,7 +400,10 @@ results_text <- paste0(
   sprintf("%.1f", distance_decay$mean_access[4]), 
   "% within 180 minutes drive time."
 )
+```
 
+
+```{r}
 # Print formatted results
 cat("\nFormatted results text:\n")
 cat(results_text)
@@ -428,12 +431,12 @@ library(dplyr)
 census_tracts <- read.csv("data/Walker_data/access_by_group_urban_rural.csv")  # Replace with actual file path
 
 gyn_oncologist_access <- census_tracts %>%
-  filter(year == 2023) %>%
-  mutate(over_30_min = range > 1800)
+  dplyr::filter(year == 2023) %>%
+  dplyr::mutate(over_30_min = range > 1800)
 
 # Count tracts over 30 minutes
 urban_over_30 <- gyn_oncologist_access %>%
-  filter(urban_rural == "Urban", over_30_min) %>%
+  dplyr::filter(urban == "urban", over_30_min) %>%
   nrow()
 
 total_urban <- gyn_oncologist_access %>%

@@ -1,3 +1,51 @@
+#==============================================================================
+# Gynecologic Oncology Accessibility Project
+# Analysis of Access Disparities (2013-2022)
+#==============================================================================
+# 
+# PURPOSE:
+# This script analyzes nationwide accessibility to gynecologic oncologists across
+# demographic groups and geographic areas in the United States from 2013 to 2022.
+# The analysis focuses on identifying disparities in access based on:
+#   - Race/ethnicity
+#   - Urban vs. rural location
+#   - Changes in accessibility over time
+# 
+# METHODS:
+# - Uses drive time isochrones (30, 60, 180, 240 minutes) generated from 
+#   gynecologic oncologists' practice locations
+# - Analyzes census tract centroids that fall within these isochrones
+# - Calculates the percentage of female population with access by demographic group
+# - Examines disparities between urban and rural areas
+# - Tracks changes in accessibility from 2013 to 2022
+#
+# DATA SOURCES:
+# - American Community Survey (ACS) for demographic data
+# - National Provider Identifier (NPI) data for physician locations
+# - Generated isochrones from the HERE Maps API
+# - Census Bureau urban area definitions
+#
+# PREREQUISITES:
+# Required packages:
+#   - sf: For spatial data handling
+#   - tidycensus: For accessing Census data
+#   - tidyverse: For data manipulation
+#   - tigris: For Census boundary files
+#
+# Required files:
+#   - "/Users/tylermuffly/Dropbox (Personal)/walker_maps/data/acs_pulls.rds"
+#   - "/Users/tylermuffly/Dropbox (Personal)/walker_maps/data/20241013161700.shp"
+#
+# API keys:
+#   - Census API key (for tidycensus)
+#
+# OUTPUTS:
+# - Tabulated access percentages by demographic group
+# - Rural vs. urban access disparities
+# - Temporal trends in accessibility (2013-2022)
+#==============================================================================
+
+
 library(sf)
 #remotes::install_github("walkerke/tidycensus")
 library(tidycensus)
@@ -5,7 +53,7 @@ library(tidyverse)
 options(tigris_use_cache = TRUE)
 sf_use_s2(FALSE)
 
-
+# ABSTRACT
 # Geographic Disparities in Potential Accessibility to Gynecologic Oncologists in the United States from 2013 to 2022.
 #
 # Objective: To use a spatial modeling approach to capture potential disparities of gynecologic oncologist accessibility in the United States at the block group level between 2013 and 2022.
@@ -58,7 +106,7 @@ names(mid_years) <- paste0("midyear_", mid_years)
 acs_pulls <- read_rds("/Users/tylermuffly/Dropbox (Personal)/walker_maps/data/acs_pulls.rds")
 
 # Let's bring in the isochrones
-isos <- sf::st_read("/Users/tylermuffly/Dropbox (Personal)/walker_maps/data/20241013161700.shp")
+isos <- sf::st_read("/Users/tylermuffly/Dropbox (Personal)/zzTo_Walker_for_consult/data/20241013161700.shp")
 
 # Then generate a unique ID column so we can track results
 isos <- isos %>%
@@ -72,6 +120,7 @@ isos_union <- isos %>%
   mutate(year = str_sub(departure, 1, 4)) %>%
   group_by(year, range) %>%
   summarize()
+st_write(isos_union, "data/isos_union.shp")
 
 # First, we need to get yearly totals for each demographic subgroup.
 # This will serve as the accessibility denominator.
@@ -97,12 +146,15 @@ yearly_tables <- purrr::map(years, function(x) {
   
 
 })
+write_rds(yearly_tables, "data/yearly_tables.rds")
+
 
 # We'll now convert our ACS data to centroids prior to the isochrone spatial join.
 acs_centroids <- map(acs_pulls, function(x) {
   x %>%
     st_centroid()
 })
+write_rds(acs_centroids, "data/acs_centroids.rds")
 
 # We'll now need to tabulate for each isochrone, for each year.
 isos_tabulated <- map_dfr(years, function(x) {
@@ -134,6 +186,7 @@ isos_tabulated <- map_dfr(years, function(x) {
   isos_joined
 
 })
+write_rds(isos_tabulated, "data/isos_tabulated.rds")
 
 # After that, we will need to tabulate by range.
 # We need to use the unioned isochrones to do this to
@@ -167,6 +220,7 @@ access_by_year <- map_dfr(years, function(x) {
   isos_joined
 
 })
+write_rds(access_by_year, "data/access_by_year.rds")
 
 # From here, we can align with the yearly totals to determine percentages
 # Let's convert to long form, join on the year,
@@ -193,6 +247,7 @@ access_merged <- left_join(
   by = c("year", "category")
 ) %>%
   mutate(percent = 100 * (count / total))
+write_rds(access_merged, "data/access_merged.rds")
 
 # The `access_merged` table will get you demographic groups and percentages
 # that we want
@@ -221,11 +276,14 @@ urban_tracts20 <- tracts2020 %>%
   st_centroid() %>%
   st_filter(urban) %>%
   select(GEOID)
+st_write(urban_tract_dict20, "data/urban_tracts20.shp")
 
 urban_tract_dict20 <- tracts2020 %>%
   select(GEOID) %>%
   mutate(urban = ifelse(GEOID %in% urban_tracts20$GEOID, "urban", "rural")) %>%
   st_drop_geometry()
+
+st_write(urban_tract_dict20, "data/urban_tract_dict20.shp")
 
 # As Tyler mentioned, all practitioners will be in urban areas, so we are most interested in tabulating disparities among the demand population
 # We'll need to break out race by urban vs. rural, which can be done by tabulating over urban and rural tracts
@@ -319,6 +377,7 @@ urban_yearly_long <- yearly_tables_urban %>%
     names_to = "category",
     values_to = "total"
   )
+write_rds(urban_yearly_long, "data/urban_yearly_long.rds")
 
 urban_access_merged <- left_join(
   urban_access_by_year_long,
@@ -327,3 +386,4 @@ urban_access_merged <- left_join(
 ) %>%
   mutate(percent = 100 * (count / total))
 
+write_rds(urban_access_merged, "data/urban_access_merged.rds")
