@@ -7,11 +7,20 @@ editor_options:
   chunk_output_type: console
 ---
 
+This code performs a comprehensive analysis of access to gynecologic oncologists (GOs) across different geographic regions, time periods, and demographic groups. The analysis focuses on drive time thresholds (30, 60, 120, and 180 minutes) to measure accessibility. The code includes several robust functions that process data from CSV files, calculate weighted statistics, analyze temporal trends, and examine racial/ethnic disparities in access. It then creates detailed visualizations showing accessibility patterns, including time series analysis of declining access rates, comparisons between different years (particularly 2013 vs 2022), normalized trend analysis, and demographic breakdowns. The visualizations reveal a consistent decline in accessibility across all drive time thresholds from 2013 to 2022, with the decline being most pronounced for shorter travel times (30-minute threshold). The code also generates formatted results text and publication-ready tables that highlight key findings about geographic and racial/ethnic disparities in access to gynecologic oncology care.
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(logger)
 library(assertthat)
+# Load visualization packages
+library(tidyverse)
+library(ggplot2)
+library(scales)
+library(viridis)
+library(gghighlight)
+library(glue)
 ```
 
 ```{r}
@@ -239,15 +248,26 @@ Note: Standard deviations reflect variability across different drive time ranges
 
   return(results_text)
 }
+```
 
+
+```{r, include = TRUE}
 # Then if types look good, run the analysis
 results_text <- generate_results_text("data/Walker_data/access_by_group.csv")
 cat(results_text)
 
 ```
+Based on the output from the `generate_results_text` function, I can provide an interpretation of the key findings:
 
+The results show a concerning decline in access to gynecologic oncologists (GOs) over time. In 2013, about 69.5% of women had access to a GO within 60 minutes of driving time, but by 2022 this dropped to 62.0%, representing a 7.5 percentage point decrease. Interestingly, access peaked in 2015 at 70.1% before declining to its lowest point in 2019 at 58.3%, with a slight recovery by 2022.
 
-```{r}
+The analysis also reveals substantial geographic disparities, with approximately 277.3 million women living in areas considered "low-access" (beyond 60-minute drive time). This number fluctuated throughout the study period, ranging from 250.5 million to 285.8 million women.
+
+Perhaps most striking are the racial and ethnic disparities identified in 2015. Asian women had the highest access rate at 86.5%, followed by Black women (77.2%), Native Hawaiian and Pacific Islander women (HIPI, 75.3%), and white women (66.8%). American Indian and Alaska Native women (AIAN) had dramatically lower access at just 50.9% - meaning nearly half of this population lacked reasonable access to gynecologic oncology care.
+
+These findings suggest significant and persistent issues with healthcare accessibility that could have serious implications for cancer outcomes among women in underserved populations.
+
+```{r, include = FALSE}
 # Function to generate results text with corrected formatting
 generate_results_text <- function(data_path) {
   library(tidyverse)
@@ -354,20 +374,13 @@ calculate_group_stats <- function(df) {
 ```
 
 # "access rate" refers to the percentage of a population that has access to gynecologic oncologists (GOs) within a specific drive time threshold
-```{r}
-library(tidyverse)
-library(glue)
-library(stats)
-
+```{r, include = TRUE}
 results_text <- generate_results_text("data/Walker_data/access_by_group.csv")
 cat(results_text)
 ```
 
 # R code for decay analysis
 ```{r}
-# Calculate overall means of access by drive time
-library(tidyverse)
-
 # Read data
 data <- read_csv("data/Walker_data/access_by_group.csv")
 
@@ -403,11 +416,14 @@ results_text <- paste0(
 ```
 
 
-```{r}
+```{r, include = TRUE}
 # Print formatted results
 cat("\nFormatted results text:\n")
 cat(results_text)
+```
 
+
+```{r, include = TRUE}
 # Optional: Create a table for publication
 library(knitr)
 distance_decay_table <- distance_decay %>%
@@ -425,30 +441,29 @@ kable(distance_decay_table, digits = 1)
 
 https://onlinelibrary.wiley.com/doi/full/10.1111/1468-0009.12668
 ```{r}
-library(dplyr)
-
 # Load data (assuming the data includes a column 'travel_time' in minutes and 'urban_rural' classification)
 census_tracts <- read.csv("data/Walker_data/access_by_group_urban_rural.csv")  # Replace with actual file path
 
 gyn_oncologist_access <- census_tracts %>%
-  dplyr::filter(year == 2023) %>%
-  dplyr::mutate(over_30_min = range > 1800)
+  dplyr::filter(year == 2022) %>%
+  dplyr::mutate(over_30_min = range > 1800) %>%
+  dplyr::rename("urban_rural" = "urban") 
 
 # Count tracts over 30 minutes
 urban_over_30 <- gyn_oncologist_access %>%
-  dplyr::filter(urban == "urban", over_30_min) %>%
+  dplyr::filter(urban_rural == "urban", over_30_min) %>%
   nrow()
 
 total_urban <- gyn_oncologist_access %>%
-  filter(urban_rural == "Urban") %>%
+  filter(urban_rural == "urban") %>%
   nrow()
 
 rural_over_30 <- gyn_oncologist_access %>%
-  filter(urban_rural == "Rural", over_30_min) %>%
+  filter(urban_rural == "rural", over_30_min) %>%
   nrow()
 
 total_rural <- gyn_oncologist_access %>%
-  filter(urban_rural == "Rural") %>%
+  filter(urban_rural == "rural") %>%
   nrow()
 
 total_over_30 <- urban_over_30 + rural_over_30
@@ -459,9 +474,12 @@ total_tracts <- total_urban + total_rural
 urban_pct <- (urban_over_30 / total_urban) * 100
 rural_pct <- (rural_over_30 / total_rural) * 100
 total_pct <- (total_over_30 / total_tracts) * 100
+```
 
+
+```{r, include = TRUE}
 # Print the result
-cat(sprintf("In 2023, %d (%.1f%%) urban and %d (%.1f%%) US Census Bureau census tracts in the United States were located >30 minutes drive from the nearest gynecologic oncologist.\n", 
+cat(sprintf("In 2022, %d (%.1f%%) urban and %d (%.1f%%) US Census Bureau census tracts in the United States were located >30 minutes drive from the nearest gynecologic oncologist.\n", 
             urban_over_30, urban_pct, total_over_30, total_pct))
 
 ```
@@ -473,17 +491,6 @@ Here's the R script converted to R Markdown format that you can paste into your 
 
 This section creates comprehensive visualizations of the declining accessibility trends across different time thresholds from 2013-2022.
 
-```{r load_viz_packages, message=FALSE, warning=FALSE}
-# Load visualization packages
-library(tidyverse)
-library(ggplot2)
-library(scales)
-library(viridis)
-library(gghighlight)
-# Optional packages - only load if installed
-if (requireNamespace("patchwork", quietly = TRUE)) library(patchwork)
-if (requireNamespace("gganimate", quietly = TRUE)) library(gganimate)
-```
 
 ```{r define_viz_functions}
 #' Create comprehensive visualizations of accessibility trends
@@ -904,7 +911,7 @@ run_visualization_analysis <- function(data_file = "Access_Data.csv",
 # Run the visualization analysis
 viz_results <- run_visualization_analysis(
   data_file = "data/Walker_data/access_by_group.csv", 
-  output_dir = "results/visualizations"
+  output_dir = "figures"
 )
 
 # Display some of the key visualizations
