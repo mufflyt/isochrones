@@ -32,14 +32,16 @@ patterns among specialists.
 
 #### Data Gathering
 
-- `Gathering data.R` - Auxiliary script for data compilation
-- `Postico_database_pull.R` - Retrieves physician data from PostgreSQL
+- `Postico_database_pull.R` - Extracts physician data from PostgreSQL
+  database, enabling year-by-year analysis of physician practice
+  locations from 2013 to 2022. Pulls “GYNECOLOGIC ONCOLOGY” from the
+  Primary Specialty. For urogyn, we will need NPIs to go retrospectively
+  to look for people.  
 - `getting_isochrones_trying.R` - Alternative method for isochrone
   generation
-- `retirement.R` - Basic retirement analysis
-- `retirement_adjusted.R` - Improved retirement analysis with multiple
-  data sources
-- `script.R` - Reference script demonstrating the workflow
+- `retirement_adjusted.R` - Enhanced retirement analysis using multiple
+  data sources (NPI deactivation, Medicare data, and board certification
+  status) to improve workforce accuracy.
 - `subspecialists over time.R` - Analysis of subspecialist trends
 - `visualize_fips_inters_isochr.R` - Visualizes FIPS code intersections
 - `fips_blocks_female_proportion.R` - Analyzes female population in FIPS
@@ -49,10 +51,12 @@ patterns among specialists.
 
 #### 1. Setup and Data Preparation
 
+- `000-control.R` - Auxiliary script for data compilation
 - `01-setup.R` - Loads packages, sets API keys, defines helper
   functions, initializes directory structure
-- `02-search_taxonomy.R` - Retrieves gynecologic oncology subspecialists
-  from NPI database
+- `02-search_taxonomy.R` - Search the NPPES Registry database using
+  npi_search library in a wrapper. Taxonomy description from the NUCC:
+  <https://taxonomy.nucc.org/>. Note recent change in FPMRS to URPS.  
 - `02.5-subspecialists_over_time.R` - Analyzes subspecialist trends over
   multiple years
 - `03-search_and_process_npi.R` - Processes National Provider Identifier
@@ -60,7 +64,8 @@ patterns among specialists.
 - `03a-search_and_process_extra.R` - Additional NPI processing for edge
   cases
 - `04-geocode.R` - Geocodes provider addresses using the HERE API
-- `05-geocode-cleaning.R` - Cleans and standardizes geocoded data
+- `zz05-geocode-cleaning.R` - Old technique with postmaster pulling
+  apart the address.
 
 #### 2. Isochrone Generation and Analysis
 

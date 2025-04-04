@@ -4,177 +4,8 @@ library(easyr)
 library(hereR)
 library(data.table)
 
-Sys.setenv(HERE_API_KEY = "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
-readRenviron("~/.Renviron")
-hereR::set_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
-
-input_file <- readr::read_csv("data/inner_join_postmastr_clinician_data.csv") %>%
-  dplyr::mutate(id = row_number()) %>%
-  dplyr::filter(postmastr.name.x != "Hye In Park, MD") #Not able to create isochrone for some reason
-
-input_file$lat <- as.numeric(input_file$lat)
-input_file$long <- as.numeric(input_file$long)
-
-input_file_sf <- input_file %>%
-  st_as_sf(coords = c("long", "lat"), crs = 4326) #%>%
-  #slice(200:400)
-  #tail(300)
-
-posix_time <- (as.POSIXct("2023-10-20 09:00:00", format = "%Y-%m-%d %H:%M:%S"))
-
-isochrones_data <- hereR::isoline(poi = input_file_sf,
-                           range = c(1800, 3600, 7200, 10800),
-                           #range = c(1),
-                             datetime = posix_time, #POSIXct object, datetime for the departure
-                             routing_mode = "fast", #Try to route fastest route or "short"est route.
-                             range_type = "time", # character of the isolines: "distance" or "time"
-                             transport_mode = "car", #specified for "car" transport instead of "truck" or "pedestrian"
-                             url_only = FALSE,
-                             optimize = "balanced",
-                             traffic = TRUE, # Includes real-time traffic
-                             aggregate = FALSE); isochrones_data
-dim(isochrones_data)
-
-
-if (requireNamespace("mapview", quietly = TRUE)) {
-  mapview::mapview(isochrones_data,
-                   col.regions = "red",
-                   map.types = c("Esri.WorldTopoMap"),
-                   legend = FALSE,
-                   homebutton = FALSE
-  )
-}
-
-input_file_ids <- unique(input_file_sf$id)
-isochrone_ids <- unique(isochrones_data$id)
-missing_ids <- input_file_ids[!input_file_ids %in% isochrone_ids]
-missing_rows <- input_file[input_file$id %in% missing_ids, ]; View(missing_rows)
-
-isochrones_data <- isochrones_data %>% # Rename all columns with a prefix fo "here."
-  rename_all(~paste0("here.", .))
-
-write_csv(isochrones_data, "data/isochrones_data_12_10_2023.csv")
-
-finally_isochrones <- input_file %>%
-  left_join(`isochrones_data`, by = join_by(`id` == `here.id`))
-
-class(finally_isochrones)
-write_rds(finally_isochrones, "data/finally_isochrones.rds")
-st_write(finally_isochrones, "data/finally_isochrones.shp", append = TRUE)
-
-View(finally_isochrones)
-
-#### Example of geocoding
-# df <- data.frame(
-#   company = c("Schweizerische Bundesbahnen SBB", "Bahnhof AG", "Deutsche Bahn AG"),
-#   address = c("Wylerstrasse 123, 3000 Bern 65", "not_an_address", "Potsdamer Platz 2, 10785 Berlin"),
-#   stringsAsFactors = FALSE
-# )
-#
-#
-# locs <- geocode(df$address)
-# geocoded_sfdf <- st_as_sf(data.frame(locs, df[locs$id, ]))
-#
-# #### This works!
-# # Load the required libraries
-# library(hereR)
-# library(sf)
-#
-# # Example of geocoding
-# df <- data.frame(
-#   company = c("Schweizerische Bundesbahnen SBB", "Bahnhof AG", "Deutsche Bahn AG"),
-#   address = c("Wylerstrasse 123, 3000 Bern 65", "not_an_address", "Potsdamer Platz 2, 10785 Berlin"),
-#   stringsAsFactors = FALSE
-# )
-#
-# locs <- geocode(df$address)
-#
-# # Filter out the geocoded addresses with valid results
-# valid_locs <- locs
-# class(valid_locs)
-#
-# # Create an sf object from the valid geocoded addresses
-# valid_sf <- st_as_sf(data.frame(valid_locs, df[valid_locs$id, ]))
-#
-# # Calculate isochrones
-# isochrones <- isoline(poi = valid_sf, range = seq(5, 30, 5) * 60)
-
-
-# Validate the file of geocoded data.
-input_file <- readr::read_csv("data/isochrones/inner_join_postmastr_clinician_data.csv") %>%
-  dplyr::mutate(id = row_number()) %>%
-  dplyr::filter(postmastr.name.x != "Hye In Park, MD") %>% #Not able to create isochrone for some reason
-  head(52)
-
-
-library(tidyverse)
-library(hereR)
-
-test_and_process_isochrones <- function(input_file) {
-  input_file <- input_file %>%
-    mutate(id = row_number()) %>%
-    filter(postmastr.name.x != "Hye In Park, MD")
-
-  input_file$lat <- as.numeric(input_file$lat)
-  input_file$long <- as.numeric(input_file$long)
-
-  input_file_sf <- input_file %>%
-    st_as_sf(coords = c("long", "lat"), crs = 4326)
-
-  posix_time <- as.POSIXct("2023-10-20 09:00:00", format = "%Y-%m-%d %H:%M:%S")
-
-  error_rows <- vector("list", length = nrow(input_file_sf))
-
-  for (i in 1:nrow(input_file_sf)) {
-    row_data <- input_file_sf[i, ]
-
-    isochrones <- tryCatch(
-      {
-        hereR::isoline(
-          poi = row_data,
-          range = c(1),
-          datetime = posix_time,
-          routing_mode = "fast",
-          range_type = "time",
-          transport_mode = "car",
-          url_only = FALSE,
-          optimize = "balanced",
-          traffic = TRUE,
-          aggregate = FALSE
-        )
-      },
-      error = function(e) {
-        message("Error processing row ", i, ": ", e$message)
-        return(NULL)
-      }
-    )
-
-    if (is.null(isochrones)) {
-      error_rows[[i]] <- i
-    }
-  }
-
-  # Collect the rows that caused errors
-  error_rows <- unlist(error_rows, use.names = FALSE)
-
-  if (length(error_rows) > 0) {
-    message("Rows with errors: ", paste(error_rows, collapse = ", "))
-  } else {
-    message("No errors found.")
-  }
-}
-
 
 ##### To do the actual gathering of the isochrones: `process_and_save_isochrones`.  We do this in chunks of 25 because we were losing the entire searched isochrones when one error hit.  There is a 1:1 relationship between isochrones and rows in the `input_file` so to match exactly on row we need no errors.  Lastly, we save as a shapefile so that we can keep the MULTIPOLYGON geometry setting for the sf object making it easier to work with the spatial data in the future for plotting, etc.  I struggled because outputing the data as a dataframe was not easy to write it back to a MULTIPOLYGON.
-library(tidyverse)
-library(sf)
-library(easyr)
-library(hereR)
-library(data.table)
-
-Sys.setenv(HERE_API_KEY = "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
-readRenviron("~/.Renviron")
-hereR::set_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
 
 input_file <- readr::read_csv("data/inner_join_postmastr_clinician_data.csv") %>%
   dplyr::mutate(id = row_number()) %>%
@@ -271,3 +102,152 @@ sf::st_write(
   layer = "isochrones",
   driver = "ESRI Shapefile",
   quiet = FALSE)
+
+###########################################
+###zz older approach
+# input_file <- readr::read_csv("data/inner_join_postmastr_clinician_data.csv") %>%
+#   dplyr::mutate(id = row_number()) %>%
+#   dplyr::filter(postmastr.name.x != "Hye In Park, MD") #Not able to create isochrone for some reason
+# 
+# input_file$lat <- as.numeric(input_file$lat)
+# input_file$long <- as.numeric(input_file$long)
+# 
+# input_file_sf <- input_file %>%
+#   st_as_sf(coords = c("long", "lat"), crs = 4326) #%>%
+# #slice(200:400)
+# #tail(300)
+# 
+# posix_time <- (as.POSIXct("2023-10-20 09:00:00", format = "%Y-%m-%d %H:%M:%S"))
+# 
+# isochrones_data <- hereR::isoline(poi = input_file_sf,
+#                                   range = c(1800, 3600, 7200, 10800),
+#                                   #range = c(1),
+#                                   datetime = posix_time, #POSIXct object, datetime for the departure
+#                                   routing_mode = "fast", #Try to route fastest route or "short"est route.
+#                                   range_type = "time", # character of the isolines: "distance" or "time"
+#                                   transport_mode = "car", #specified for "car" transport instead of "truck" or "pedestrian"
+#                                   url_only = FALSE,
+#                                   optimize = "balanced",
+#                                   traffic = TRUE, # Includes real-time traffic
+#                                   aggregate = FALSE); isochrones_data
+# dim(isochrones_data)
+# 
+# 
+# if (requireNamespace("mapview", quietly = TRUE)) {
+#   mapview::mapview(isochrones_data,
+#                    col.regions = "red",
+#                    map.types = c("Esri.WorldTopoMap"),
+#                    legend = FALSE,
+#                    homebutton = FALSE
+#   )
+# }
+# 
+# input_file_ids <- unique(input_file_sf$id)
+# isochrone_ids <- unique(isochrones_data$id)
+# missing_ids <- input_file_ids[!input_file_ids %in% isochrone_ids]
+# missing_rows <- input_file[input_file$id %in% missing_ids, ]; View(missing_rows)
+# 
+# isochrones_data <- isochrones_data %>% # Rename all columns with a prefix fo "here."
+#   rename_all(~paste0("here.", .))
+# 
+# write_csv(isochrones_data, "data/isochrones_data_12_10_2023.csv")
+# 
+# finally_isochrones <- input_file %>%
+#   left_join(`isochrones_data`, by = join_by(`id` == `here.id`))
+# 
+# class(finally_isochrones)
+# write_rds(finally_isochrones, "data/finally_isochrones.rds")
+# st_write(finally_isochrones, "data/finally_isochrones.shp", append = TRUE)
+# 
+# View(finally_isochrones)
+
+
+# test_and_process_isochrones <- function(input_file) {
+#   input_file <- input_file %>%
+#     mutate(id = row_number()) %>%
+#     filter(postmastr.name.x != "Hye In Park, MD")
+#   
+#   input_file$lat <- as.numeric(input_file$lat)
+#   input_file$long <- as.numeric(input_file$long)
+#   
+#   input_file_sf <- input_file %>%
+#     st_as_sf(coords = c("long", "lat"), crs = 4326)
+#   
+#   posix_time <- as.POSIXct("2023-10-20 09:00:00", format = "%Y-%m-%d %H:%M:%S")
+#   
+#   error_rows <- vector("list", length = nrow(input_file_sf))
+#   
+#   for (i in 1:nrow(input_file_sf)) {
+#     row_data <- input_file_sf[i, ]
+#     
+#     isochrones <- tryCatch(
+#       {
+#         hereR::isoline(
+#           poi = row_data,
+#           range = c(1),
+#           datetime = posix_time,
+#           routing_mode = "fast",
+#           range_type = "time",
+#           transport_mode = "car",
+#           url_only = FALSE,
+#           optimize = "balanced",
+#           traffic = TRUE,
+#           aggregate = FALSE
+#         )
+#       },
+#       error = function(e) {
+#         message("Error processing row ", i, ": ", e$message)
+#         return(NULL)
+#       }
+#     )
+#     
+#     if (is.null(isochrones)) {
+#       error_rows[[i]] <- i
+#     }
+#   }
+#   
+#   # Collect the rows that caused errors
+#   error_rows <- unlist(error_rows, use.names = FALSE)
+#   
+#   if (length(error_rows) > 0) {
+#     message("Rows with errors: ", paste(error_rows, collapse = ", "))
+#   } else {
+#     message("No errors found.")
+#   }
+# }
+
+
+#### Example of geocoding
+# df <- data.frame(
+#   company = c("Schweizerische Bundesbahnen SBB", "Bahnhof AG", "Deutsche Bahn AG"),
+#   address = c("Wylerstrasse 123, 3000 Bern 65", "not_an_address", "Potsdamer Platz 2, 10785 Berlin"),
+#   stringsAsFactors = FALSE
+# )
+#
+#
+# locs <- geocode(df$address)
+# geocoded_sfdf <- st_as_sf(data.frame(locs, df[locs$id, ]))
+#
+# #### This works!
+# # Load the required libraries
+# library(hereR)
+# library(sf)
+#
+# # Example of geocoding
+# df <- data.frame(
+#   company = c("Schweizerische Bundesbahnen SBB", "Bahnhof AG", "Deutsche Bahn AG"),
+#   address = c("Wylerstrasse 123, 3000 Bern 65", "not_an_address", "Potsdamer Platz 2, 10785 Berlin"),
+#   stringsAsFactors = FALSE
+# )
+#
+# locs <- geocode(df$address)
+#
+# # Filter out the geocoded addresses with valid results
+# valid_locs <- locs
+# class(valid_locs)
+#
+# # Create an sf object from the valid geocoded addresses
+# valid_sf <- st_as_sf(data.frame(valid_locs, df[valid_locs$id, ]))
+#
+# # Calculate isochrones
+# isochrones <- isoline(poi = valid_sf, range = seq(5, 30, 5) * 60)
