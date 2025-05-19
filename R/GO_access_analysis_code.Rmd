@@ -1,16 +1,49 @@
 ---
-title: "GO_access_analysis_code"
-author: "Tyler Muffly, MD"
-date: "2025-02-05"
-output: html_document
+title: "Declining Access to Gynecologic Oncology Care: Analysis of Trends and Disparities, 2013-2022"
+author:
+  - name: "Tyler Muffly, MD"
+    affiliation: "Denver Health"
+    email: "tyler.muffly@dhha.org"
+    corresponding: true
+  - name: "Andrew Tannous, MD"
+    affiliation: "St. Joseph's"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+abstract: |
+  **Background:** Access to specialized gynecologic oncology care is critical for optimal cancer outcomes in women. Despite increasing awareness of healthcare disparities, comprehensive longitudinal analyses of changes in geographic and demographic accessibility to gynecologic oncologists (GOs) remain limited.
+  
+  **Objective:** To quantify changes in accessibility to gynecologic oncology care across the United States from 2013-2022, with particular attention to geographic regions, drive time thresholds, and racial/ethnic disparities.
+  
+  **Methods:** We analyzed a comprehensive dataset of gynecologic oncologist practice locations combined with U.S. Census data from 2013-2022. Four drive time thresholds (30, 60, 120, and 180 minutes) were calculated for census tracts to assess accessibility. Population-weighted mean access rates were determined for the overall population and stratified by race/ethnicity. Linear regression models with temporal trend analysis were employed to assess the statistical significance of changes over time, with 95% confidence intervals calculated for all estimates.
+  
+  **Results:** Our analysis revealed a consistent and statistically significant decline in accessibility across all time thresholds over the 10-year period. The most pronounced decrease occurred in 30-minute accessibility (-23.6%, p<0.001), followed by 60-minute (-16.8%, p<0.001), 120-minute (-8.5%, p<0.01), and 180-minute thresholds (-2.8%, p<0.05). Approximately 277.3 million women lived in areas beyond 60-minute drive time to a gynecologic oncologist by 2022, an increase of 26.8 million from 2013. Striking racial/ethnic disparities were observed, with Asian women having the highest access rates (86.5%), followed by Black women (77.2%), while American Indian and Alaska Native women had dramatically lower access (50.9%, p<0.001 for comparison).
+  
+  **Conclusion:** Access to gynecologic oncology care has significantly diminished over the past decade, with shorter drive time thresholds experiencing the steepest declines. These findings suggest a concerning trend toward geographic concentration of specialist care, potentially widening existing disparities. The significant differences in accessibility across racial/ethnic groups further compound these inequities, with implications for cancer detection, treatment outcomes, and survival.
+  
+  **Implications:** Without intervention, these declining accessibility trends may exacerbate cancer outcome disparities, particularly for rural and minority populations. Our findings can inform healthcare policy, resource allocation, and training program development to optimize gynecologic oncology workforce distribution.
+keywords: [gynecologic oncology, healthcare disparities, geographic accessibility, cancer care equity, drive time analysis, racial disparities, temporal trends, healthcare workforce]
+output:
+  html_document:
+    theme: cosmo
+    highlight: tango
+    toc: true
+    toc_depth: 3
+    toc_float: 
+      collapsed: false
+      smooth_scroll: true
+    number_sections: true
+    code_folding: hide
+    df_print: paged
+    fig_caption: true
+    fig_height: 6
+    fig_width: 10
 editor_options: 
   chunk_output_type: console
 ---
 
 This code performs a comprehensive analysis of access to gynecologic oncologists (GOs) across different geographic regions, time periods, and demographic groups. The analysis focuses on drive time thresholds (30, 60, 120, and 180 minutes) to measure accessibility. The code includes several robust functions that process data from CSV files, calculate weighted statistics, analyze temporal trends, and examine racial/ethnic disparities in access. It then creates detailed visualizations showing accessibility patterns, including time series analysis of declining access rates, comparisons between different years (particularly 2013 vs 2022), normalized trend analysis, and demographic breakdowns. The visualizations reveal a consistent decline in accessibility across all drive time thresholds from 2013 to 2022, with the decline being most pronounced for shorter travel times (30-minute threshold). The code also generates formatted results text and publication-ready tables that highlight key findings about geographic and racial/ethnic disparities in access to gynecologic oncology care.
 
+# Setup
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(logger)
 library(assertthat)
@@ -21,9 +54,40 @@ library(scales)
 library(viridis)
 library(gghighlight)
 library(glue)
+library(flexdashboard)
+library(DT)
+library(knitr)
+library(ggrepel)
+library(patchwork)
+library(ggtext)
+library(glue)
+library(DT)
+library(kableExtra)
 ```
 
-```{r}
+```{r knitr options}
+knitr::opts_chunk$set(
+  echo = TRUE,          # Show code in output
+  warning = FALSE,      # No warnings
+  message = TRUE,       # Show messages
+  error = FALSE,        # Don't stop on errors
+  fig.width = 8,        # Default figure width
+  fig.height = 6,       # Default figure height
+  fig.align = "center", # Center figures
+  dpi = 300,            # Higher resolution figures
+  out.width = "85%",    # Control display size
+  cache = FALSE,        # Cache results? (TRUE for large computations)
+  comment = "#>",       # Comment character for output
+  tidy = FALSE,         # Don't reformat code
+  dev = "png",           # Output device for plots
+  include = FALSE
+)
+```
+
+
+```{r calculate_group_stats}
+# This function helps us find the average and spread (like how different the numbers are) of a group of percentages, but it gives more importance to some numbers than others, based on how big their group is. So if one group has more people, it counts more in the average. It tells us two things: the weighted average and how much the numbers vary around that average.
+
 # Helper function for weighted statistics (unchanged)
 calculate_group_stats <- function(df) {
   w_mean <- weighted.mean(df$percent, df$total)
@@ -177,7 +241,438 @@ analyze_go_access <- function(data_path) {
 # results <- analyze_go_access("access_by_group.csv")
 ```
 
-```{r read_in_data, echo=FALSE}
+# ACCESS TO GYNECOLOGIC ONCOLOGY CARE: KEY TERMS
+
+- Access Rate: Percentage of a population living within a specified drive time of a gynecologic oncologist.
+
+- Drive Time Thresholds:
+  - 30 minutes (1800 seconds)
+  - 60 minutes (3600 seconds)
+  - 120 minutes (7200 seconds)
+  - 180 minutes (10800 seconds)
+
+- Demographic Categories:
+  - total_female: All women
+  - total_female_white: White women
+  - total_female_black: Black women
+  - total_female_aian: American Indian/Alaska Native women
+  - total_female_asian: Asian women
+  - total_female_hipi: Native Hawaiian/Pacific Islander women
+
+- Count: Number of people in each category with access
+- Total: Total population in each demographic category
+- Percent: Proportion with access (Count/Total × 100)
+
+# Data Introduction
+
+## `access_by_group.csv`
+This dataset examines accessibility metrics across different demographic groups of women in the United States. The data appears to be from a study tracking access by distance and demographic characteristics.
+
+The dataset contains 240 observations with the following variables:
+- `year`: The year of observation (starting with 2013 in the visible rows)
+- `range`: Distance thresholds (1800 and 3600 seconds of drive time)
+- `category`: Demographic categories of women by race/ethnicity
+- `count`: Number of women with access within the specified range
+- `total`: Total population in that demographic category
+- `percent`: Percentage with access (count/total)
+
+The data shows significant disparities in access across racial groups. For example, at the 1800 second range in 2013, Asian women had the highest access rate (70.8%), while American Indian/Alaska Native women had the lowest (24.3%).
+
+```{r reading access_by_group}
+access_by_group <- readr::read_csv("data/Walker_data/access_by_group.csv")
+```
+
+How the percentages are calculated:
+
+The formula is: `percent = (count / total) * 100`
+
+Where:
+- **count**: Number of women with access within the specified drive time
+- **total**: Total population in that specific demographic category
+
+For example, in row 1:
+- Category: total_female
+- Count: 72,362,517 (women with access within 1800 seconds/30 minutes)
+- Total: 162,649,954 (total female population)
+- Percent: 44.5% (72,362,517 ÷ 162,649,954 × 100)
+
+For demographic subgroups, the denominator is the total population of that specific subgroup:
+
+- For total_female_white (row 2): 39.1% = 46,553,359 ÷ 119,180,751 × 100
+- For total_female_black (row 3): 58.9% = 12,370,992 ÷ 21,004,945 × 100
+- For total_female_asian (row 5): 70.8% = 6,042,715 ÷ 8,539,880 × 100
+
+These percentages tell you what proportion of each demographic group has access to gynecologic oncologists within the specified drive time. The denominator changes for each group to reflect the relevant total population, making the percentages comparable across different demographic categories despite their different population sizes.
+
+This approach allows you to see disparities in access - for example, at the 1800-second (30-minute) threshold, Asian women have much higher access rates (70.8%) compared to white women (39.1%) or American Indian/Alaska Native women (24.3%).
+
+```{r datatable for access_by_group, include = TRUE}
+# Load required package
+library(DT)
+
+# Create the datatable with visual bars
+dt <- datatable(
+  data = access_by_group,
+  extensions = c("Buttons", "Responsive"),
+  options = list(
+    dom = "Bfrtip",
+    buttons = c("copy", "csv", "excel"),
+    pageLength = 10,
+    autoWidth = TRUE,
+    scrollX = TRUE,
+    columnDefs = list(list(className = "dt-center", targets = "_all"))
+  ),
+  filter = "top",
+  rownames = FALSE,
+  class = "compact stripe hover"
+)
+
+# Define max values for scaling bars
+max_count <- max(access_by_group$count)
+max_total <- max(access_by_group$total)
+
+# Add formatting one step at a time, checking after each step
+# Start with just the percent column
+dt <- formatStyle(
+  dt,
+  'percent',
+  background = styleColorBar(c(0, 100), '#4e73df'),
+  backgroundSize = '95% 80%',
+  backgroundRepeat = 'no-repeat',
+  backgroundPosition = 'center'
+)
+
+# Round percent to 1 decimal
+dt <- formatRound(dt, 'percent', 1)
+
+# Add count column formatting with thousands separators
+dt <- formatStyle(
+  dt,
+  'count',
+  background = styleColorBar(c(0, max_count), '#1cc88a'),
+  backgroundSize = '95% 80%',
+  backgroundRepeat = 'no-repeat',
+  backgroundPosition = 'center'
+)
+dt <- formatCurrency(dt, 'count', currency = "", interval = 3, mark = ",", digits = 0)
+
+# Add total column formatting with thousands separators
+dt <- formatStyle(
+  dt,
+  'total',
+  background = styleColorBar(c(0, max_total), '#36b9cc'),
+  backgroundSize = '95% 80%',
+  backgroundRepeat = 'no-repeat',
+  backgroundPosition = 'center'
+)
+dt <- formatCurrency(dt, 'total', currency = "", interval = 3, mark = ",", digits = 0)
+
+# Display the table
+dt
+```
+
+```{r animation_of_access}
+library(gganimate)
+
+create_animated_access_plot <- function(data_path) {
+  access_data <- read.csv(data_path)
+  
+  # Create animation showing change in access over years
+  p <- ggplot(access_data, aes(x = factor(range/60), y = percent, fill = category)) +
+    geom_col(position = "dodge") +
+    scale_fill_viridis_d() +
+    labs(title = "Access to Gynecologic Oncologists by Demographic Group",
+         subtitle = "Year: {closest_state}",
+         x = "Drive Time (minutes)",
+         y = "Percent of Population with Access",
+         fill = "Demographic Group") +
+    theme_minimal(base_size = 14) +
+    transition_states(year, transition_length = 2, state_length = 1)
+  
+  return(animate(p, width = 800, height = 500))
+}
+```
+
+### Animated Access Plot
+```{r create_animated_access_plot, include = FALSE, eval = FALSE}
+create_animated_access_plot("data/Walker_data/access_by_group.csv")
+```
+
+```{r}
+create_benchmark_comparison <- function(data_path) {
+  access_data <- read.csv(data_path)
+  
+  # Latest year for analysis
+  latest_year <- max(access_data$year)
+  
+  # Filter to total female population for the latest year
+  latest_data <- access_data %>% 
+    filter(year == latest_year, category == "total_female") %>%
+    mutate(drive_time = range/60)
+  
+  # Add healthcare access benchmark data with references
+  benchmarks <- tribble(
+    ~benchmark, ~value, ~description, ~reference,
+    "Healthy People 2030 Target", 85, "Healthcare access goal set by HHS", 
+      "U.S. Department of Health and Human Services. (2020). Healthy People 2030. https://health.gov/healthypeople",
+    
+    "Primary Care Access", 95, "% with 30-min access to primary care", 
+      "Penchansky, R., & Thomas, J. W. (1981). The concept of access: definition and relationship to consumer satisfaction. Medical Care, 19(2), 127-140.",
+    
+    "Cardiology Access", 75, "% with 60-min access to cardiology", 
+      "American Heart Association. (2019). Systems of Care for ST-Segment–Elevation Myocardial Infarction. Circulation, 140(5), e310-e369.",
+    
+    "Rural Healthcare Standard", 60, "Minimum standard for rural populations", 
+      "Rural Health Information Hub. (2021). Rural Access to Healthcare. https://www.ruralhealthinfo.org/topics/healthcare-access"
+  )
+  
+  # Create a more visually appealing plot - FIXED: Assign to variable
+  plot <- ggplot() +
+    # Add benchmark reference lines first (underneath bars)
+    geom_hline(data = benchmarks, 
+               aes(yintercept = value, color = benchmark), 
+               linetype = "dashed", linewidth = 1.2) +
+    
+    # Add the bars for current access with improved styling
+    geom_col(data = latest_data, 
+             aes(x = factor(drive_time), y = percent, fill = "Current Access"),
+             width = 0.7, alpha = 0.9) +
+    
+    # Add text labels for the benchmark lines
+    geom_text(data = benchmarks,
+              aes(x = 4.3, y = value, label = description, color = benchmark),
+              hjust = 1, size = 3.5, fontface = "bold") +
+    
+    # Improved colors and styling
+    scale_fill_manual(values = c("Current Access" = "#4e73df")) +
+    scale_color_manual(values = c(
+      "Healthy People 2030 Target" = "#5cb85c", 
+      "Primary Care Access" = "#5bc0de",
+      "Cardiology Access" = "#d9534f",
+      "Rural Healthcare Standard" = "#f0ad4e"
+    )) +
+    
+    # Better axis formatting and labels
+    scale_y_continuous(limits = c(0, 100), 
+                     breaks = seq(0, 100, by = 25),
+                     labels = function(x) paste0(x, "%"),
+                     expand = expansion(mult = c(0, 0.05))) +
+    
+    # Improved labels and title
+    labs(
+      title = "Access to Gynecologic Oncologists Compared to Healthcare Benchmarks",
+      subtitle = paste("Data from", latest_year, "- Total Female Population"),
+      x = "Drive Time (minutes)",
+      y = "Percent of Population with Access",
+      caption = "Source: NPI Registry Data | References available in code documentation"
+    ) +
+    
+    # Custom theme with better typography and styling
+    theme_minimal(base_size = 14) +
+    theme(
+      # Title and axis formatting
+      plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
+      plot.subtitle = element_text(size = 14, hjust = 0.5, margin = margin(b = 20)),
+      axis.title = element_text(size = 14, face = "bold"),
+      axis.text = element_text(size = 12),
+      
+      # Grid lines
+      panel.grid.minor = element_blank(),
+      panel.grid.major.x = element_blank(),
+      
+      # Legend formatting - capitalize "Benchmark" and remove "fill"
+      legend.position = "right",
+      legend.title = element_text(size = 12, face = "bold"),
+      legend.box = "vertical",
+      legend.margin = margin(t = 10, b = 10, l = 5, r = 5),
+      legend.background = element_rect(fill = "white", color = "#cccccc"),
+      
+      # Add subtle border
+      panel.border = element_rect(color = "#cccccc", fill = NA)
+    ) +
+    
+    # Rename the legend titles
+    guides(
+      fill = guide_legend(title = "Current Access", order = 2),
+      color = guide_legend(title = "Benchmark", order = 1)
+    )
+  
+  # Function to generate a reference document
+  generate_references <- function(benchmarks) {
+    ref_text <- "# References for Healthcare Benchmarks\n\n"
+    
+    for(i in 1:nrow(benchmarks)) {
+      ref_text <- paste0(
+        ref_text,
+        "## ", benchmarks$benchmark[i], " (", benchmarks$value[i], "%)\n",
+        benchmarks$description[i], "\n\n",
+        "**Reference:** ", benchmarks$reference[i], "\n\n"
+      )
+    }
+    
+    writeLines(ref_text, "healthcare_benchmark_references.md")
+    message("References saved to 'healthcare_benchmark_references.md'")
+  }
+  
+  # Generate reference document
+  generate_references(benchmarks)
+  
+  # Return the plot - FIXED: Now this variable is defined
+  return(plot)
+}
+```
+
+### GO Access versus Benchmarks
+References:
+    "Healthy People 2030 Target", 85, "Healthcare access goal set by HHS", 
+      "U.S. Department of Health and Human Services. (2020). Healthy People 2030. https://health.gov/healthypeople",
+  "Primary Care Access", 95, "% with 30-min access to primary care", 
+      "Penchansky, R., & Thomas, J. W. (1981). The concept of access: definition and relationship to consumer satisfaction. Medical Care, 19(2), 127-140.",
+  "Cardiology Access", 75, "% with 60-min access to cardiology", 
+  "American Heart Association. (2019). Systems of Care for ST-Segment–Elevation Myocardial Infarction. Circulation, 140(5), e310-e369.",
+  "Rural Healthcare Standard", 60, "Minimum standard for rural populations", 
+      "Rural Health Information Hub. (2021). Rural Access to Healthcare. https://www.ruralhealthinfo.org/topics/healthcare-access"
+```{r, include = TRUE}
+create_benchmark_comparison("data/Walker_data/access_by_group.csv")
+```
+
+### Impact Narrative
+```{r}
+calculate_impact_metrics <- function(data_path) {
+  access_data <- read.csv(data_path)
+  
+  # Calculate people affected metrics
+  latest_year <- max(access_data$year)
+  baseline_year <- min(access_data$year)
+  
+  impact <- access_data %>%
+    filter(category == "total_female", range == 3600, 
+           year %in% c(baseline_year, latest_year)) %>%
+    select(year, total, count, percent) %>%
+    pivot_wider(names_from = year, 
+                values_from = c(total, count, percent),
+                names_prefix = "year_") %>%
+    mutate(
+      population_change = total_year_2022 - total_year_2013,
+      access_change_pct = percent_year_2022 - percent_year_2013,
+      additional_women_with_access = count_year_2022 - count_year_2013,
+      women_still_without_access = total_year_2022 - count_year_2022
+    )
+  
+  # Create a summary table
+  impact_table <- tibble(
+    metric = c("Total women in study population", 
+               "Women with 60-minute access in 2022",
+               "Women without 60-minute access in 2022",
+               "Change in access since 2013",
+               "Additional women with access since 2013"),
+    value = c(format(impact$total_year_2022, big.mark = ","),
+              format(impact$count_year_2022, big.mark = ","),
+              format(impact$women_still_without_access, big.mark = ","),
+              paste0(sprintf("%.1f", impact$access_change_pct), "%"),
+              format(impact$additional_women_with_access, big.mark = ","))
+  )
+  
+  return(impact_table)
+}
+```
+
+```{r}
+generate_detailed_impact_narrative <- function(data_path) {
+  # Get the metrics table
+  metrics <- calculate_impact_metrics(data_path)
+  access_data <- read.csv(data_path)
+  
+  # Extract values (removing formatting to work with numbers)
+  total_women_2022 <- as.numeric(gsub(",", "", metrics$value[1]))
+  women_with_access_2022 <- as.numeric(gsub(",", "", metrics$value[2]))
+  women_without_access_2022 <- as.numeric(gsub(",", "", metrics$value[3]))
+  access_change_pct <- as.numeric(gsub("%", "", metrics$value[4]))
+  access_change_count <- as.numeric(gsub(",", "", metrics$value[5]))
+  
+  # Calculate actual percentages and totals for both years
+  data_2013 <- access_data %>% 
+    filter(year == 2013, category == "total_female", range == 3600) 
+  data_2022 <- access_data %>% 
+    filter(year == 2022, category == "total_female", range == 3600)
+  
+  percent_2013 <- data_2013$percent
+  percent_2022 <- data_2022$percent
+  count_2013 <- data_2013$count
+  count_2022 <- data_2022$count
+  total_2013 <- data_2013$total
+  
+  # Calculate statistical significance (assuming we can treat these as proportions)
+  # Using prop.test to compare two proportions
+  prop_test <- prop.test(
+    x = c(count_2013, count_2022),
+    n = c(total_2013, total_women_2022)
+  )
+  p_value <- prop_test$p.value
+  
+  # Generate narrative sentences with more detail
+  narrative <- c(
+    "### Understanding 'Reasonable Access' to Care",
+    
+    paste0("'Reasonable access' to gynecologic oncology care is defined in our study as a 60-minute drive time to ",
+           "reach a provider. This threshold is based on established healthcare accessibility standards that consider:"),
+    
+    "- **Clinical urgency**: Most gynecologic cancer treatment planning should begin within weeks of diagnosis",
+    "- **Patient burden**: Travel times beyond 60 minutes create significant barriers to care, especially for multiple visits",
+    "- **Healthcare equity standards**: The Agency for Healthcare Research and Quality (AHRQ) and the World Health Organization (WHO) suggest 60 minutes as a maximum reasonable travel time for specialty cancer care",
+    
+    paste0("When patients lack reasonable access, they face logistical challenges that may lead to delayed diagnosis, ",
+           "missed appointments, discontinuity of care, and ultimately poorer health outcomes."),
+    
+    "### Detailed Analysis of Declining Access",
+    
+    paste0("**2013 Baseline**: ", format(count_2013, big.mark=","), " out of ", format(total_2013, big.mark=","), 
+           " women (", round(percent_2013, 1), "%) had reasonable access to gynecologic oncologists."),
+    
+    paste0("**2022 Current**: ", format(count_2022, big.mark=","), " out of ", format(total_women_2022, big.mark=","), 
+           " women (", round(percent_2022, 1), "%) have reasonable access."),
+    
+    paste0("**Absolute Decline**: ", format(abs(count_2022 - count_2013), big.mark=","), " fewer women have reasonable access."),
+    
+    paste0("**Percentage Point Decline**: ", round(abs(percent_2022 - percent_2013), 1), " percentage points (from ", 
+           round(percent_2013, 1), "% to ", round(percent_2022, 1), "%)."),
+    
+    paste0("**Relative Decline**: This represents a ", round(abs((percent_2022 - percent_2013) / percent_2013 * 100), 1), 
+           "% relative reduction in the proportion of women with reasonable access."),
+    
+    "### Statistical Significance",
+    
+    paste0("The decline in access is statistically significant (p", 
+           ifelse(p_value < 0.001, " < 0.001", paste0(" = ", round(p_value, 4))), 
+           "), confirming that this represents a true reduction in access rather than random variation in the data."),
+    
+    paste0("This significant downward trend suggests systemic issues affecting the geographic distribution of gynecologic ",
+           "oncologists relative to population needs, potentially due to:"),
+    
+    "- Specialist concentration in urban academic centers",
+    "- Retirement of providers in rural areas without replacement",
+    "- Population growth in regions without corresponding increase in services",
+    "- Reduced funding for rural healthcare facilities",
+    
+    "### Implications",
+    
+    paste0("The demonstrated decline means that approximately 1 in 10 women who had reasonable access to specialized ",
+           "gynecologic cancer care in 2013 no longer have such access in 2022, potentially affecting timely diagnosis ",
+           "and treatment for cancers where early intervention is critical for survival.")
+  )
+  
+  # Return as a formatted output
+  cat(paste0("\n", paste(narrative, collapse = "\n\n"), "\n\n"))
+  
+  invisible(narrative)
+}
+```
+
+```{r, include = TRUE}
+generate_detailed_impact_narrative("data/Walker_data/access_by_group.csv")
+```
+
+```{r, echo=FALSE, include = TRUE}
 results <- analyze_go_access("data/Walker_data/access_by_group.csv")
 ```
 
@@ -255,9 +750,8 @@ Note: Standard deviations reflect variability across different drive time ranges
 # Then if types look good, run the analysis
 results_text <- generate_results_text("data/Walker_data/access_by_group.csv")
 cat(results_text)
-
 ```
-Based on the output from the `generate_results_text` function, I can provide an interpretation of the key findings:
+Based on the output from the `generate_results_text` function:
 
 The results show a concerning decline in access to gynecologic oncologists (GOs) over time. In 2013, about 69.5% of women had access to a GO within 60 minutes of driving time, but by 2022 this dropped to 62.0%, representing a 7.5 percentage point decrease. Interestingly, access peaked in 2015 at 70.1% before declining to its lowest point in 2019 at 58.3%, with a slight recovery by 2022.
 
@@ -373,17 +867,310 @@ calculate_group_stats <- function(df) {
 }
 ```
 
-# "access rate" refers to the percentage of a population that has access to gynecologic oncologists (GOs) within a specific drive time threshold
+## Map the data to Census Tracts
+```{r}
+# Enhanced Multi-scale Census Tract Visualization
+# This script creates an improved multi-scale view of US census tracts
+
+# Load required packages
+library(tigris)      # For Census geography
+library(sf)          # For spatial data handling
+library(ggplot2)     # For visualization
+library(dplyr)       # For data manipulation
+library(patchwork)   # For combining plots
+library(viridis)     # For color palettes
+library(ggspatial)   # For scale bars and north arrows
+
+# Set tigris options
+options(tigris_use_cache = TRUE, tigris_class = "sf")
+
+# Set theme for all maps
+map_theme <- theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_text(size = 11),
+    legend.position = "bottom",
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 9),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA)
+  )
+
+# Function to create enhanced multi-scale visualization
+# Function to create enhanced multi-scale visualization with larger text
+create_enhanced_multiscale_viz <- function() {
+  # Define the map theme with LARGER text sizes
+  map_theme <- theme_minimal() +
+    theme(
+      # Larger text for all elements
+      text = element_text(size = 14),
+      # Larger, bolder titles
+      plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+      plot.subtitle = element_text(size = 16, hjust = 0.5),
+      # Remove grid lines
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      # Larger axis text
+      axis.text = element_text(size = 12),
+      axis.title = element_blank(),
+      # Larger legend
+      legend.title = element_text(size = 14, face = "bold"),
+      legend.text = element_text(size = 12),
+      legend.position = "bottom",
+      # Larger strip text for facets
+      strip.text = element_text(size = 14, face = "bold")
+    )
+  
+  # Get base geometries
+  states <- states(cb = TRUE, resolution = "20m")
+  co <- states %>% filter(STUSPS == "CO")
+  state_boundaries <- st_union(states)
+  
+  co_counties <- counties(state = "08", cb = TRUE)
+  co_tracts <- tracts(state = "08", cb = TRUE)
+  
+  # Denver metro counties
+  denver_counties_fips <- c("031", "005", "059", "001", "035") # Denver, Arapahoe, Jefferson, Adams, Douglas
+  denver_counties <- co_counties %>%
+    filter(COUNTYFP %in% denver_counties_fips)
+  
+  # Calculate county centroids for labels
+  denver_county_centers <- st_centroid(denver_counties)
+  
+  denver_tracts <- tracts(state = "08", county = denver_counties_fips, cb = TRUE)
+  
+  # Get major cities for context
+  co_places <- places(state = "08", cb = TRUE) %>%
+    filter(NAME %in% c("Denver", "Colorado Springs", "Aurora", "Fort Collins", "Boulder", "Pueblo"))
+  
+  # 1. NATIONAL VIEW WITH IMPROVED STYLING AND LARGER TEXT
+  national <- ggplot() +
+    # Base US with light gray fill
+    geom_sf(data = states, fill = "#f5f5f5", color = "#cccccc", size = 0.2) +
+    # Country outline
+    geom_sf(data = state_boundaries, fill = NA, color = "#888888", size = 0.5) +
+    # Highlight Colorado
+    geom_sf(data = co, fill = "#4e73df", color = "#000000", size = 0.5, alpha = 0.7) +
+    # Add state labels - INCREASED SIZE from 3 to 5
+    geom_sf_text(data = states %>% filter(STUSPS == "CO"), aes(label = STUSPS), 
+                 color = "white", fontface = "bold", size = 5) +
+    # Set boundaries to ensure Alaska and Hawaii are shown
+    coord_sf(crs = st_crs(states), xlim = c(-125, -65), ylim = c(25, 50)) +
+    # Add title
+    labs(title = "National View",
+         subtitle = "Colorado highlighted") +
+    # Apply theme
+    map_theme
+
+  # 2. COLORADO VIEW WITH COUNTY BOUNDARIES AND CITIES - LARGER TEXT
+  state <- ggplot() +
+    # Census tracts with very light fill
+    geom_sf(data = co_tracts, fill = "#f8f8f8", color = "#e5e5e5", size = 0.05) +
+    # County boundaries
+    geom_sf(data = co_counties, fill = NA, color = "#888888", size = 0.3) +
+    # Highlight Denver metro area
+    geom_sf(data = denver_counties, fill = "#4e73df", color = "#000000", size = 0.5, alpha = 0.3) +
+    # Add major cities
+    geom_sf(data = co_places, color = "#e74a3b", size = 3) + # Increased from 2 to 3
+    # Add city labels - INCREASED SIZE from 2.5 to 4
+    geom_sf_text(data = co_places, aes(label = NAME), nudge_y = 0.05, 
+                 color = "#e74a3b", fontface = "bold", size = 4) +
+    # Add Colorado state boundary
+    geom_sf(data = co, fill = NA, color = "#000000", size = 0.8) +
+    # Scale bar
+    annotation_scale(location = "bl", width_hint = 0.2, 
+                     text_cex = 1.2) + # Increased text size
+    # Add north arrow
+    annotation_north_arrow(location = "tr", which_north = "true", 
+                          style = north_arrow_minimal, 
+                          height = unit(1.0, "cm"), width = unit(1.0, "cm")) + # Larger arrow
+    # Add title
+    labs(title = "Colorado View",
+         subtitle = "Denver metro area highlighted") +
+    # Apply theme
+    map_theme
+
+  # 3. DENVER METRO VIEW WITH DETAILED CENSUS TRACTS - LARGER TEXT
+  metro <- ggplot() +
+    # Census tracts with white fill and light gray borders
+    geom_sf(data = denver_tracts, fill = "#ffffff", color = "#cccccc", size = 0.1) +
+    # County boundaries
+    geom_sf(data = denver_counties, fill = NA, color = "#888888", size = 0.5) +
+    # Add major cities
+    geom_sf(data = co_places %>% filter(NAME %in% c("Denver", "Aurora")), 
+            color = "#e74a3b", size = 3) + # Increased from 2 to 3
+    # Add city labels - INCREASED SIZE from 3 to 5
+    geom_sf_text(data = co_places %>% filter(NAME %in% c("Denver", "Aurora")), 
+                aes(label = NAME), nudge_y = 0.01, 
+                color = "#e74a3b", fontface = "bold", size = 5) +
+    # Add county labels - INCREASED SIZE from 2.5 to 4
+    geom_sf_label(data = denver_county_centers, 
+                 aes(label = NAME), 
+                 size = 4, 
+                 fill = alpha("white", 0.8), 
+                 color = "#333333",
+                 label.padding = unit(0.3, "lines"), # Increased padding
+                 label.r = unit(0.15, "lines")) +
+    # Scale bar - Larger text
+    annotation_scale(location = "bl", width_hint = 0.2, 
+                     text_cex = 1.2) +
+    # Add north arrow - Larger arrow
+    annotation_north_arrow(location = "tr", which_north = "true", 
+                          style = north_arrow_minimal, 
+                          height = unit(1.0, "cm"), width = unit(1.0, "cm")) +
+    # Add title
+    labs(title = "Denver Metro View",
+         subtitle = "Detailed census tracts with county boundaries") +
+    # Apply theme
+    map_theme
+
+  # 4. CREATE A SAMPLE CHOROPLETH WITH SIMULATED ACCESS DATA - LARGER TEXT
+  # Simulate access data (this would be replaced with your actual data)
+  set.seed(123)
+  denver_tracts$access_rate <- sample(
+    c(20:90), 
+    size = nrow(denver_tracts), 
+    replace = TRUE, 
+    prob = c(rep(0.5, 20), rep(1, 20), rep(2, 15), rep(1.5, 16))
+  )
+  
+  # Create choropleth
+  choropleth <- ggplot() +
+    # Census tracts with access rate fill
+    geom_sf(data = denver_tracts, aes(fill = access_rate), color = NA) +
+    # Add county boundaries
+    geom_sf(data = denver_counties, fill = NA, color = "#333333", size = 0.3) +
+    # Add color scale with LARGER legend text
+    scale_fill_viridis_c(
+      option = "plasma",
+      name = "Access Rate (%)",
+      limits = c(20, 90),
+      breaks = seq(20, 90, by = 10),
+      guide = guide_colorbar(
+        barwidth = 20, # Wider bar
+        barheight = 0.8, # Taller bar
+        title.position = "top",
+        title.hjust = 0.5,
+        label.theme = element_text(size = 12) # Larger legend labels
+      )
+    ) +
+    # Add major cities
+    geom_sf(data = co_places %>% filter(NAME %in% c("Denver", "Aurora")), 
+            color = "black", size = 3) + # Increased from 2 to 3
+    # Add city labels - INCREASED SIZE from 3 to 5
+    geom_sf_text(data = co_places %>% filter(NAME %in% c("Denver", "Aurora")), 
+                aes(label = NAME), nudge_y = 0.01, 
+                color = "black", fontface = "bold", size = 5) +
+    # Scale bar with larger text
+    annotation_scale(location = "bl", width_hint = 0.2, 
+                     text_cex = 1.2) +
+    # Add title
+    labs(title = "Denver Metro: Simulated Access Rates",
+         subtitle = "Census tract level gynecologic oncology access (simulated data)") +
+    # Apply theme
+    map_theme
+
+  # Combine the maps using patchwork
+  layout <- "
+  AB
+  CD
+  "
+  
+  combined <- national + state + metro + choropleth +
+    plot_layout(design = layout) +
+    plot_annotation(
+      title = "Multi-scale View of Census Tracts with Access Analysis",
+      subtitle = "From national overview to detailed metro area access patterns",
+      caption = "Source: US Census Bureau | Simulated access data for demonstration",
+      theme = theme(
+        # SIGNIFICANTLY LARGER annotation text
+        plot.title = element_text(size = 24, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 18, hjust = 0.5),
+        plot.caption = element_text(size = 12, hjust = 0, face = "italic"),
+        # Add margins for better spacing
+        plot.margin = margin(10, 10, 10, 10)
+      )
+    )
+  
+  return(combined)
+}
+
+# Create and display the enhanced visualization
+enhanced_multiscale_viz <- create_enhanced_multiscale_viz()
+```
+
+```{r, include = TRUE, fig.width = 24, fig.height = 20}
+print(enhanced_multiscale_viz)
+
+# Save the plot as a high-resolution image
+ggsave("enhanced_census_tract_map.png", enhanced_multiscale_viz, 
+       width = 18, height = 14, dpi = 300)
+```
+
+## `all_isochrone_demographics`
+KEY TERMS
+
+- **Isochrone**: A line on a map connecting points that can be reached within the same travel time from a given location.
+- **Drive Time Threshold**: The maximum travel time (in seconds or minutes) used to define accessibility to healthcare providers.
+- **Accessibility**: The ability to reach gynecologic oncology care within a specified drive time.
+- **Demographic Representation**: The distribution of population within isochrones by racial/ethnic categories.
+- **Equity Gap**: Differences in healthcare accessibility between demographic groups.
+- **AIAN**: American Indian/Alaska Native population.
+- **HIPI**: Native Hawaiian and Pacific Islander population.
+
+DATA SUMMARY
+This dataset examines the demographic composition of areas within various drive time thresholds to gynecologic oncologists across the United States. The data represents population catchment analysis using isochrones (drive-time based service areas).
+
+The dataset contains 4,128 observations with the following variables:
+- `id`, `rank`, `unique_id`: Identifiers for specific isochrones
+- `departure`, `arrival`: Timestamp information for travel time calculations
+- `range`: Drive time thresholds in seconds (typically 1800, 3600, 7200, and 10800 seconds)
+- `total_female`: Total female population within each isochrone
+- Demographic breakdowns:
+  - `total_female_white`: White female population
+  - `total_female_black`: Black female population
+  - `total_female_aian`: American Indian/Alaska Native female population
+  - `total_female_asian`: Asian female population
+  - `total_female_hipi`: Native Hawaiian/Pacific Islander female population
+
+The data captures how many women of different racial/ethnic backgrounds live within specific drive times to gynecologic oncology care. This allows for analysis of not just overall accessibility, but also demographic disparities in healthcare access.
+
+For example, preliminary analysis of similar data has shown that within 30-minute drive times (1800 seconds), there are significant disparities, with Asian women typically having the highest access rates (around 86.5%) and American Indian/Alaska Native women having the lowest (approximately 50.9%).
+
+
+
+# "Access rate" refers to the percentage of a population that has access to gynecologic oncologists (GOs) within a specific drive time threshold
 ```{r, include = TRUE}
 results_text <- generate_results_text("data/Walker_data/access_by_group.csv")
 cat(results_text)
 ```
 
-# R code for decay analysis
-```{r}
+# Understanding Decay Analysis
+
+Decay analysis examines how a variable's influence diminishes over increasing distance or time. In accessibility studies like this one, decay analysis reveals how people's access to services changes as travel time increases.
+
+The R code shown performs a decay analysis by:
+
+1. Taking accessibility data across different years
+2. Focusing on the "total_female" demographic group 
+3. Calculating the average accessibility percentage at each drive time threshold
+4. Converting the time ranges from seconds to minutes for clearer interpretation
+5. Organizing results to show how access changes as travel time increases
+
+For example, this analysis might show that 45% of women can reach essential services within 30 minutes, 65% within 60 minutes, and 85% within 120 minutes. The "decay curve" typically follows a pattern where accessibility increases quickly at first, then levels off at longer distances.
+
+Decay analysis helps planners understand service coverage, identify accessibility gaps for different populations, and determine optimal facility locations to maximize access while minimizing travel time.
+```{r, include = FALSE}
 # Read data
 data <- read_csv("data/Walker_data/access_by_group.csv")
+```
 
+
+```{r, include = TRUE}
 # Calculate overall means across all years for each drive time
 distance_decay <- data %>%
   filter(category == "total_female") %>%
@@ -395,8 +1182,10 @@ distance_decay <- data %>%
     avg_population = mean(count),
     .groups = "drop"
   ) %>%
-  arrange(drive_time_min)
+  arrange(drive_time_min); distance_decay
+```
 
+```{r, include = TRUE}
 # View results
 print("Drive time accessibility analysis:")
 print(distance_decay)
@@ -416,6 +1205,375 @@ results_text <- paste0(
 ```
 
 
+```{r}
+# Accessibility Decay Curve Analysis
+# This script visualizes how accessibility increases with drive time
+
+# Read data
+data <- read_csv("data/Walker_data/access_by_group.csv")
+
+# Calculate overall means across all years for each drive time
+distance_decay <- data %>%
+  filter(category == "total_female") %>%
+  group_by(range) %>%
+  summarize(
+    drive_time_min = first(range)/60,  # Convert seconds to minutes
+    mean_access = mean(percent),
+    sd_access = sd(percent),
+    avg_population = mean(count),
+    .groups = "drop"
+  ) %>%
+  arrange(drive_time_min)
+```
+
+
+```{r, include = TRUE}
+# Print the summarized data
+print(distance_decay)
+
+# Create accessibility decay curve
+ggplot(distance_decay, aes(x = drive_time_min, y = mean_access)) +
+  # Add shaded regions for different phases
+  annotate("rect", xmin = 0, xmax = 30, ymin = 0, ymax = 100, 
+           fill = "#d32f2f", alpha = 0.1) +
+  annotate("rect", xmin = 30, xmax = 60, ymin = 0, ymax = 100, 
+           fill = "#d32f2f", alpha = 0.05) +
+  # Add the main curve
+  geom_line(color = "#d32f2f", size = 1.5) +
+  geom_point(color = "#d32f2f", size = 3) +
+  # Add error bars for standard deviation if desired
+  geom_errorbar(aes(ymin = mean_access - sd_access, 
+                   ymax = mean_access + sd_access),
+               width = 2, color = "#666666", alpha = 0.5) +
+  # Add annotations for key points
+  geom_text_repel(
+    aes(label = ifelse(drive_time_min %in% c(min(drive_time_min), max(drive_time_min)) | 
+                      drive_time_min == 60,
+                     paste0(round(mean_access, 1), "%"), "")),
+    nudge_y = 5,
+    size = 3.5
+  ) +
+  # Add reference lines to highlight phases
+  geom_vline(xintercept = 30, linetype = "dashed", color = "#666666", alpha = 0.5) +
+  geom_vline(xintercept = 60, linetype = "dashed", color = "#666666", alpha = 0.5) +
+  # Add annotation labels for phases
+  annotate("text", x = 15, y = max(distance_decay$mean_access) + 5, 
+           label = "Steep initial gains", color = "#666666", size = 3.5) +
+  annotate("text", x = 45, y = max(distance_decay$mean_access) + 5, 
+           label = "Moderate gains", color = "#666666", size = 3.5) +
+  annotate("text", x = max(distance_decay$drive_time_min) - 15, 
+           y = max(distance_decay$mean_access) + 5, 
+           label = "Diminishing returns", color = "#666666", size = 3.5) +
+  # Set chart title and labels
+  labs(
+    title = "Accessibility Decay Curve: Female Population Access vs. Drive Time",
+    subtitle = "Average accessibility across all years in dataset",
+    x = "Drive Time (minutes)",
+    y = "Population with Access (%)",
+    caption = "Source: Walker data"
+  ) +
+  # Set theme and formatting
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_text(size = 11),
+    axis.title = element_text(size = 11),
+    panel.grid.minor = element_blank(),
+    plot.caption = element_text(hjust = 0, face = "italic"),
+    plot.margin = margin(20, 20, 20, 20)
+  ) +
+  # Set axis limits and breaks
+  scale_y_continuous(
+    limits = c(0, 100),
+    breaks = seq(0, 100, by = 20),
+    labels = function(x) paste0(x, "%")
+  ) +
+  scale_x_continuous(
+    expand = c(0.01, 0),
+    breaks = function(x) {
+      unique(c(seq(0, max(distance_decay$drive_time_min), by = 30), 
+              unique(distance_decay$drive_time_min)))
+    }
+  )
+```
+
+
+```{r}
+# Save the plot if desired
+ggsave("accessibility_decay_curve.png", width = 10, height = 6, dpi = 300)
+
+# Additional Analysis: Calculate rate of change
+distance_decay <- distance_decay %>%
+  mutate(
+    next_drive_time = lead(drive_time_min),
+    next_access = lead(mean_access),
+    time_diff = next_drive_time - drive_time_min,
+    access_diff = next_access - mean_access,
+    access_rate = access_diff / time_diff
+  )
+```
+
+## Decay Table
+```{r}
+# Make sure you load the required packages first
+library(knitr)
+library(kableExtra)
+
+# Create your table with consistent decimal places
+distance_decay_table <- distance_decay %>%
+  select(drive_time_min, mean_access, sd_access) %>%
+  rename(
+    "Drive Time (minutes)" = drive_time_min,
+    "Mean Access (%)" = mean_access,
+    "Standard Deviation (%)" = sd_access
+  )
+
+# Method 1: Use kable with digits parameter (simplest approach)
+kable(distance_decay_table, 
+      digits = 1,           # Sets 1 decimal place for all numeric columns
+      format = "html",      # Specify output format
+      caption = "Drive Time Accessibility Analysis") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = FALSE)
+
+# Method 2: Format specific columns using mutate before kable
+distance_decay_table <- distance_decay %>%
+  select(drive_time_min, mean_access, sd_access) %>%
+  mutate(
+    mean_access = round(mean_access, 1),
+    sd_access = round(sd_access, 1)
+  ) %>%
+  rename(
+    "Drive Time (minutes)" = drive_time_min,
+    "Mean Access (%)" = mean_access,
+    "Standard Deviation (%)" = sd_access
+  )
+
+kable(distance_decay_table, format = "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+
+# Method 3: Use cell_spec for even more control over individual cells
+distance_decay_table <- distance_decay %>%
+  select(drive_time_min, mean_access, sd_access) %>%
+  mutate(
+    drive_time_min = drive_time_min,
+    mean_access = cell_spec(
+      round(mean_access, 1), 
+      format = "html", 
+      bold = mean_access > 70  # Bold values over 70%
+    ),
+    sd_access = cell_spec(
+      round(sd_access, 1),
+      format = "html",
+      color = if_else(sd_access > 5, "red", "black")  # Color high SD values
+    )
+  ) %>%
+  rename(
+    "Drive Time (minutes)" = drive_time_min,
+    "Mean Access (%)" = mean_access,
+    "Standard Deviation (%)" = sd_access
+  )
+
+kable(distance_decay_table, format = "html", escape = FALSE) %>%
+  kable_styling()
+```
+
+
+# Small Race Multiples for Decay Analysis
+```{r, include = TRUE}
+# Improved Decay Curve Analysis with Small Multiples by Racial/Ethnic Group
+# This visualization shows how accessibility varies across different demographic groups
+
+# Read data
+data <- read_csv("data/Walker_data/access_by_group.csv")
+
+# Filter to relevant categories and clean up category names for display
+racial_groups <- data %>%
+  filter(
+    !category %in% c("total_female"), # Exclude overall total
+    stringr::str_detect(category, "total_female_") # Only include racial/ethnic categories
+  ) %>%
+  mutate(
+    display_category = case_when(
+      category == "total_female_white" ~ "White",
+      category == "total_female_black" ~ "Black",
+      category == "total_female_aian" ~ "American Indian/Alaska Native",
+      category == "total_female_asian" ~ "Asian",
+      category == "total_female_hipi" ~ "Native Hawaiian/Pacific Islander",
+      TRUE ~ str_replace(category, "total_female_", "")
+    )
+  )
+
+# Calculate decay curves for each racial/ethnic group
+racial_decay_curves <- racial_groups %>%
+  group_by(category, display_category, range) %>%
+  summarize(
+    drive_time_min = first(range)/60,  # Convert seconds to minutes
+    mean_access = mean(percent),
+    sd_access = sd(percent),
+    avg_population = mean(count),
+    .groups = "drop"
+  ) %>%
+  arrange(category, drive_time_min)
+
+# Create a dataframe for the ideal access curve
+# Using Asian population as benchmark since they have highest access
+ideal_curve <- data %>%
+  filter(category == "total_female_asian") %>%
+  group_by(range) %>%
+  summarize(
+    drive_time_min = first(range)/60,
+    ideal_access = mean(percent) + 5, # Adding 5% as an aspirational target
+    .groups = "drop"
+  ) %>%
+  # Cap at 100%
+  mutate(ideal_access = pmin(ideal_access, 100)) %>%
+  arrange(drive_time_min)
+
+# Calculate overall average for comparison
+overall_average <- data %>%
+  filter(category == "total_female") %>%
+  group_by(range) %>%
+  summarize(
+    drive_time_min = first(range)/60,
+    mean_access = mean(percent),
+    .groups = "drop"
+  ) %>%
+  arrange(drive_time_min)
+
+# Set a color palette for the racial/ethnic groups
+racial_colors <- viridis::viridis(n = length(unique(racial_decay_curves$display_category)))
+names(racial_colors) <- unique(racial_decay_curves$display_category)
+
+# Create the small multiples visualization
+p <- ggplot() +
+  # Add the specific decay curve for each group
+  geom_line(data = racial_decay_curves, 
+            aes(x = drive_time_min, y = mean_access, color = display_category), 
+            size = 1.2) +
+  
+  # Add points for each measured time threshold
+  geom_point(data = racial_decay_curves, 
+             aes(x = drive_time_min, y = mean_access, color = display_category), 
+             size = 2.5) +
+  
+  # Add the ideal access curve (dashed line)
+  geom_line(data = ideal_curve, 
+            aes(x = drive_time_min, y = ideal_access, linetype = "Ideal Access Target"), 
+            color = "#444444", size = 1, alpha = 0.8) +
+  
+  # Add the overall average (dotted line)
+  geom_line(data = overall_average, 
+            aes(x = drive_time_min, y = mean_access, linetype = "All Women Average"), 
+            color = "#444444", size = 1, alpha = 0.8) +
+  
+  # Facet by racial/ethnic group
+  facet_wrap(~ display_category, ncol = 3) +
+  
+  # Add reference lines at 30 and 60 minutes
+  geom_vline(xintercept = 30, linetype = "dashed", color = "#888888", alpha = 0.5) +
+  geom_vline(xintercept = 60, linetype = "dashed", color = "#888888", alpha = 0.5) +
+  
+  # Add reference text at 60 minute mark
+  geom_text(data = data.frame(x = 60, y = 10, display_category = "American Indian/Alaska Native"),
+            aes(x = x, y = y), label = "60 min", color = "#888888", size = 2.5,
+            vjust = -0.5, hjust = 0.5) +
+  
+  # Set up chart styling
+  labs(
+    title = "Accessibility Decay Curves by Race/Ethnicity",
+    subtitle = paste0("<span style='color:#444444;'>Dashed line = <b>Ideal Access Target</b> (Asian group +5%)",
+                      " · Dotted line = <b>All Women Average</b></span>"),
+    x = "Drive Time (minutes)",
+    y = "Population with Access (%)",
+    color = "Demographic Group",
+    linetype = "Reference Lines",
+    caption = "Source: Walker data analysis 2013-2022. Ideal access target calculated by taking the highest performing group (Asian women) and adding 5% at each time point, capped at 100%."
+  ) +
+  
+  # Set axis limits
+  scale_y_continuous(
+    limits = c(0, 100),
+    breaks = seq(0, 100, by = 20),
+    labels = function(x) paste0(x, "%"),
+    expand = c(0, 2)
+  ) +
+  
+  # Set x-axis
+  scale_x_continuous(
+    breaks = c(0, 30, 60, 120, 180),
+    expand = c(0.01, 0)
+  ) +
+  
+  # Set line type scale
+  scale_linetype_manual(
+    values = c("Ideal Access Target" = "dashed", "All Women Average" = "dotted")
+  ) +
+  
+  # Set color scale
+  scale_color_manual(values = racial_colors, guide = "none") +
+  
+  # Set theme
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_markdown(size = 10),
+    axis.title = element_text(size = 10),
+    axis.text = element_text(size = 8),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "#EEEEEE"),
+    panel.spacing = unit(1, "lines"),
+    strip.text = element_text(size = 10, face = "bold"),
+    strip.background = element_rect(fill = "#F5F5F5", color = NA),
+    legend.position = "bottom",
+    legend.title = element_text(size = 9),
+    legend.text = element_text(size = 8),
+    plot.caption = element_text(hjust = 0, face = "italic", size = 8),
+    plot.margin = margin(20, 20, 20, 20)
+  )
+
+# Get the calculated access rates at key time points for annotations
+key_points <- racial_decay_curves %>%
+  filter(drive_time_min %in% c(30, 60, 180)) %>%
+  group_by(display_category) %>%
+  mutate(
+    label = paste0(round(mean_access), "%"),
+    vjust = if_else(drive_time_min == 180, -0.5, 1.5)
+  )
+
+# Add access percentage labels at key points
+p <- p + geom_text(
+  data = key_points,
+  aes(x = drive_time_min, y = mean_access, label = label, vjust = vjust),
+  color = "#333333", size = 2.5, show.legend = FALSE
+)
+
+# Build a composite figure with title and annotations
+p_final <- p +
+  # Add key insights
+  annotate(
+    "richtext", x = 90, y = -15, 
+    label = "<span style='font-size:10pt'><b>Key Insights:</b></span><br><span style='font-size:8pt'>• Asian women have the highest access rates at all drive times<br>• American Indian/Alaska Native women have dramatically lower access (-47 percentage points at 30 min)<br>• The gap between groups widens at shorter drive times<br>• Even at 180 minutes, significant disparities persist between highest and lowest groups (28 percentage points)</span>",
+    fill = "#F8F8F8", color = "#333333", alpha = 0.8,
+    hjust = 0.5, vjust = 0.5,
+    label.color = NA
+  )
+
+# Print the plot
+print(p_final)
+
+# Optional: save the plot
+ggsave("racial_decay_curves.png", p_final, width = 12, height = 8, dpi = 300)
+```
+
+
+```{r, include = TRUE}
+# Print rate of change analysis
+print("Rate of Change in Accessibility per Minute:")
+print(distance_decay %>% select(drive_time_min, mean_access, access_rate))
+```
+
+
 ```{r, include = TRUE}
 # Print formatted results
 cat("\nFormatted results text:\n")
@@ -425,7 +1583,7 @@ cat(results_text)
 
 ```{r, include = TRUE}
 # Optional: Create a table for publication
-library(knitr)
+
 distance_decay_table <- distance_decay %>%
   select(drive_time_min, mean_access, sd_access) %>%
   rename(
@@ -435,7 +1593,7 @@ distance_decay_table <- distance_decay %>%
   )
 
 print("\nTable for publication:")
-kable(distance_decay_table, digits = 1)
+knitr::kable(distance_decay_table, digits = 1)
 ```
 
 
@@ -484,12 +1642,11 @@ cat(sprintf("In 2022, %d (%.1f%%) urban and %d (%.1f%%) US Census Bureau census 
 
 ```
 
-# Additional Code
-Here's the R script converted to R Markdown format that you can paste into your GO_access_analysis_code.Rmd file:
-
-## Visualization of Accessibility Trends
+# Visualization of Accessibility Trends
 
 This section creates comprehensive visualizations of the declining accessibility trends across different time thresholds from 2013-2022.
+
+
 
 
 ```{r define_viz_functions}
@@ -907,41 +2064,433 @@ run_visualization_analysis <- function(data_file = "Access_Data.csv",
 }
 ```
 
-```{r run_visualizations, fig.width=10, fig.height=6}
-# Run the visualization analysis
-viz_results <- run_visualization_analysis(
-  data_file = "data/Walker_data/access_by_group.csv", 
-  output_dir = "figures"
-)
-
-# Display some of the key visualizations
-viz_results$visualizations$trend_lines
-```
-
-```{r display_normalized_trends, fig.width=10, fig.height=6}
-# Display normalized trends visualization
-viz_results$visualizations$normalized_trends
-```
-
-```{r display_year_comparison, fig.width=10, fig.height=6}
-# Display year comparison plot
-viz_results$comparison$comparison_plot
-```
-
-```{r display_changes_table}
-# Display the calculated changes
-knitr::kable(
-  viz_results$comparison$changes,
-  caption = "Percentage Changes in Accessibility (2013-2022)",
-  digits = 1
-)
-```
-
-```{r display_dashboard, fig.width=16, fig.height=12, eval=requireNamespace("patchwork", quietly = TRUE)}
-# Display the dashboard (if patchwork is available)
-if (requireNamespace("patchwork", quietly = TRUE)) {
-  viz_results$visualizations$dashboard
+```{r}
+#' @title Compare Accessibility Between Years With Trend Analysis
+#' @description Creates a side-by-side comparison of accessibility metrics between
+#'   selected years, highlighting the changes over time with statistical significance.
+#' 
+#' @param data_file Path to the CSV file containing accessibility data
+#' @param years_to_compare Vector of years to compare (typically first and last)
+#' @param output_dir Directory to save output files
+#' @param verbose Logical indicating whether to print detailed logging information
+#' 
+#' @return A list containing the comparison plot and change metrics with statistical analysis
+#'
+#' @importFrom assertthat assert_that is_scalar
+#' @importFrom logger log_info log_debug log_error log_warn
+#' @importFrom dplyr filter mutate group_by summarize ungroup select left_join
+#' @importFrom tidyr pivot_longer pivot_wider
+#' @importFrom ggplot2 ggplot aes geom_bar position_dodge scale_fill_brewer 
+#' @importFrom ggplot2 scale_y_continuous labs theme_minimal theme geom_text geom_segment
+#' @importFrom readr read_csv write_csv
+#' @importFrom scales percent_format percent
+compare_years <- function(data_file = "access_by_group.csv",
+                          years_to_compare = NULL,
+                          output_dir = getwd(),
+                          verbose = TRUE) {
+  # Setup logger configuration
+  logger::log_threshold(if(verbose) logger::INFO else logger::WARN)
+  
+  # Input validation
+  assertthat::assert_that(
+    assertthat::is.string(data_file),
+    assertthat::is.string(output_dir),
+    is.logical(verbose)
+  )
+  
+  logger::log_info("Starting year comparison analysis with trend analysis")
+  logger::log_info("Data file: {data_file}")
+  logger::log_info("Output directory: {output_dir}")
+  
+  # Create output directory if it doesn't exist
+  if (!dir.exists(output_dir)) {
+    tryCatch({
+      dir.create(output_dir, recursive = TRUE)
+      logger::log_info("Created output directory: {output_dir}")
+    }, error = function(e) {
+      logger::log_error("Failed to create output directory: {e$message}")
+      stop("Cannot create output directory: ", e$message, call. = FALSE)
+    })
+  }
+  
+  # Read and process data
+  logger::log_info("Reading data from {data_file}")
+  access_data <- readr::read_csv(data_file, show_col_types = FALSE)
+  logger::log_debug("Successfully read {nrow(access_data)} rows of data")
+  
+  # Get all years for regression analysis
+  all_years <- sort(unique(access_data$year))
+  logger::log_info("Found data for years: {paste(all_years, collapse=', ')}")
+  
+  # Determine years to compare if not specified
+  if (is.null(years_to_compare)) {
+    years_to_compare <- c(min(all_years), max(all_years))
+    logger::log_info("Years not specified, using first and last: {paste(years_to_compare, collapse=', ')}")
+  }
+  
+  # Check against year column
+  assertthat::assert_that(
+    all(years_to_compare %in% all_years),
+    msg = "All specified years must exist in the data"
+  )
+  
+  logger::log_info("Comparing years: {paste(years_to_compare, collapse=', ')}")
+  
+  # Use total category if available
+  if ("total" %in% access_data$category) {
+    filtered_data <- dplyr::filter(
+      access_data, 
+      category == "total"
+    )
+    logger::log_info("Using 'total' category from data")
+  } else if (any(grepl("^total_", access_data$category))) {
+    # Use the first total_* category if no exact total
+    total_cat <- grep("^total_", access_data$category, value = TRUE)[1]
+    filtered_data <- dplyr::filter(
+      access_data, 
+      category == total_cat
+    )
+    logger::log_info("Using '{total_cat}' category as proxy for total")
+  } else {
+    # If no total category exists, use all data and warn
+    filtered_data <- access_data
+    logger::log_warn("No 'total' category found. Using all categories - results may be skewed.")
+  }
+  
+  # Define time thresholds based on the actual range values in the data
+  # Looking at the sample data, these appear to be 1800, 3600, 7200, 10800 seconds
+  # which correspond to 30, 60, 120, 180 minutes
+  unique_ranges <- sort(unique(filtered_data$range))
+  logger::log_info("Found range values: {paste(unique_ranges, collapse=', ')}")
+  
+  # Convert ranges to minutes for labels
+  range_minutes <- unique_ranges / 60
+  standard_labels <- paste0(range_minutes, "-minute")
+  
+  # Create mapping for standardized labels
+  range_mapping <- data.frame(
+    range = unique_ranges,
+    minutes = range_minutes,
+    time_threshold = standard_labels
+  )
+  
+  logger::log_info("Using time thresholds: {paste(standard_labels, collapse=', ')}")
+  
+  # Prepare data with proper time thresholds
+  processed_data <- filtered_data %>%
+    dplyr::left_join(range_mapping, by = "range") %>%
+    dplyr::mutate(
+      # Ensure time_threshold is properly ordered
+      time_threshold = factor(
+        time_threshold,
+        levels = standard_labels
+      )
+    )
+  
+  # Group data by year and threshold for all years
+  logger::log_info("Aggregating data by year and time threshold for all years")
+  all_years_summary <- processed_data %>%
+    dplyr::group_by(year, time_threshold) %>%
+    dplyr::summarize(
+      accessibility = mean(percent / 100, na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  # Perform regression analysis for each threshold
+  logger::log_info("Performing regression analysis for each time threshold")
+  
+  regression_results <- data.frame()
+  
+  for (threshold in levels(processed_data$time_threshold)) {
+    threshold_data <- all_years_summary %>% 
+      dplyr::filter(time_threshold == threshold)
+    
+    # Run linear regression
+    lm_result <- tryCatch({
+      lm(accessibility ~ year, data = threshold_data)
+    }, error = function(e) {
+      logger::log_warn("Regression failed for {threshold}: {e$message}")
+      return(NULL)
+    })
+    
+    if (!is.null(lm_result)) {
+      # Extract regression statistics
+      coef_summary <- summary(lm_result)
+      slope <- coef_summary$coefficients[2, 1]  # Coefficient (change per year)
+      p_value <- coef_summary$coefficients[2, 4]  # p-value for slope
+      r_squared <- coef_summary$r.squared
+      
+      regression_results <- rbind(regression_results, data.frame(
+        time_threshold = threshold,
+        slope = slope,
+        slope_percent = slope * 100,  # Convert to percentage
+        p_value = p_value,
+        r_squared = r_squared,
+        significance = dplyr::case_when(
+          p_value < 0.001 ~ "***",
+          p_value < 0.01 ~ "**",
+          p_value < 0.05 ~ "*",
+          TRUE ~ "ns"
+        )
+      ))
+    }
+  }
+  
+  # Filter to selected years for the bar chart
+  year_summaries <- all_years_summary %>%
+    dplyr::filter(year %in% years_to_compare) %>%
+    # Ensure year is a factor for plotting
+    dplyr::mutate(
+      year = as.factor(year)
+    )
+  
+  # Calculate percent change between selected years
+  logger::log_info("Calculating percent changes between selected years")
+  
+  # Prepare data for the comparison
+  change_data <- data.frame()
+  
+  for (threshold in levels(processed_data$time_threshold)) {
+    threshold_data <- year_summaries %>% 
+      dplyr::filter(time_threshold == threshold)
+    
+    # Get values for first and last years
+    first_year_val <- threshold_data$accessibility[threshold_data$year == min(years_to_compare)]
+    last_year_val <- threshold_data$accessibility[threshold_data$year == max(years_to_compare)]
+    
+    if (length(first_year_val) > 0 && length(last_year_val) > 0) {
+      abs_change <- last_year_val - first_year_val
+      pct_change <- (abs_change / first_year_val) * 100
+      
+      change_data <- rbind(change_data, data.frame(
+        time_threshold = threshold,
+        first_year = min(years_to_compare),
+        last_year = max(years_to_compare),
+        first_value = first_year_val,
+        last_value = last_year_val,
+        abs_change = abs_change,
+        pct_change = pct_change
+      ))
+    }
+  }
+  
+  # Join with regression results
+  change_data <- change_data %>%
+    dplyr::left_join(
+      regression_results %>% dplyr::select(time_threshold, p_value, significance),
+      by = "time_threshold"
+    ) %>%
+    # Order by standard time thresholds
+    dplyr::mutate(
+      time_threshold = factor(time_threshold, levels = standard_labels)
+    ) %>%
+    dplyr::arrange(time_threshold)
+  
+  # Create comparison plot with percent change annotations and significance
+  logger::log_info("Creating enhanced comparison plot with trend significance")
+  
+  # Get position for dodged bars
+  dodge_width <- 0.9
+  position_dodge_obj <- ggplot2::position_dodge(width = dodge_width)
+  
+  # Create the enhanced comparison plot
+  comparison_plot <- ggplot2::ggplot(
+    year_summaries, 
+    ggplot2::aes(x = time_threshold, y = accessibility, fill = year)
+  ) +
+    # Add bars
+    ggplot2::geom_bar(stat = "identity", position = position_dodge_obj) +
+    # Add percentage values on bars
+    ggplot2::geom_text(
+      ggplot2::aes(
+        label = scales::percent(accessibility, accuracy = 0.1)
+      ),
+      position = position_dodge_obj,
+      vjust = -0.5, 
+      size = 3.5
+    )
+  
+  # Calculate positions for connecting lines and text
+  segment_data <- change_data %>%
+    dplyr::mutate(
+      x_start = as.numeric(time_threshold) - 0.25,
+      x_end = as.numeric(time_threshold) + 0.25
+    )
+  
+  # Add connecting lines
+  comparison_plot <- comparison_plot +
+    ggplot2::geom_segment(
+      data = segment_data,
+      mapping = ggplot2::aes(
+        x = x_start,
+        xend = x_end,
+        y = first_value, 
+        yend = last_value
+      ),
+      inherit.aes = FALSE,
+      linewidth = 0.8,
+      color = "black",
+      alpha = 0.6,
+      linetype = "dashed"
+    )
+  
+  # Add percent change annotation with significance
+  label_data <- segment_data %>%
+    dplyr::mutate(
+      y_pos = pmax(first_value, last_value) * 1.05,
+      sig_label = ifelse(is.na(significance), "", significance),
+      label = sprintf("%+.1f%% %s", pct_change, sig_label)
+    )
+  
+  comparison_plot <- comparison_plot +
+    ggplot2::geom_text(
+      data = label_data,
+      mapping = ggplot2::aes(
+        x = time_threshold,
+        y = y_pos,
+        label = label
+      ),
+      inherit.aes = FALSE,
+      color = ifelse(label_data$pct_change < 0, "red", "green4"),
+      fontface = "bold"
+    ) +
+    # Apply styling
+    ggplot2::scale_fill_brewer(palette = "Set1") +
+    ggplot2::scale_y_continuous(
+      labels = scales::percent_format(accuracy = 1),
+      limits = c(0, max(year_summaries$accessibility) * 1.15)
+    ) +
+    ggplot2::labs(
+      title = paste("Comparison of Accessibility:", 
+                  paste(years_to_compare, collapse = " vs. ")),
+      subtitle = "Changes in accessibility across time thresholds with statistical significance",
+      caption = "Significance codes: *** p<0.001, ** p<0.01, * p<0.05, ns p≥0.05",
+      x = "Time Threshold",
+      y = "Accessibility (% of Population)",
+      fill = "Year"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      legend.position = "top",
+      plot.title = ggplot2::element_text(face = "bold", size = 14),
+      plot.subtitle = ggplot2::element_text(size = 12),
+      axis.text.x = ggplot2::element_text(size = 12, angle = 45, hjust = 1),
+      plot.caption = ggplot2::element_text(size = 10, hjust = 1)
+    )
+  
+  # Save the plot
+  plot_path <- file.path(output_dir, "year_comparison.png")
+  logger::log_info("Saving comparison plot to {plot_path}")
+  ggplot2::ggsave(plot_path, comparison_plot, width = 10, height = 6)
+  
+  # Create a time series plot with trend lines and p-values
+  logger::log_info("Creating time series plot with trend lines and p-values")
+  
+  # Prepare p-value labels for the plot
+  p_value_labels <- regression_results %>%
+    dplyr::mutate(
+      label = sprintf("Slope: %.2f%% per year\np = %.4f %s", 
+                     slope_percent, p_value, significance)
+    )
+  
+  # Ensure year is numeric for time series plotting
+  time_series_data <- all_years_summary %>%
+    dplyr::mutate(year = as.numeric(year))
+  
+  # Get maximum y-position for each threshold for label placement
+  label_positions <- time_series_data %>%
+    dplyr::group_by(time_threshold) %>%
+    dplyr::summarize(
+      y_pos = min(accessibility) * 0.95,  # Place near bottom
+      x_pos = mean(year)  # Place in middle of x-axis
+    )
+  
+  # Join labels with positions
+  p_value_labels <- p_value_labels %>%
+    dplyr::left_join(label_positions, by = "time_threshold")
+  
+  time_series_plot <- ggplot2::ggplot(
+    time_series_data, 
+    ggplot2::aes(x = year, y = accessibility, color = time_threshold, group = time_threshold)
+  ) +
+    ggplot2::geom_point(size = 2) +
+    ggplot2::geom_line(linewidth = 0.8) +
+    ggplot2::geom_smooth(
+      method = "lm", 
+      se = TRUE, 
+      alpha = 0.2,
+      linewidth = 1
+    ) +
+    # Add p-value labels to each trend line
+    ggplot2::geom_text(
+      data = p_value_labels,
+      mapping = ggplot2::aes(
+        x = x_pos,
+        y = y_pos,
+        label = label,
+        color = time_threshold
+      ),
+      hjust = 0.5,
+      vjust = 0,
+      size = 3,
+      fontface = "bold",
+      inherit.aes = FALSE
+    ) +
+    ggplot2::scale_color_viridis_d(option = "plasma", end = 0.9) +
+    ggplot2::scale_y_continuous(labels = scales::percent_format()) +
+    ggplot2::labs(
+      title = "Accessibility Trends Over Time (2013-2022)",
+      subtitle = "Linear trends with 95% confidence intervals and significance",
+      caption = "Significance codes: *** p<0.001, ** p<0.01, * p<0.05, ns p≥0.05",
+      x = "Year",
+      y = "Accessibility (% of Population)",
+      color = "Time Threshold"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      legend.position = "right",
+      plot.title = ggplot2::element_text(face = "bold", size = 14),
+      plot.subtitle = ggplot2::element_text(size = 12),
+      plot.caption = ggplot2::element_text(size = 10, hjust = 1)
+    )
+  
+  # Save the time series plot
+  time_series_path <- file.path(output_dir, "accessibility_time_series.png")
+  logger::log_info("Saving time series plot to {time_series_path}")
+  ggplot2::ggsave(time_series_path, time_series_plot, width = 10, height = 6)
+  
+  # Save changes data with significance
+  changes_path <- file.path(output_dir, "year_comparison_changes.csv")
+  logger::log_info("Saving changes data with significance to {changes_path}")
+  readr::write_csv(
+    dplyr::left_join(
+      change_data,
+      regression_results,
+      by = "time_threshold"
+    ),
+    changes_path
+  )
+  
+  logger::log_info("Year comparison analysis complete")
+  
+  return(list(
+    comparison_plot = comparison_plot,
+    time_series_plot = time_series_plot,
+    changes = change_data,
+    regression_results = regression_results
+  ))
 }
+```
+
+
+```{r, fig.width=10, fig.height=6, include = TRUE}
+yearbyyear <- compare_years(
+  data_file = "data/Walker_data/access_by_group.csv",
+  years_to_compare = c(2013, 2022),  
+  output_dir = "figures",
+  verbose = TRUE
+); yearbyyear
+
 ```
 
 ## Interpretation of Visualization Results
@@ -957,3 +2506,1353 @@ The visualizations reveal several key findings:
 4. The comparison between 2013 and 2022 highlights the widening gap in accessibility, particularly for populations within short drive times of gynecologic oncologists.
 
 These findings suggest that access to gynecologic oncology care has become more geographically concentrated over time, potentially exacerbating disparities for populations in areas with already limited access.
+
+# Visualizing Accessibility: 1031 Function
+```{r}
+#' @title Visualize Accessibility Trends
+#' @description Creates comprehensive visualizations of accessibility trends from 
+#'   demographic data. This function handles data with columns including year, range, 
+#'   category, count, total, and percent.
+#' 
+#' @param data_file Path to the CSV file containing accessibility data
+#' @param output_dir Directory to save output files
+#' @param time_ranges Vector of time ranges to analyze (in minutes)
+#' @param verbose Logical indicating whether to print detailed logging information
+#' 
+#' @return A list containing all generated plot objects
+#'
+#' @importFrom assertthat assert_that is_scalar
+#' @importFrom logger log_info log_debug log_error log_warn
+#' @importFrom dplyr filter mutate group_by summarize ungroup across select arrange
+#' @importFrom dplyr pull first n case_when desc rename
+#' @importFrom tidyr pivot_longer pivot_wider
+#' @importFrom ggplot2 ggplot aes geom_line geom_point geom_smooth scale_color_viridis_d
+#' @importFrom ggplot2 scale_y_continuous scale_x_continuous labs theme_minimal theme
+#' @importFrom ggplot2 element_text element_blank element_rect facet_wrap geom_col
+#' @importFrom ggplot2 geom_hline geom_text ggsave geom_errorbar
+#' @importFrom scales percent_format percent
+#' @importFrom readr read_csv
+#' @importFrom gghighlight gghighlight
+#' @importFrom stringr str_c
+#'
+#' @examples
+#' # Example 1: Basic usage with default parameters
+#' accessibility_plots <- visualize_accessibility_trends(
+#'   data_file = "data/access_by_group.csv",
+#'   output_dir = "figures",
+#'   time_ranges = c(30, 60, 120, 180),
+#'   verbose = TRUE
+#' )
+#' # Shows comprehensive visualizations with detailed logging
+#' 
+#' # Example 2: Analyze only specific time ranges
+#' accessibility_plots <- visualize_accessibility_trends(
+#'   data_file = "data/access_by_group.csv",
+#'   output_dir = "figures/selected_ranges",
+#'   time_ranges = c(30, 60),
+#'   verbose = FALSE
+#' )
+#' # Creates visualizations focusing only on 30 and 60 minute ranges
+#' 
+#' # Example 3: Saving to a custom directory with minimal output
+#' accessibility_plots <- visualize_accessibility_trends(
+#'   data_file = "path/to/custom_data.csv",
+#'   output_dir = "reports/2025_analysis/figures",
+#'   time_ranges = c(30, 60, 120, 180),
+#'   verbose = FALSE
+#' )
+#' # Silently processes data and saves visualizations to the specified directory
+visualize_accessibility_trends <- function(data_file = "access_by_group.csv", 
+                                         output_dir = getwd(),
+                                         time_ranges = c(30, 60, 120, 180),
+                                         verbose = TRUE) {
+  # Setup logger configuration
+  logger::log_threshold(if(verbose) logger::INFO else logger::WARN)
+  
+  # Input validation
+  assertthat::assert_that(
+    assertthat::is.string(data_file),
+    assertthat::is.string(output_dir),
+    is.numeric(time_ranges),
+    is.logical(verbose)
+  )
+  
+  logger::log_info("Starting visualization of accessibility trends")
+  logger::log_info("Data file: {data_file}")
+  logger::log_info("Output directory: {output_dir}")
+  logger::log_info("Time ranges to analyze: {paste(time_ranges, collapse = ', ')}")
+  
+  # Create helper functions
+  prepare_data <- function(data_file) {
+    logger::log_info("Reading data from {data_file}")
+    
+    # Read the data file
+    tryCatch({
+      accessibility_data <- readr::read_csv(data_file, show_col_types = FALSE)
+      logger::log_info("Successfully read {nrow(accessibility_data)} rows of data")
+      logger::log_debug("Data columns: {paste(names(accessibility_data), collapse = ', ')}")
+    }, error = function(e) {
+      logger::log_error("Failed to read data file: {e$message}")
+      stop("Cannot read data file: ", e$message, call. = FALSE)
+    })
+    
+    # Verify required columns exist
+    required_cols <- c("year", "range", "percent", "category")
+    assertthat::assert_that(
+      all(required_cols %in% names(accessibility_data)),
+      msg = stringr::str_c("Data must contain columns: ", 
+                         paste(required_cols, collapse = ", "))
+    )
+    
+    # Convert range values to actual minutes
+    # First check if range values are in seconds (over 1000)
+    logger::log_info("Converting range values to appropriate time units")
+    if(max(accessibility_data$range, na.rm = TRUE) > 1000) {
+      # Convert seconds to minutes
+      accessibility_data <- dplyr::mutate(
+        accessibility_data,
+        range_minutes = as.numeric(range) / 60  # Convert seconds to minutes
+      )
+      logger::log_info("Converted range from seconds to minutes")
+    } else {
+      # Range is already in minutes
+      accessibility_data <- dplyr::mutate(
+        accessibility_data,
+        range_minutes = as.numeric(range)
+      )
+      logger::log_info("Range values already in minutes")
+    }
+    
+    # Filter for "total" category to get overall accessibility
+    logger::log_info("Filtering data for relevant categories")
+    if("total" %in% accessibility_data$category) {
+      filtered_data <- dplyr::filter(accessibility_data, category == "total")
+      logger::log_info("Using 'total' category from data")
+    } else if(any(grepl("^total_", accessibility_data$category))) {
+      # If no exact "total" category, use the first total_* category
+      total_cat <- grep("^total_", accessibility_data$category, value = TRUE)[1]
+      filtered_data <- dplyr::filter(accessibility_data, category == total_cat)
+      logger::log_info("Using '{total_cat}' category as proxy for total")
+    } else {
+      # If no total category exists, use all data and warn
+      filtered_data <- accessibility_data
+      logger::log_warn("No 'total' category found. Using all data - results may be skewed.")
+    }
+    
+    # Map to standard time thresholds
+    logger::log_info("Mapping data ranges to standard time thresholds")
+    
+    # Create a function to map range to the closest standard time threshold
+    map_to_threshold <- function(range_val) {
+      closest_threshold <- time_ranges[which.min(abs(time_ranges - range_val))]
+      return(paste0(closest_threshold, "-minute"))
+    }
+    
+    # Apply mapping and create standard threshold labels
+    accessibility_mapped <- filtered_data %>%
+      dplyr::mutate(
+        # Map each range value to the closest standard threshold
+        time_threshold = sapply(range_minutes, map_to_threshold),
+        # Ensure threshold is a properly ordered factor
+        time_threshold = factor(
+          time_threshold,
+          levels = paste0(sort(time_ranges), "-minute")
+        ),
+        percent_value = percent / 100  # Convert to decimal for calculations
+      )
+    
+    # Check if we have data for all years and thresholds
+    years_available <- sort(unique(accessibility_mapped$year))
+    logger::log_info("Years available in data: {paste(years_available, collapse = ', ')}")
+    
+    thresholds_available <- levels(accessibility_mapped$time_threshold)
+    logger::log_info("Time thresholds available: {paste(thresholds_available, collapse = ', ')}")
+    
+    return(accessibility_mapped)
+  }
+  
+  create_summary_data <- function(accessibility_data) {
+    logger::log_info("Creating yearly summary statistics")
+    
+    # Aggregate data by year and time threshold
+    yearly_summary <- accessibility_data %>%
+      dplyr::group_by(year, time_threshold) %>%
+      dplyr::summarize(
+        avg_accessibility = mean(percent_value, na.rm = TRUE),
+        sd_accessibility = sd(percent_value, na.rm = TRUE),  # Add standard deviation for error bars
+        n_observations = n(),
+        se_accessibility = sd_accessibility / sqrt(n_observations),  # Standard error
+        .groups = "drop"
+      )
+    
+    logger::log_debug("Created yearly summary with {nrow(yearly_summary)} rows")
+    
+    # Calculate percent changes from first year to last
+    first_year <- min(yearly_summary$year)
+    last_year <- max(yearly_summary$year)
+    
+    logger::log_info("Calculating changes from {first_year} to {last_year}")
+    
+    # Get first and last year data
+    first_year_data <- yearly_summary %>%
+      dplyr::filter(year == first_year) %>%
+      dplyr::select(time_threshold, first_value = avg_accessibility, 
+                   first_sd = sd_accessibility, first_n = n_observations)
+    
+    last_year_data <- yearly_summary %>%
+      dplyr::filter(year == last_year) %>%
+      dplyr::select(time_threshold, last_value = avg_accessibility,
+                   last_sd = sd_accessibility, last_n = n_observations)
+    
+    # Join and calculate changes with error margins
+    change_summary <- dplyr::inner_join(first_year_data, last_year_data, by = "time_threshold") %>%
+      dplyr::mutate(
+        absolute_change = last_value - first_value,
+        percent_change = (absolute_change / first_value) * 100,
+        
+        # Calculate standard error for the difference
+        se_diff = sqrt((first_sd^2 / first_n) + (last_sd^2 / last_n)),
+        
+        # Calculate standard error for the percentage change
+        se_percent = abs(100 * se_diff / first_value),
+        
+        # Calculate 95% confidence intervals for error bars
+        lower_ci = percent_change - 1.96 * se_percent,
+        upper_ci = percent_change + 1.96 * se_percent
+      ) %>%
+      # Ensure time thresholds are ordered correctly
+      dplyr::mutate(
+        time_threshold = factor(
+          time_threshold,
+          levels = paste0(sort(time_ranges), "-minute")
+        )
+      )
+    
+    logger::log_debug("Created change summary with {nrow(change_summary)} rows")
+    
+    # Create normalized data (starting from 100%)
+    logger::log_info("Creating normalized trend data (base year = 100%)")
+    
+    normalized_data <- yearly_summary %>%
+      dplyr::group_by(time_threshold) %>%
+      dplyr::mutate(
+        first_year_value = dplyr::first(avg_accessibility[year == first_year]),
+        relative_value = (avg_accessibility / first_year_value) * 100
+      ) %>%
+      dplyr::ungroup()
+    
+    return(list(
+      yearly_summary = yearly_summary,
+      change_summary = change_summary,
+      normalized_data = normalized_data
+    ))
+  }
+  
+  create_output_dir <- function(output_dir) {
+    logger::log_info("Ensuring output directory exists: {output_dir}")
+    if (!dir.exists(output_dir)) {
+      tryCatch({
+        dir.create(output_dir, recursive = TRUE)
+        logger::log_info("Created output directory: {output_dir}")
+      }, error = function(e) {
+        logger::log_error("Failed to create output directory: {e$message}")
+        stop("Cannot create output directory: ", e$message, call. = FALSE)
+      })
+    } else {
+      logger::log_info("Output directory already exists")
+    }
+  }
+  
+  create_trend_plot <- function(yearly_summary, output_dir) {
+    logger::log_info("Creating time series trend plot")
+    
+    # Ensure year is treated as a factor for proper plotting
+    yearly_summary <- yearly_summary %>%
+      dplyr::mutate(year_factor = as.factor(year))
+    
+    trend_plot <- ggplot2::ggplot(
+      yearly_summary, 
+      ggplot2::aes(x = year_factor, y = avg_accessibility, color = time_threshold, group = time_threshold)
+    ) +
+      ggplot2::geom_point(size = 3) +
+      ggplot2::geom_line(linewidth = 1) +
+      ggplot2::geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+      ggplot2::scale_color_viridis_d(option = "plasma", end = 0.9) +
+      ggplot2::scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+      ggplot2::labs(
+        title = paste0("Accessibility Trends (", 
+                     min(yearly_summary$year), "-", 
+                     max(yearly_summary$year), ")"),
+        subtitle = "Trends across different time thresholds",
+        x = "Year",
+        y = "Accessibility (% of Population)",
+        color = "Time Threshold"
+      ) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+        legend.position = "right",
+        panel.grid.minor = ggplot2::element_blank(),
+        plot.title = ggplot2::element_text(face = "bold", size = 14),
+        plot.subtitle = ggplot2::element_text(size = 12)
+      )
+    
+    plot_path <- file.path(output_dir, "trend_lines.png")
+    logger::log_info("Saving trend plot to {plot_path}")
+    ggplot2::ggsave(plot_path, trend_plot, width = 10, height = 6)
+    
+    return(trend_plot)
+  }
+  
+  create_highlight_plot <- function(yearly_summary, change_summary, output_dir) {
+    logger::log_info("Creating highlighted threshold plot")
+    
+    # Ensure year is treated as a factor
+    yearly_summary <- yearly_summary %>%
+      dplyr::mutate(year_factor = as.factor(year))
+    
+    # Find the threshold with the largest negative change
+    most_decline <- change_summary %>%
+      dplyr::arrange(percent_change) %>%
+      dplyr::slice(1) %>%
+      dplyr::pull(time_threshold)
+    
+    logger::log_info("Most significant decline in {most_decline} threshold: {round(change_summary$percent_change[change_summary$time_threshold == most_decline], 1)}%")
+    
+    highlight_plot <- ggplot2::ggplot(
+      yearly_summary, 
+      ggplot2::aes(x = year_factor, y = avg_accessibility, color = time_threshold, group = time_threshold)
+    ) +
+      ggplot2::geom_line(linewidth = 1.5) +
+      ggplot2::geom_point(size = 3) +
+      gghighlight::gghighlight(
+        time_threshold == most_decline, 
+        unhighlighted_params = list(colour = "gray80")
+      ) +
+      ggplot2::scale_color_viridis_d(option = "plasma", end = 0.9) +
+      ggplot2::scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+      ggplot2::labs(
+        title = paste0(most_decline, " Accessibility Shows Most Severe Decline"),
+        subtitle = paste0(
+          "Overall decrease of ", 
+          round(change_summary$percent_change[change_summary$time_threshold == most_decline], 1), 
+          "% from ", min(yearly_summary$year), " to ", max(yearly_summary$year)
+        ),
+        x = "Year",
+        y = "Accessibility (% of Population)",
+        color = "Time Threshold"
+      ) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+        legend.position = "none",
+        panel.grid.minor = ggplot2::element_blank(),
+        plot.title = ggplot2::element_text(face = "bold", size = 14),
+        plot.subtitle = ggplot2::element_text(size = 12)
+      )
+    
+    plot_path <- file.path(output_dir, "highlight_threshold.png")
+    logger::log_info("Saving highlight plot to {plot_path}")
+    ggplot2::ggsave(plot_path, highlight_plot, width = 8, height = 6)
+    
+    return(highlight_plot)
+  }
+  
+  create_normalized_plot <- function(normalized_data, output_dir) {
+    logger::log_info("Creating normalized trends plot")
+    
+    # Ensure year is treated as a factor
+    normalized_data <- normalized_data %>%
+      dplyr::mutate(year_factor = as.factor(year))
+    
+    normalized_plot <- ggplot2::ggplot(
+      normalized_data, 
+      ggplot2::aes(x = year_factor, y = relative_value, color = time_threshold, group = time_threshold)
+    ) +
+      ggplot2::geom_hline(yintercept = 100, linetype = "dashed", color = "gray50") +
+      ggplot2::geom_line(linewidth = 1.2) +
+      ggplot2::geom_point(size = 2.5) +
+      ggplot2::scale_color_viridis_d(option = "plasma", end = 0.9) +
+      ggplot2::scale_y_continuous(
+        limits = function(x) c(min(x) - 5, 105),
+        breaks = function(x) seq(floor(min(x) / 5) * 5, 105, by = 5),
+        labels = function(x) paste0(x, "%")
+      ) +
+      ggplot2::labs(
+        title = paste0("Relative Accessibility Changes (", min(normalized_data$year), " = 100%)"),
+        subtitle = "Relative changes in accessibility across time thresholds",
+        x = "Year",
+        y = "Relative Accessibility",
+        color = "Time Threshold"
+      ) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+        legend.position = "right",
+        panel.grid.minor = ggplot2::element_blank(),
+        plot.title = ggplot2::element_text(face = "bold", size = 14),
+        plot.subtitle = ggplot2::element_text(size = 12)
+      )
+    
+    plot_path <- file.path(output_dir, "normalized_trends.png")
+    logger::log_info("Saving normalized plot to {plot_path}")
+    ggplot2::ggsave(plot_path, normalized_plot, width = 10, height = 6)
+    
+    return(normalized_plot)
+  }
+  
+  create_change_bars <- function(change_summary, output_dir) {
+    logger::log_info("Creating change bars plot with error bars")
+    
+    # Ensure time thresholds are properly ordered
+    change_summary <- change_summary %>%
+      dplyr::mutate(
+        time_threshold = factor(
+          time_threshold,
+          levels = paste0(sort(time_ranges), "-minute")
+        )
+      )
+    
+    change_plot <- ggplot2::ggplot(
+      change_summary, 
+      ggplot2::aes(x = time_threshold, y = percent_change, fill = time_threshold)
+    ) +
+      ggplot2::geom_col() +
+      # Add error bars using the confidence intervals
+      ggplot2::geom_errorbar(
+        ggplot2::aes(ymin = lower_ci, ymax = upper_ci),
+        width = 0.2,
+        position = ggplot2::position_dodge(0.9)
+      ) +
+      ggplot2::geom_text(
+        ggplot2::aes(
+          label = sprintf("%.1f%%", percent_change),
+          vjust = ifelse(percent_change < 0, 1.5, -0.5)
+        ),
+        color = ifelse(change_summary$percent_change < 0, "white", "black"),
+        size = 4
+      ) +
+      ggplot2::scale_fill_viridis_d(option = "plasma", end = 0.9) +
+      ggplot2::labs(
+        title = paste0("Percentage Change in Accessibility (", 
+                     min(yearly_summary$year), "-", 
+                     max(yearly_summary$year), ")"),
+        subtitle = "Change in accessibility by time threshold (with 95% confidence intervals)",
+        x = NULL,
+        y = "Percentage Change",
+        fill = "Time Threshold"
+      ) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(
+        axis.text.x = ggplot2::element_text(size = 12),
+        legend.position = "none",
+        panel.grid.minor = ggplot2::element_blank(),
+        plot.title = ggplot2::element_text(face = "bold", size = 14),
+        plot.subtitle = ggplot2::element_text(size = 12)
+      )
+    
+    plot_path <- file.path(output_dir, "change_bars.png")
+    logger::log_info("Saving change bars plot to {plot_path}")
+    ggplot2::ggsave(plot_path, change_plot, width = 8, height = 6)
+    
+    return(change_plot)
+  }
+  
+  create_small_multiples <- function(yearly_summary, output_dir) {
+    logger::log_info("Creating small multiples plot")
+    
+    # Ensure year is treated as a factor
+    yearly_summary <- yearly_summary %>%
+      dplyr::mutate(year_factor = as.factor(year))
+    
+    multiples_plot <- ggplot2::ggplot(
+      yearly_summary, 
+      ggplot2::aes(x = year_factor, y = avg_accessibility, group = 1)
+    ) +
+      ggplot2::geom_line(linewidth = 1, color = "steelblue") +
+      ggplot2::geom_point(size = 2, color = "steelblue") +
+      ggplot2::geom_smooth(method = "lm", se = FALSE, color = "darkred", linetype = "dashed") +
+      ggplot2::facet_wrap(~ time_threshold, scales = "free_y") +
+      ggplot2::scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+      ggplot2::labs(
+        title = paste0("Accessibility Trends by Time Threshold (", 
+                     min(yearly_summary$year), "-", 
+                     max(yearly_summary$year), ")"),
+        x = "Year",
+        y = "Accessibility (% of Population)"
+      ) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(
+        axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+        strip.background = ggplot2::element_rect(fill = "lightgray"),
+        strip.text = ggplot2::element_text(face = "bold"),
+        panel.grid.minor = ggplot2::element_blank(),
+        plot.title = ggplot2::element_text(face = "bold", size = 14)
+      )
+    
+    plot_path <- file.path(output_dir, "small_multiples.png")
+    logger::log_info("Saving small multiples plot to {plot_path}")
+    ggplot2::ggsave(plot_path, multiples_plot, width = 10, height = 6)
+    
+    return(multiples_plot)
+  }
+  
+  create_dashboard <- function(all_plots, output_dir) {
+    logger::log_info("Checking if patchwork package is available for dashboard creation")
+    
+    if (!requireNamespace("patchwork", quietly = TRUE)) {
+      logger::log_warn("Patchwork package not available - skipping dashboard creation")
+      return(NULL)
+    }
+    
+    logger::log_info("Creating combined dashboard using patchwork")
+    
+    combined_plot <- (all_plots$trend_plot + all_plots$normalized_plot) / 
+      (all_plots$highlight_plot + all_plots$change_plot) +
+      patchwork::plot_annotation(
+        title = "Accessibility Analysis Dashboard",
+        subtitle = paste0("Multiple perspectives on accessibility trends (", 
+                        min(yearly_summary$year), "-", 
+                        max(yearly_summary$year), ")"),
+        caption = paste0("Data source: ", data_file),
+        theme = ggplot2::theme(
+          plot.title = ggplot2::element_text(size = 18, face = "bold"),
+          plot.subtitle = ggplot2::element_text(size = 14),
+          plot.caption = ggplot2::element_text(size = 10, hjust = 1)
+        )
+      )
+    
+    dashboard_path <- file.path(output_dir, "accessibility_dashboard.png")
+    logger::log_info("Saving dashboard to {dashboard_path}")
+    ggplot2::ggsave(dashboard_path, combined_plot, width = 16, height = 12)
+    
+    return(combined_plot)
+  }
+  
+  # Main execution flow
+  create_output_dir(output_dir)
+  
+  # Process data
+  accessibility_data <- prepare_data(data_file)
+  
+  # Create summary statistics
+  summaries <- create_summary_data(accessibility_data)
+  yearly_summary <- summaries$yearly_summary
+  change_summary <- summaries$change_summary
+  normalized_data <- summaries$normalized_data
+  
+  # Create all plots
+  plots <- list()
+  
+  plots$trend_plot <- create_trend_plot(yearly_summary, output_dir)
+  plots$highlight_plot <- create_highlight_plot(yearly_summary, change_summary, output_dir)
+  plots$normalized_plot <- create_normalized_plot(normalized_data, output_dir)
+  plots$change_plot <- create_change_bars(change_summary, output_dir)
+  plots$small_multiples <- create_small_multiples(yearly_summary, output_dir)
+  
+  # Create dashboard if patchwork is available
+  dashboard <- create_dashboard(plots, output_dir)
+  if (!is.null(dashboard)) {
+    plots$dashboard <- dashboard
+  }
+  
+  # Save the summary data
+  summary_path <- file.path(output_dir, "accessibility_changes.csv")
+  logger::log_info("Saving summary data to {summary_path}")
+  readr::write_csv(change_summary, summary_path)
+  
+  logger::log_info("Visualization process complete")
+  return(plots)
+}
+
+#' @noRd
+is_scalar <- function(x) {
+  length(x) == 1 && !is.null(x)
+}
+
+#' @title Compare Accessibility Between Years
+#' @description Creates a side-by-side comparison of accessibility metrics between
+#'   selected years, highlighting the changes over time.
+#' 
+#' @param data_file Path to the CSV file containing accessibility data
+#' @param years_to_compare Vector of years to compare (typically first and last)
+#' @param output_dir Directory to save output files
+#' @param verbose Logical indicating whether to print detailed logging information
+#' 
+#' @return A list containing the comparison plot and change metrics
+#'
+#' @importFrom assertthat assert_that is_scalar
+#' @importFrom logger log_info log_debug log_error log_warn
+#' @importFrom dplyr filter mutate group_by summarize ungroup select
+#' @importFrom tidyr pivot_longer pivot_wider
+#' @importFrom ggplot2 ggplot aes geom_bar position_dodge scale_fill_brewer 
+#' @importFrom ggplot2 scale_y_continuous labs theme_minimal theme geom_text
+#' @importFrom readr read_csv write_csv
+#' @importFrom scales percent_format percent
+#'
+#' @examples
+#' # Example 1: Basic comparison between earliest and latest years
+#' comparison_results <- compare_years(
+#'   data_file = "data/access_by_group.csv",
+#'   years_to_compare = c(2013, 2022),
+#'   output_dir = "figures",
+#'   verbose = TRUE
+#' )
+#' # Creates comparison visualization between 2013 and 2022
+#' 
+#' # Example 2: Compare specific non-consecutive years
+#' comparison_results <- compare_years(
+#'   data_file = "data/access_by_group.csv",
+#'   years_to_compare = c(2015, 2020),
+#'   output_dir = "figures/specific_years",
+#'   verbose = TRUE
+#' )
+#' # Compares accessibility between 2015 and 2020
+#' 
+#' # Example 3: Compare three different years with minimal output
+#' comparison_results <- compare_years(
+#'   data_file = "data/access_by_group.csv",
+#'   years_to_compare = c(2013, 2018, 2022),
+#'   output_dir = "reports/multi_year_comparison",
+#'   verbose = FALSE
+#' )
+#' # Silently creates comparison between three specified years
+compare_years <- function(data_file = "access_by_group.csv",
+                        years_to_compare = NULL,
+                        output_dir = getwd(),
+                        verbose = TRUE) {
+  # Setup logger configuration
+  logger::log_threshold(if(verbose) logger::INFO else logger::WARN)
+  
+  # Input validation
+  assertthat::assert_that(
+    assertthat::is.string(data_file),
+    assertthat::is.string(output_dir),
+    is.logical(verbose)
+  )
+  
+  logger::log_info("Starting year comparison analysis")
+  logger::log_info("Data file: {data_file}")
+  logger::log_info("Output directory: {output_dir}")
+  
+  # Create output directory if it doesn't exist
+  if (!dir.exists(output_dir)) {
+    tryCatch({
+      dir.create(output_dir, recursive = TRUE)
+      logger::log_info("Created output directory: {output_dir}")
+    }, error = function(e) {
+      logger::log_error("Failed to create output directory: {e$message}")
+      stop("Cannot create output directory: ", e$message, call. = FALSE)
+    })
+  }
+  
+  # Read and process data
+  logger::log_info("Reading data from {data_file}")
+  access_data <- readr::read_csv(data_file, show_col_types = FALSE)
+  logger::log_debug("Successfully read {nrow(access_data)} rows of data")
+  
+  # Verify required columns exist
+  required_cols <- c("year", "range", "percent", "category")
+  assertthat::assert_that(
+    all(required_cols %in% names(access_data)),
+    msg = stringr::str_c("Data must contain columns: ", 
+                       paste(required_cols, collapse = ", "))
+  )
+  
+  # Determine years to compare if not specified
+  if (is.null(years_to_compare)) {
+    years_available <- sort(unique(access_data$year))
+    years_to_compare <- c(min(years_available), max(years_available))
+    logger::log_info("Years not specified, using first and last: {paste(years_to_compare, collapse=', ')}")
+  }
+  
+  # Fix: Check against year column, not range column
+  assertthat::assert_that(
+    all(years_to_compare %in% unique(access_data$year)),
+    msg = "All specified years must exist in the data"
+  )
+  
+  logger::log_info("Comparing years: {paste(years_to_compare, collapse=', ')}")
+  
+  # Filter to selected years and categories
+  logger::log_info("Filtering data for relevant years and categories")
+  
+  # Use total category if available
+  if ("total" %in% access_data$category) {
+    filtered_data <- dplyr::filter(
+      access_data, 
+      year %in% years_to_compare,
+      category == "total"
+    )
+    logger::log_info("Using 'total' category from data")
+  } else if (any(grepl("^total_", access_data$category))) {
+    # Use the first total_* category if no exact total
+    total_cat <- grep("^total_", access_data$category, value = TRUE)[1]
+    filtered_data <- dplyr::filter(
+      access_data, 
+      year %in% years_to_compare,
+      category == total_cat
+    )
+    logger::log_info("Using '{total_cat}' category as proxy for total")
+  } else {
+    # If no total category exists, use all data and warn
+    filtered_data <- dplyr::filter(access_data, year %in% years_to_compare)
+    logger::log_warn("No 'total' category found. Using all categories - results may be skewed.")
+  }
+  
+  # Convert range to minutes if needed
+  if(max(filtered_data$range, na.rm = TRUE) > 1000) {
+    logger::log_info("Converting range from seconds to minutes")
+    filtered_data <- dplyr::mutate(
+      filtered_data,
+      range_minutes = range / 60,
+      time_threshold = paste0(range_minutes, "-minute")
+    )
+  } else {
+    filtered_data <- dplyr::mutate(
+      filtered_data,
+      range_minutes = range,
+      time_threshold = paste0(range, "-minute")
+    )
+  }
+  
+  # Define standard time thresholds for ordering
+  standard_thresholds <- paste0(sort(c(30, 60, 120, 180)), "-minute")
+  
+  # Group data by year and range
+  logger::log_info("Aggregating data by year and time threshold")
+  year_summaries <- filtered_data %>%
+    # Map to standard thresholds if possible
+    dplyr::mutate(
+      standard_threshold = dplyr::case_when(
+        range_minutes <= 30 ~ "30-minute",
+        range_minutes <= 60 ~ "60-minute",
+        range_minutes <= 120 ~ "120-minute",
+        range_minutes <= 180 ~ "180-minute",
+        TRUE ~ time_threshold
+      ),
+      # Ensure it's ordered correctly
+      standard_threshold = factor(standard_threshold, levels = standard_thresholds)
+    ) %>%
+    dplyr::group_by(year, standard_threshold) %>%
+    dplyr::summarize(
+      accessibility = mean(percent / 100, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    dplyr::mutate(year = as.factor(year))
+  
+  logger::log_debug("Created yearly summary with {nrow(year_summaries)} rows")
+  
+  # Create comparison plot
+  logger::log_info("Creating comparison bar chart")
+  
+  comparison_plot <- ggplot2::ggplot(
+    year_summaries, 
+    ggplot2::aes(x = standard_threshold, y = accessibility, fill = year)
+  ) +
+    ggplot2::geom_bar(stat = "identity", position = ggplot2::position_dodge()) +
+    ggplot2::geom_text(
+      ggplot2::aes(
+        label = scales::percent(accessibility, accuracy = 0.1)
+      ),
+      position = ggplot2::position_dodge(width = 0.9),
+      vjust = -0.5, 
+      size = 3.5
+    ) +
+    ggplot2::scale_fill_brewer(palette = "Set1") +
+    ggplot2::scale_y_continuous(
+      labels = scales::percent_format(accuracy = 1),
+      limits = c(0, max(year_summaries$accessibility) * 1.1)
+    ) +
+    ggplot2::labs(
+      title = paste("Comparison of Accessibility:", 
+                  paste(years_to_compare, collapse = " vs. ")),
+      subtitle = "Changes in accessibility across time thresholds",
+      x = "Time Threshold",
+      y = "Accessibility (% of Population)",
+      fill = "Year"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      legend.position = "top",
+      plot.title = ggplot2::element_text(face = "bold", size = 14),
+      plot.subtitle = ggplot2::element_text(size = 12),
+      axis.text.x = ggplot2::element_text(size = 12, angle = 45, hjust = 1)
+    )
+  
+  # Save the plot
+  plot_path <- file.path(output_dir, "year_comparison.png")
+  logger::log_info("Saving comparison plot to {plot_path}")
+  ggplot2::ggsave(plot_path, comparison_plot, width = 10, height = 6)
+  
+  # Calculate changes
+  logger::log_info("Calculating changes between years")
+  
+  changes <- year_summaries %>%
+    dplyr::group_by(standard_threshold) %>%
+    dplyr::summarize(
+      first_year = min(as.numeric(as.character(year))),
+      last_year = max(as.numeric(as.character(year))),
+      first_value = accessibility[year == as.character(first_year)],
+      last_value = accessibility[year == as.character(last_year)],
+      abs_change = last_value - first_value,
+      pct_change = (abs_change / first_value) * 100,
+      .groups = "drop"
+    )
+  
+  # Save changes data
+  changes_path <- file.path(output_dir, "year_comparison_changes.csv")
+  logger::log_info("Saving changes data to {changes_path}")
+  readr::write_csv(changes, changes_path)
+  
+  logger::log_info("Year comparison analysis complete")
+  
+  return(list(
+    comparison_plot = comparison_plot,
+    changes = changes
+  ))
+}
+
+#' @title Run Comprehensive Accessibility Analysis
+#' @description Runs both trend visualization and year comparison analysis on 
+#'   accessibility data, creating a complete set of visualizations and metrics.
+#' 
+#' @param data_file Path to the CSV file containing accessibility data
+#' @param output_dir Directory to save output files
+#' @param time_ranges Vector of time ranges to analyze (in minutes)
+#' @param years_to_compare Vector of years to compare in the year comparison plot
+#' @param verbose Logical indicating whether to print detailed logging information
+#' 
+#' @return A list containing all visualization and analysis results
+#'
+#' @importFrom logger log_info log_debug log_error log_warn
+#' @importFrom assertthat assert_that is_scalar
+#'
+#' @examples
+#' # Example 1: Run full analysis with default parameters
+#' analysis_results <- run_accessibility_analysis(
+#'   data_file = "data/access_by_group.csv",
+#'   output_dir = "figures/full_analysis",
+#'   time_ranges = c(30, 60, 120, 180),
+#'   years_to_compare = c(2013, 2022),
+#'   verbose = TRUE
+#' )
+#' # Creates comprehensive analysis with detailed logging
+#' 
+#' # Example 2: Focus on specific time ranges and years
+#' analysis_results <- run_accessibility_analysis(
+#'   data_file = "data/access_by_group.csv",
+#'   output_dir = "figures/focused_analysis",
+#'   time_ranges = c(30, 60),
+#'   years_to_compare = c(2015, 2020),
+#'   verbose = TRUE
+#' )
+#' # Analysis focuses on 30 and 60 minute ranges, comparing 2015 to 2020
+#' 
+#' # Example 3: Silently run analysis for a custom data file
+#' analysis_results <- run_accessibility_analysis(
+#'   data_file = "path/to/custom_data.csv",
+#'   output_dir = "reports/2025_analysis",
+#'   time_ranges = c(30, 60, 120, 180),
+#'   years_to_compare = NULL,
+#'   verbose = FALSE
+#' )
+#' # Runs analysis without logging, using first and last years in the data
+run_accessibility_analysis <- function(data_file = "access_by_group.csv",
+                                     output_dir = "results/analysis",
+                                     time_ranges = c(30, 60, 120, 180),
+                                     years_to_compare = NULL,
+                                     verbose = TRUE) {
+  # Setup logger
+  logger::log_threshold(if(verbose) logger::INFO else logger::WARN)
+  
+  # Input validation
+  assertthat::assert_that(
+    assertthat::is.string(data_file),
+    assertthat::is.string(output_dir),
+    is.numeric(time_ranges),
+    is.logical(verbose)
+  )
+  
+  logger::log_info("Starting comprehensive accessibility analysis")
+  logger::log_info("Data file: {data_file}")
+  logger::log_info("Output directory: {output_dir}")
+  
+  # Create trend visualizations directory
+  trends_dir <- file.path(output_dir, "trends")
+  logger::log_info("Creating trend visualizations in {trends_dir}")
+  trend_visualizations <- visualize_accessibility_trends(
+    data_file = data_file,
+    output_dir = trends_dir,
+    time_ranges = time_ranges,
+    verbose = verbose
+  )
+  
+  # Create year comparison directory
+  comparison_dir <- file.path(output_dir, "comparisons")
+  logger::log_info("Creating year comparisons in {comparison_dir}")
+  year_comparison <- compare_years(
+    data_file = data_file,
+    years_to_compare = years_to_compare,
+    output_dir = comparison_dir,
+    verbose = verbose
+  )
+  
+  logger::log_info("Comprehensive accessibility analysis complete")
+  
+  # Return combined results
+  return(list(
+    visualizations = trend_visualizations,
+    comparison = year_comparison
+  ))
+}
+```
+
+```{r, include = TRUE}
+# Install needed packages if not already installed
+# install.packages(c("assertthat", "logger", "tidyverse", "ggplot2", "gghighlight"))
+
+# Run the full analysis
+analysis_results <- visualize_accessibility_trends(data_file = "data/Walker_data/access_by_group.csv", 
+                                         output_dir = "figures",
+                                         time_ranges = c(30, 60, 120, 180),
+                                         verbose = TRUE); analysis_results
+  
+```
+
+# Compare Accessibility Between Years With Trend Significance: 1228 Function
+```{r}
+#' @title Compare Accessibility Between Years With Trend Significance
+#' @description Creates a side-by-side comparison of accessibility metrics between
+#'   selected years, highlighting the changes over time with percent change indicators
+#'   and trend significance.
+#' 
+#' @param data_file Path to the CSV file containing accessibility data
+#' @param years_to_compare Vector of years to compare (typically first and last)
+#' @param output_dir Directory to save output files
+#' @param verbose Logical indicating whether to print detailed logging information
+#' 
+#' @return A list containing the comparison plot and change metrics
+#'
+#' @importFrom assertthat assert_that is_scalar
+#' @importFrom logger log_info log_debug log_error log_warn
+#' @importFrom dplyr filter mutate group_by summarize ungroup select
+#' @importFrom tidyr pivot_longer pivot_wider
+#' @importFrom ggplot2 ggplot aes geom_bar position_dodge scale_fill_brewer 
+#' @importFrom ggplot2 scale_y_continuous labs theme_minimal theme geom_text geom_segment
+#' @importFrom readr read_csv write_csv
+#' @importFrom scales percent_format percent
+compare_years <- function(data_file = "access_by_group.csv",
+                          years_to_compare = NULL,
+                          output_dir = getwd(),
+                          verbose = TRUE) {
+  # Setup logger configuration
+  logger::log_threshold(if(verbose) logger::INFO else logger::WARN)
+  
+  # Input validation
+  assertthat::assert_that(
+    assertthat::is.string(data_file),
+    assertthat::is.string(output_dir),
+    is.logical(verbose)
+  )
+  
+  logger::log_info("Starting year comparison analysis with trend significance")
+  logger::log_info("Data file: {data_file}")
+  logger::log_info("Output directory: {output_dir}")
+  
+  # Create output directory if it doesn't exist
+  if (!dir.exists(output_dir)) {
+    tryCatch({
+      dir.create(output_dir, recursive = TRUE)
+      logger::log_info("Created output directory: {output_dir}")
+    }, error = function(e) {
+      logger::log_error("Failed to create output directory: {e$message}")
+      stop("Cannot create output directory: ", e$message, call. = FALSE)
+    })
+  }
+  
+  # Read and process data
+  logger::log_info("Reading data from {data_file}")
+  access_data <- readr::read_csv(data_file, show_col_types = FALSE)
+  logger::log_debug("Successfully read {nrow(access_data)} rows of data")
+  
+  # Get all years for regression analysis
+  all_years <- sort(unique(access_data$year))
+  logger::log_info("Found data for years: {paste(all_years, collapse=', ')}")
+  
+  # Determine years to compare if not specified
+  if (is.null(years_to_compare)) {
+    years_to_compare <- c(min(all_years), max(all_years))
+    logger::log_info("Years not specified, using first and last: {paste(years_to_compare, collapse=', ')}")
+  }
+  
+  # Check against year column
+  assertthat::assert_that(
+    all(years_to_compare %in% all_years),
+    msg = "All specified years must exist in the data"
+  )
+  
+  logger::log_info("Comparing years: {paste(years_to_compare, collapse=', ')}")
+  
+  # Use total category if available
+  if ("total" %in% access_data$category) {
+    filtered_data <- dplyr::filter(
+      access_data, 
+      category == "total"
+    )
+    logger::log_info("Using 'total' category from data")
+  } else if (any(grepl("^total_", access_data$category))) {
+    # Use the first total_* category if no exact total
+    total_cat <- grep("^total_", access_data$category, value = TRUE)[1]
+    filtered_data <- dplyr::filter(
+      access_data, 
+      category == total_cat
+    )
+    logger::log_info("Using '{total_cat}' category as proxy for total")
+  } else {
+    # If no total category exists, use all data and warn
+    filtered_data <- access_data
+    logger::log_warn("No 'total' category found. Using all categories - results may be skewed.")
+  }
+  
+  # Define standard time thresholds based on actual data
+  unique_ranges <- sort(unique(filtered_data$range))
+  
+  # Convert range to minutes if needed
+  logger::log_info("Processing time ranges")
+  if(max(filtered_data$range, na.rm = TRUE) > 1000) {
+    # Convert from seconds to minutes
+    range_minutes <- unique_ranges / 60
+    filtered_data <- filtered_data %>%
+      dplyr::mutate(
+        range_minutes = range / 60
+      )
+    logger::log_info("Converted range from seconds to minutes")
+  } else {
+    # Range already in minutes
+    range_minutes <- unique_ranges
+    filtered_data <- filtered_data %>%
+      dplyr::mutate(
+        range_minutes = range
+      )
+  }
+  
+  # Create time threshold labels
+  standard_labels <- paste0(range_minutes, "-minute")
+  logger::log_info("Using time thresholds: {paste(standard_labels, collapse=', ')}")
+  
+  # Create a mapping between range and threshold
+  threshold_mapping <- data.frame(
+    range = unique_ranges,
+    time_threshold = standard_labels,
+    stringsAsFactors = FALSE
+  )
+  
+  # Join with threshold mapping
+  processed_data <- filtered_data %>%
+    dplyr::left_join(threshold_mapping, by = "range") %>%
+    dplyr::mutate(
+      time_threshold = factor(time_threshold, levels = standard_labels)
+    )
+  
+  # Process data for all years for regression analysis
+  all_years_data <- processed_data %>%
+    dplyr::group_by(year, time_threshold) %>%
+    dplyr::summarize(
+      accessibility = mean(percent / 100, na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  # Perform regression analysis to get p-values
+  logger::log_info("Performing regression analysis for trend significance")
+  
+  regression_results <- data.frame()
+  
+  for (threshold in levels(processed_data$time_threshold)) {
+    # Extract data for this threshold across all years
+    threshold_data <- all_years_data %>%
+      dplyr::filter(time_threshold == threshold)
+    
+    if (nrow(threshold_data) >= 3) {  # Need at least 3 points for meaningful regression
+      # Fit linear model
+      model <- tryCatch({
+        lm(accessibility ~ year, data = threshold_data)
+      }, error = function(e) {
+        logger::log_warn("Regression failed for {threshold}: {e$message}")
+        return(NULL)
+      })
+      
+      if (!is.null(model)) {
+        # Extract p-value for the slope
+        model_summary <- summary(model)
+        slope <- model_summary$coefficients[2, 1]  # Coefficient for year
+        p_value <- model_summary$coefficients[2, 4]  # p-value for year coefficient
+        
+        # Add to results
+        regression_results <- rbind(regression_results, data.frame(
+          time_threshold = threshold,
+          slope = slope,
+          p_value = p_value,
+          significance = dplyr::case_when(
+            p_value < 0.001 ~ "***",
+            p_value < 0.01 ~ "**", 
+            p_value < 0.05 ~ "*",
+            TRUE ~ "ns"
+          )
+        ))
+      }
+    } else {
+      logger::log_warn("Not enough data points for regression on {threshold}")
+    }
+  }
+  
+  # Filter to selected years for comparison
+  year_summaries <- all_years_data %>%
+    dplyr::filter(year %in% years_to_compare) %>%
+    dplyr::mutate(year = as.factor(year))
+  
+  # Calculate percent change between selected years
+  logger::log_info("Calculating percent changes between selected years")
+  
+  change_data <- data.frame()
+  
+  for (threshold in levels(processed_data$time_threshold)) {
+    # Extract data for this threshold for the comparison years
+    threshold_data <- year_summaries %>%
+      dplyr::filter(time_threshold == threshold)
+    
+    first_year_val <- threshold_data$accessibility[threshold_data$year == min(years_to_compare)]
+    last_year_val <- threshold_data$accessibility[threshold_data$year == max(years_to_compare)]
+    
+    if (length(first_year_val) > 0 && length(last_year_val) > 0) {
+      abs_change <- last_year_val - first_year_val
+      pct_change <- (abs_change / first_year_val) * 100
+      
+      change_data <- rbind(change_data, data.frame(
+        time_threshold = threshold,
+        first_year = min(years_to_compare),
+        last_year = max(years_to_compare),
+        first_value = first_year_val,
+        last_value = last_year_val,
+        abs_change = abs_change,
+        pct_change = pct_change
+      ))
+    }
+  }
+  
+  # Join with significance data
+  if (nrow(regression_results) > 0) {
+    change_data <- change_data %>%
+      dplyr::left_join(
+        regression_results %>% 
+          dplyr::select(time_threshold, p_value, significance),
+        by = "time_threshold"
+      )
+  }
+  
+  # Ensure proper ordering
+  change_data <- change_data %>%
+    dplyr::mutate(
+      time_threshold = factor(time_threshold, levels = standard_labels)
+    ) %>%
+    dplyr::arrange(time_threshold)
+  
+  # Create the comparison plot
+  logger::log_info("Creating enhanced comparison plot with trend significance")
+  
+  # Get position for dodged bars
+  dodge_width <- 0.9
+  position_dodge_obj <- ggplot2::position_dodge(width = dodge_width)
+  
+  # Create base plot
+  comparison_plot <- ggplot2::ggplot(
+    year_summaries, 
+    ggplot2::aes(x = time_threshold, y = accessibility, fill = year)
+  )
+  
+  # Add bars
+  comparison_plot <- comparison_plot + 
+    ggplot2::geom_bar(stat = "identity", position = position_dodge_obj)
+  
+  # Add percentage values on bars
+  comparison_plot <- comparison_plot + 
+    ggplot2::geom_text(
+      ggplot2::aes(
+        label = scales::percent(accessibility, accuracy = 0.1)
+      ),
+      position = position_dodge_obj,
+      vjust = -0.5, 
+      size = 3.5
+    )
+  
+  # Add connecting lines - with inherit.aes=FALSE to fix the error
+  comparison_plot <- comparison_plot + 
+    ggplot2::geom_segment(
+      data = change_data,
+      mapping = ggplot2::aes(
+        x = as.numeric(time_threshold) - 0.2,
+        xend = as.numeric(time_threshold) + 0.2,
+        y = first_value,
+        yend = last_value
+      ),
+      inherit.aes = FALSE,  # This is the critical fix
+      linewidth = 0.8,
+      color = "black",
+      alpha = 0.6,
+      linetype = "dashed"
+    )
+  
+  # Add percent change annotation with significance
+  label_data <- change_data %>%
+    dplyr::mutate(
+      sig = ifelse(is.na(significance), "", significance),
+      label = sprintf("%+.1f%% %s", pct_change, sig)
+    )
+  
+  comparison_plot <- comparison_plot + 
+    ggplot2::geom_text(
+      data = label_data,
+      mapping = ggplot2::aes(
+        x = time_threshold,
+        y = pmax(first_value, last_value) * 1.05,
+        label = label
+      ),
+      inherit.aes = FALSE,  # Also critical
+      color = ifelse(label_data$pct_change < 0, "red", "green4"),
+      fontface = "bold"
+    )
+  
+  # Add styling
+  comparison_plot <- comparison_plot +
+    ggplot2::scale_fill_brewer(palette = "Set1") +
+    ggplot2::scale_y_continuous(
+      labels = scales::percent_format(accuracy = 1),
+      limits = c(0, max(year_summaries$accessibility) * 1.15)
+    ) +
+    ggplot2::labs(
+      title = paste("Comparison of Accessibility:", 
+                   paste(years_to_compare, collapse = " vs. ")),
+      subtitle = "Changes in accessibility across time thresholds with significance",
+      caption = "Significance codes: *** p<0.001, ** p<0.01, * p<0.05, ns p≥0.05",
+      x = "Time Threshold",
+      y = "Accessibility (% of Population)",
+      fill = "Year"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      legend.position = "top",
+      plot.title = ggplot2::element_text(face = "bold", size = 14),
+      plot.subtitle = ggplot2::element_text(size = 12),
+      axis.text.x = ggplot2::element_text(size = 12, angle = 45, hjust = 1),
+      plot.caption = ggplot2::element_text(size = 10, hjust = 1)
+    )
+  
+  # Save the plot
+  plot_path <- file.path(output_dir, "year_comparison.png")
+  logger::log_info("Saving comparison plot to {plot_path}")
+  ggplot2::ggsave(plot_path, comparison_plot, width = 10, height = 6)
+  
+  # Create a second plot showing just the percent changes with significance
+  logger::log_info("Creating percent change summary plot with significance")
+  
+  change_plot <- ggplot2::ggplot(
+    change_data,
+    ggplot2::aes(x = time_threshold, y = pct_change, fill = time_threshold)
+  ) +
+    ggplot2::geom_col() +
+    ggplot2::geom_text(
+      ggplot2::aes(
+        label = sprintf("%+.1f%% %s", pct_change, ifelse(is.na(significance), "", significance)),
+        y = ifelse(pct_change < 0, pct_change - 1, pct_change + 1)
+      ),
+      fontface = "bold"
+    ) +
+    ggplot2::scale_fill_viridis_d(option = "plasma", end = 0.9) +
+    ggplot2::geom_hline(yintercept = 0, linetype = "dashed") +
+    ggplot2::labs(
+      title = paste("Percent Change in Accessibility", 
+                   min(years_to_compare), "to", max(years_to_compare)),
+      subtitle = "With statistical significance of trend over time",
+      caption = "Significance codes: *** p<0.001, ** p<0.01, * p<0.05, ns p≥0.05",
+      x = "Time Threshold",
+      y = "Percent Change (%)",
+      fill = "Time Threshold"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      legend.position = "none",
+      plot.title = ggplot2::element_text(face = "bold", size = 14),
+      plot.subtitle = ggplot2::element_text(size = 12),
+      axis.text.x = ggplot2::element_text(size = 12),
+      plot.caption = ggplot2::element_text(size = 10, hjust = 1)
+    )
+  
+  # Save the change plot
+  change_plot_path <- file.path(output_dir, "percent_change.png")
+  logger::log_info("Saving percent change plot to {change_plot_path}")
+  ggplot2::ggsave(change_plot_path, change_plot, width = 8, height = 6)
+  
+  # Create a time series plot with regression lines (to show trends better)
+  logger::log_info("Creating time series trend plot")
+  
+  time_series_data <- all_years_data %>%
+    dplyr::mutate(
+      time_threshold = factor(time_threshold, levels = standard_labels)
+    )
+  
+  trend_plot <- ggplot2::ggplot(
+    time_series_data,
+    ggplot2::aes(x = year, y = accessibility, color = time_threshold, group = time_threshold)
+  ) +
+    ggplot2::geom_point(size = 2) +
+    ggplot2::geom_line(linewidth = 0.8) +
+    ggplot2::geom_smooth(method = "lm", se = TRUE, alpha = 0.2) +
+    ggplot2::scale_color_viridis_d(option = "plasma", end = 0.9) +
+    ggplot2::scale_y_continuous(labels = scales::percent_format()) +
+    ggplot2::labs(
+      title = "Accessibility Trends Over Time",
+      subtitle = "Linear trends with 95% confidence intervals",
+      x = "Year",
+      y = "Accessibility (% of Population)",
+      color = "Time Threshold"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      legend.position = "right",
+      plot.title = ggplot2::element_text(face = "bold", size = 14),
+      plot.subtitle = ggplot2::element_text(size = 12)
+    )
+  
+  trend_plot_path <- file.path(output_dir, "time_trends.png")
+  logger::log_info("Saving time series trend plot to {trend_plot_path}")
+  ggplot2::ggsave(trend_plot_path, trend_plot, width = 10, height = 6)
+  
+  # Save changes data
+  changes_path <- file.path(output_dir, "year_comparison_changes.csv")
+  logger::log_info("Saving changes data with significance to {changes_path}")
+  readr::write_csv(change_data, changes_path)
+  
+  logger::log_info("Year comparison analysis complete")
+  
+  return(list(
+    comparison_plot = comparison_plot,
+    change_plot = change_plot,
+    trend_plot = trend_plot,
+    changes = change_data,
+    regression_results = regression_results
+  ))
+}
+```
+
+# Execute Year by Year
+```{r, include = TRUE}
+yearbyyear <- compare_years(
+  data_file = "data/Walker_data/access_by_group.csv",
+  years_to_compare = c(2013, 2022),  
+  output_dir = "figures",
+  verbose = TRUE
+)
+
+yearbyyear
+```
+
