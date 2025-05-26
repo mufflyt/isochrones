@@ -157,4 +157,4 @@ tyler_*.tar.gz
 .~lock.*
 tmp/
 temp/
-.temp/
+.temp/data/
