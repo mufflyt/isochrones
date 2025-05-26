@@ -1,0 +1,28 @@
+
+.value-box {
+  margin-bottom: 15px;
+}
+.section.level2 {
+  margin-top: 30px;
+}
+.navbar {
+  background-color: #2c3e50;
+}
+.chart-title {
+  font-weight: bold;
+  font-size: 1.2em;
+}
+.glossary-term {
+  font-weight: bold;
+  color: #2c3e50;
+}
+.glossary-def {
+  margin-left: 20px;
+  margin-bottom: 15px;
+}
+.key-insight {
+  background-color: #f8f9fa;
+  border-left: 5px solid #4e73df;
+  padding: 10px 15px;
+  margin: 15px 0;
+}
