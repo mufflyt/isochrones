@@ -1361,7 +1361,7 @@ physician_compare_data <- clean_physician_data %>%
   collect()  # This executes the query and brings results into R
 
 # Save extracted data to CSV
-write_csv(physician_compare_data, "physician_compare_data.csv")
+write_csv(physician_compare_data, "data/C_physician_compare_data.csv")
 
 
 #############

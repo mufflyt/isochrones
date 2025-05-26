@@ -1,95 +1,534 @@
 ---
 title: "Gynecologic Oncology Accessibility Project"
-author: "Tyler Muffly, MD"
-date: "2025-02-09"
-output: github_document
+subtitle: "Nationwide Analysis of Access to OBGYN Subspecialists Using Drive Time Isochrones (2013-2023)"
+author: 
+  - name: "Tyler Muffly, MD"
+    affiliation: "Department of Obstetrics and Gynecology"
+    email: "tyler.muffly@example.edu"
+date: "`r Sys.Date()`"
+description: |
+  This project analyzes nationwide access to gynecologic oncologists and other 
+  OBGYN subspecialists using drive time isochrones, demographic data, and 
+  geospatial analysis. The analysis examines how accessibility varies across 
+  different geographic areas, demographic groups, and time periods (2013-2023).
+keywords: 
+  - "gynecologic oncology"
+  - "healthcare accessibility" 
+  - "spatial analysis"
+  - "isochrones"
+  - "health disparities"
+  - "geographic information systems"
+version: "1.0.0"
+license: "MIT"
+output:
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: 
+      collapsed: false
+      smooth_scroll: true
+    number_sections: true
+    theme: "flatly"
+    highlight: "tango"
+    fig_width: 10
+    fig_height: 8
+    fig_caption: true
+    code_folding: "show"
+    code_download: true
+    dev: "png"
+    dpi: 300
+    self_contained: true
+    keep_md: true
+    pandoc_args: ["--wrap=preserve"]
+link-citations: true
+always_allow_html: true
+editor_options:
+  chunk_output_type: console
+  markdown:
+    wrap: 80
+    canonical: true
 ---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
+<!-- Badges Section -->
+
+[![Project
+Status](https://img.shields.io/badge/Project%20Status-Active-brightgreen.svg)](https://github.com/mufflyt/isochrones)
+[![R
+Version](https://img.shields.io/badge/R-%E2%89%A5%204.0.0-blue.svg)](https://cran.r-project.org/)
+[![License:
+MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
+  comment = "#>",
   collapse = TRUE,
-  comment = "#>"
+  echo = TRUE,          # Show code in output
+  warning = FALSE,      # No warnings
+  message = TRUE,       # Show messages
+  error = FALSE,        # Don't stop on errors
+  fig.width = 8,        # Default figure width
+  fig.height = 6,       # Default figure height
+  fig.align = "center", # Center figures
+  dpi = 300,            # Higher resolution figures
+  out.width = "85%",    # Control display size
+  cache = FALSE,        # Cache results? (TRUE for large computations)
+  comment = "#>",       # Comment character for output
+  tidy = FALSE,         # Don't reformat code
+  dev = "png",           # Output device for plots
+  include = FALSE
+)
+
+# Check if required directories exist
+if (!dir.exists("figures")) dir.create("figures", recursive = TRUE)
+if (!dir.exists("data")) dir.create("data", recursive = TRUE)
+if (!dir.exists("assets")) dir.create("assets", recursive = TRUE)
+```
+
+```{r load-packages, include=FALSE, message=FALSE}
+# Core data manipulation and analysis
+library(tidyverse)
+library(logger)
+library(assertthat)
+library(glue)
+
+# Geospatial analysis
+library(sf)
+library(tigris)
+
+# Visualization
+library(ggplot2)
+library(scales)
+library(viridis)
+library(gghighlight)
+library(patchwork)
+library(ggtext)
+library(ggrepel)
+
+# Tables and reporting
+library(DT)
+library(knitr)
+library(kableExtra)
+
+# Statistical analysis
+library(stats)
+library(broom)
+
+# Set logger threshold
+logger::log_threshold(logger::INFO)
+
+# Set ggplot2 theme
+theme_set(theme_minimal(base_size = 12))
+```
+
+# 🔬 Research Objectives
+
+-   **Primary**: Quantify geographic accessibility to gynecologic oncology
+    specialists nationwide
+-   **Secondary**: Analyze demographic disparities in subspecialist access
+-   **Tertiary**: Examine temporal trends in healthcare workforce distribution
+-   **Quaternary**: Identify underserved populations and geographic areas
+
+## 🎯 Project Overview
+
+This project analyzes nationwide access to gynecologic oncologists and other
+OBGYN subspecialists using drive time isochrones, demographic data, and
+geospatial analysis. The analysis examines how accessibility varies across
+different geographic areas, demographic groups, and time periods (2013-2023).
+
+Using the HERE Maps API and census data, we calculate drive time isochrones
+around gynecologic oncologists' locations and analyze the demographics of
+populations within each drive time threshold. The project examines changes in
+accessibility over time and retirement patterns among specialists.
+
+# 🎯 Project Overview & Conceptual Framework
+
+## What Are Isochrones?
+
+**Isochrones** are geographic boundaries showing areas reachable within specific
+travel times from a point. Think of them as "time zones" around each doctor's
+office - the 30-minute isochrone includes all places you can drive to within 30
+minutes.
+
+**Why This Matters for Healthcare Access:** - **Patient perspective**: How far
+do I have to travel for specialized care? - **Policy perspective**: Which
+populations are underserved? - **Planning perspective**: Where should new
+providers practice?
+
+## Key Methodological Decisions & Rationale
+
+### Drive Time Thresholds (30, 60, 120, 180 minutes)
+
+-   **30 minutes**: Local/regional access - most patients willing to travel
+-   **60 minutes**: Extended local access - reasonable for specialty care
+-   **120 minutes**: Regional access - acceptable for highly specialized care
+-   **180 minutes**: Maximum reasonable access - beyond this is effectively
+    inaccessible
+
+### Reference Time: Third Friday of October, 9:00 AM
+
+-   **Rationale**: Standardized across all years for consistency
+-   **Considerations**: Rush hour vs. off-peak; Friday represents typical
+    weekday
+-   **Limitation**: Doesn't account for seasonal variations or weekend access
+
+### Geographic Resolution: Census Block Groups vs. Counties
+
+-   **Choice**: Used census block groups (smaller geographic units)
+-   **Advantage**: More precise population estimates, captures urban/rural
+    differences
+-   **Trade-off**: Increased computational complexity vs. more accurate results
+
+## Subspecialist Categories Analyzed
+
+### Primary Focus: Gynecologic Oncology
+
+-   **Definition**: Physicians specializing in cancers of the female
+    reproductive system
+-   **Taxonomy Code**: 207VX0201X
+-   **Typical Training**: 3 or 4-year fellowship after OBGYN residency
+-   **Rarity**: Highly specialized - limited number nationwide
+
+### Secondary Analysis Subspecialties:
+
+1.  **Female Pelvic Medicine/Urogynecology (207VF0040X)**
+    -   Pelvic floor disorders, incontinence
+    -   Recent name change from FPMRS to URPS
+2.  **Maternal-Fetal Medicine (207VM0101X)**
+    -   High-risk pregnancy specialists
+    -   Critical for complex obstetric care
+3.  **Reproductive Endocrinology (207VE0102X)**
+    -   Fertility specialists
+    -   Hormone-related reproductive disorders
+
+#### Taxonomy Code Reference
+
+``` r
+obgyn_taxonomy_codes <- c(
+  "207V00000X",    # Obstetrics & Gynecology (general)
+  "207VX0201X",    # Gynecologic Oncology (PRIMARY FOCUS)
+  "207VE0102X",    # Reproductive Endocrinology 
+  "207VG0400X",    # Gynecology (general)
+  "207VM0101X",    # Maternal & Fetal Medicine
+  "207VF0040X",    # Female Pelvic Medicine/Urogynecology
+  "207VB0002X",    # Bariatric Medicine
+  "207VC0200X",    # Critical care medicine
+  "207VC0300X",    # Complex family planning  
+  "207VH0002X",    # Palliative care
+  "207VX0000X"     # Obstetrics only
 )
 ```
 
-## Project Overview
-
-This project analyzes nationwide access to gynecologic oncologists and other OBGYN subspecialists using drive time isochrones, demographic data, and geospatial analysis. The analysis examines how accessibility varies across different geographic areas, demographic groups, and time periods (2013-2023).
-
-Using the HERE Maps API and census data, we calculate drive time isochrones around gynecologic oncologists' locations and analyze the demographics of populations within each drive time threshold. The project examines changes in accessibility over time and retirement patterns among specialists.
-
-### Subspecialists Analyzed
-- Female Pelvic Medicine and Reconstructive Surgery/Urogynecology
-- Gynecologic Oncology
-- Maternal-Fetal Medicine
-- Reproductive Endocrinology and Infertility
-
 ## File Organization
 
-### Core Analysis Workflow
+## 📂 Detailed File Organization & Purpose
+
+```         
+isochrones/
+├── 📁 data/                           # Raw and processed datasets
+│   ├── demographic_disparities_analysis.csv
+│   ├── difference_in_difference_analysis.csv
+│   ├── duplicateyearandfill.csv
+│   ├── end_inner_join_postmaster_clinician_data.csv
+│   ├── end_rejoined_geocoded_unique_address.csv
+│   ├── fips-states.csv
+│   ├── healthcare_benchmark_references.md
+│   ├── intersect.csv
+│   ├── Medicare_Part_D_physician_retirement_analysis.csv
+│   ├── physician_compare_data.csv
+│   ├── physician_retirement_years.csv
+│   ├── population_weighted_means_with_ci.csv
+│   └── racial_decay_curves.png
+├── 📁 figures/                        # Generated visualizations
+│   └── [Generated plots and maps]
+├── 📁 R/                             # All R scripts and functions
+│   │   📊 ***GO_access_analysis_code.Rmd***    # Main analysis report
+│   ├── 📊 Data Collection (A-Series)
+│   │   ├── A-abms.R                  # Board certification scraping
+│   │   ├── A-facility_affiliation_download.R  # CMS facility data
+│   │   ├── A-Medicare_part_d_prescribers_data_download.R
+│   │   ├── A-NPI_deactivation_download.R     # Provider deactivation
+│   │   ├── A-nppes_download.R        # Historical NPPES from NBER
+│   │   ├── A-open_payments_download.R        # Sunshine Act data
+│   │   └── A-physician_compare_data_download.R
+│   ├── 📋 Data Read In (B-Series)
+│   │   ├── B-Medicare_part_d_prescribers_read_in.R   # Read in data
+│   │   ├── B-NPI_deactivation.R                      # Read in data
+│   │   ├── B-NPPES_read_in_csv_to_duckDB_database.R  # Read in data
+│   │   ├── B-open_payments_cleaning.R                # Read in data
+│   │   ├── B-physician_compare_data_download.R       # Read in data
+│   ├── 📋 Data Processing (C-Series)
+│   │   ├── C-Extracting_and_Processing_NPPES_Provider_Data.R
+│   │   ├── C-NPPES.R
+│   │   ├── C-open_payments.R
+│   │   ├── C-physician_compare_cleaning.R
+│   ├── 📋 Data Quality Check (D-Series)
+│   │   ├── D-Quality_check_medicare_prescribing.R
+│   │   ├── D-Quality_check_on_NPPES_merge.R
+│   ├── 📋 Export Cleaned Data (E-Series)
+│   │   ├── E-Medicare_part_d_retirement_analysis_processing.R
+│   │   ├── E-open_payments_export.R
+│   │   └── F-retirement_year_confirmation.R
+│   ├── 🗺️ Core Analysis Pipeline (00-10 Series)
+│   │   ├── 000-Control.R             # Master control script
+│   │   ├── 01-setup.R                # Environment and API setup
+│   │   ├── 02-search_taxonomy.R      # NPPES taxonomy search
+│   │   ├── 02.5-subspecialists_over_time.R   # Temporal trends
+│   │   ├── 03-search_and_process_npi.R       # NPI data processing
+│   │   ├── 03a-search_and_process_extra.R    # Additional NPI processing
+│   │   ├── 04-geocode.R              # Address geocoding (HERE API)
+│   │   ├── 06-isochrones.R           # Drive time isochrone generation
+│   │   ├── 07-isochrone-mapping.R    # Spatial joins and mapping
+│   │   ├── 07.5-prep-get-block-group-overlap.R
+│   │   ├── 08-get-block-group-overlap.R      # Census block calculations
+│   │   ├── 08.5-prep-the-census-variables.R
+│   │   ├── 09-get-census-population.R        # Population analysis
+│   │   ├── 10-calculate-polygon-demographics.R
+│   │   └── 10-make-region.R          # Regional analysis
+│   ├── 📈 Results & Analysis
+│   │   ├── analyze_isochrone_data.R          # Statistical trend analysis
+│   │   ├── walker_isochrone_maps.R           # Final map generation
+│   │   ├── subspecialists_over_time.R        # Workforce trends
+│   │   ├── retirement_adjusted.R             # Retirement analysis
+│   │   └── getting_isochrones_trying.R       # Alternative methods
+│   ├── 🛠️ Utility Functions
+│   │   ├── api_keys.R                # API key management
+│   │   ├── bespoke_functions.R       # Custom project functions
+│   │   ├── geocode.R                 # Geocoding utilities
+├── 📁 results/                       # Analysis outputs
+│   ├── state_data.csv
+│   ├── summary_statistics.csv
+│   ├── table1_temporal_trends_summary.csv
+│   ├── table2_demographic_disparities_summary.csv
+│   ├── tabulated_all_years_clean_2024-08-30.xlsx
+│   ├── temporal_trend_analysis.csv
+│   ├── trend_analysis.csv
+│   └── us_states.csv
+├── 📄 README.Rmd                     # This documentation
+├── 📄 README.html                    # Rendered HTML version
+├── 📄 README.md                      # Markdown version
+```
 
 #### Data Gathering
-- `Postico_database_pull.R` - Extracts physician data from PostgreSQL database, enabling year-by-year analysis of physician practice locations from 2013 to 2022.  Pulls "GYNECOLOGIC ONCOLOGY" from the Primary Specialty.  For urogyn, we will need NPIs to go retrospectively to look for people.  
-- `getting_isochrones_trying.R` - Alternative method for isochrone generation
-- `retirement_adjusted.R` - Enhanced retirement analysis using multiple data sources (NPI deactivation, Medicare data, and board certification status) to improve workforce accuracy.
-- `subspecialists over time.R` - Analysis of subspecialist trends
-- `visualize_fips_inters_isochr.R` - Visualizes FIPS code intersections
-- `fips_blocks_female_proportion.R` - Analyzes female population in FIPS blocks
-- `fips_isochrones_population_intersect.R` - Examines population within isochrones
+
+-   `bespoke_functions.R` - Data for the duckDB connection and functions for the
+    Data Gathering lettered code below. The National Bureau of Economic Research
+    (NBER) provides a cumulative NPI/NPPES dataset created from monthly CMS
+    files spanning from April 2007 to the present, addressing limitations in
+    official CMS offerings that lack historical provider details. The dataset is
+    deduplicated based on variable changes (excluding mere updates in file names
+    or years), and includes separate core and multiplicative variable files to
+    manage the large file sizes efficiently.
+
+| **Dataset/Script Name** | **Available Years** | **Notes** |
+|:---|:---|:---|
+| **`A_nppes_download.R`** | 2007–2022 | NBER cumulative NPPES file (monthly updates deduplicated; includes changes back to 2007). |
+| **`A-NPI_deactivation_download.R`** | Varies, slightly delayed | Based on self-reported deactivation. CMS updates irregularly; may lag real-time by 1–2 years. |
+| **`A-Medicare_part_d_prescribers_data_downloaded`** | 2013–2022 | Released annually by CMS; first available dataset based on 2013 prescribing data. |
+| **`A-download_physician_compare_download`** | \~2013–2020 (downloaded files) | ICPSR archive has files through \~2020 (Physician Compare closed in Dec 2020). Must manually log in. |
+| **`A-facility_affiliation_download.R`** | 2014–present | First Facility Affiliation data started \~2014; yearly updates (CMS Physician Compare Affiliation data). |
+| **`A-open_payments_download.R`** | 2013–present | Open Payments (Sunshine Act) started reporting payments in 2013. Annual updates. |
+
+-   `A_nppes_download.R` - Downloads NPPES data for back years from NBER
+    (National Board Economic Research). The National Bureau of Economic Research
+    (NBER) provides a cumulative NPI/NPPES dataset created from monthly CMS
+    files spanning from April 2007 to 2022, addressing limitations in official
+    CMS offerings that lack historical provider details. The dataset is
+    deduplicated based on variable changes (excluding mere updates in file names
+    or years), and includes separate core and multiplicative variable files to
+    manage the large file sizes efficiently.
+
+-   `A-NPI_deactivation_download.R` - NPPES data may be a few years behind and
+    is all based on personal report.
+
+-   `A-Medicare_part_d_prescribers_data_downloaded` - Good for docs who
+    prescribe drugs to Medicare patients over 65 years old. Started 2013 to
+
+    2022. 
+
+-   `A-download_physician_compare_download` - To get old physician
+    compare/national downloadable files we need to log in manually to OPEN
+    ICPSR:
+    <https://www.openicpsr.org/openicpsr/project/149961/version/V1/view?path=/openicpsr/149961/fcr:versions/V1&type=project>.
+    You have to login with google account to download it.
+
+-   `A-facility_affiliation_download.R` - Gold standard.
+
+-   `A-open_payments_download.R` - Open Payments.
+
+-   `B-read_in_csv_file_to_duckDB_database.R` - Reads in the NPPES CSV fils from
+    the NBER to the duckDB database. The primary action occurs via the
+    process_nppes_data function (defined in an external script
+    bespoke_functions.R), which reads and processes a large CSV file containing
+    historical NPI data (spanning May 2005 to October 2020). The processed data
+    is stored in a DuckDB database file.
+
+-   `C-Extracting_and_Processing_NPPES_Provider_Data.R` - Function for
+    processing OBGYNs from NPPES data with exact file names for years 2010
+    to 2022. Automatically identifies and maps database tables to their
+    corresponding years, enabling efficient extraction of provider data across
+    different time periods. Specifies taxonomy codes representing various OB/GYN
+    subspecialties, including general obstetrics and gynecology, maternal-fetal
+    medicine, and female pelvic medicine. Looks at all taxonomy columns in each
+    year's dataset (not just the first one). Checks if any of your specified
+    codes appear in any of those columns. Includes a physician in the results if
+    there's a match in any column. Retrieves provider records matching specified
+    OB/GYN taxonomy codes from each year, standardizing and combining the data
+    into a unified dataset.
+
+-   `D-Quality_check_on_NPPES_merge.R` - The check_physician_presence function
+    is a well-designed utility for tracking physicians across temporal data. It
+    efficiently analyzes a dataset containing physician information to determine
+    when specific providers appear in the records. The function accepts a list
+    of National Provider Identifiers (NPIs), optionally paired with provider
+    names, and methodically examines each NPI's presence throughout different
+    years. It returns a structured data frame summarizing each provider's
+    representation in the dataset, including their total record count and a
+    chronological listing of years in which they appear. This function is
+    particularly valuable for longitudinal analyses of healthcare provider data,
+    enabling researchers to identify patterns in physician presence, track
+    career trajectories, or validate data completeness across multiple years of
+    NPI records.
+
+``` r
+# List of NPIs to check
+npi_list <- c(
+  "1689603763",   # Tyler Muffly, MD
+  "1528060639",   # John Curtin, MD
+  "1346355807",   # Pedro Miranda, MD
+  "1437904760",   # Lizeth Acosta, MD
+  "1568738854",   # Aaron Lazorwitz, MD
+  "1194571661",   # Ana Gomez, MD
+  "1699237040",   # Erin W. Franks, MD
+  "1003311044",   # CATHERINE Callinan, MD
+  "1609009943",   # Kristin Powell, MD
+  "1114125051",   # Nathan Kow, MD
+  "1043432123",   # Elena Tunitsky, MD
+  "1215490446",   # PK
+  "1487879987"    # Peter Jeppson
+)
+```
+
+-   `E-Medicare_part_d_prescribers_data_processing.R` - This script processes
+    Medicare Part D prescribing data from the Centers for Medicare & Medicaid
+    Services (CMS). Process each table filtering "Prscrbr_Type" only OBGYN and
+    "Gynecological Oncology". It identifies providers' prescribing patterns,
+    cleans data by removing outlier records (claim counts over 50,000),
+    annotates records by year, and merges multiple years into a single
+    standardized dataset. Additionally, it calculates the last consecutive year
+    each provider actively prescribed medications under Medicare Part D,
+    facilitating analysis of provider activity and continuity over time. NOT
+    GOOD FOR DOCS WHO DO NOT TREAT PATIENTS \>65 years old.
+
+-   `F-retirement_year_confirmation.R` - Download the massive data files to the
+    external hard drive for this with one set of code then then can run
+    E-retirement_year_confirmation.R.
+
+Retirement Year Data download: `NPPES_deactivated_download.R` - Best source but
+may be late.\
+`Medicare_part_d_prescribers_data_processing` - People who prescribed to \>65
+year old women.\
+`download_physician_compare_data.R` - Includes data for people who see
+Medicare.\
+facility affiliation. - Does not include a year for the facility affiliation so
+it is not helpful.\
+ABMS - scraped.
+
+-   `getting_isochrones_trying.R` - Alternative method for isochrone generation
+-   `retirement_adjusted.R` - Enhanced retirement analysis using multiple data
+    sources (NPI deactivation, Medicare data, and board certification status) to
+    improve workforce accuracy.
+-   `subspecialists over time.R` - Analysis of subspecialist trends
+-   `visualize_fips_inters_isochr.R` - Visualizes FIPS code intersections
+-   `fips_blocks_female_proportion.R` - Analyzes female population in FIPS
+    blocks
+-   `fips_isochrones_population_intersect.R` - Examines population within
+    isochrones
+-   `zzzPostico.R` - Used Postico originally. Able to use duckDB later on.\
+-   `Postico_database_pull.R` - Extracts physician data from PostgreSQL
+    database, enabling year-by-year analysis of physician practice locations
+    from 2013 to 2022. Pulls "GYNECOLOGIC ONCOLOGY" from the Primary Specialty.
+    For urogyn, we will need NPIs to go retrospectively to look for people.
 
 #### 1. Setup and Data Preparation
-- `000-control.R` - Auxiliary script for data compilation
-- `01-setup.R` - Loads packages, sets API keys, defines helper functions, initializes directory structure
-- `02-search_taxonomy.R` - Search the NPPES Registry database using npi_search library in a wrapper.  Taxonomy description from the NUCC: https://taxonomy.nucc.org/.  Note recent change in FPMRS to URPS.  
-- `02.5-subspecialists_over_time.R` - Analyzes subspecialist trends over multiple years
-- `03-search_and_process_npi.R` - Processes National Provider Identifier (NPI) data
-- `03a-search_and_process_extra.R` - Additional NPI processing for edge cases
-- `04-geocode.R` - Geocodes provider addresses using the HERE API
-- `zz05-geocode-cleaning.R` - Old technique with postmaster pulling apart the address.  
+
+-   `000-control.R` - Auxiliary script for data compilation
+-   `01-setup.R` - Loads packages, sets API keys, defines helper functions,
+    initializes directory structure
+-   `02-search_taxonomy.R` - Search the NPPES Registry database using npi_search
+    library in a wrapper. Taxonomy description from the NUCC:
+    <https://taxonomy.nucc.org/>. Note recent change in FPMRS to URPS.\
+-   `02.5-subspecialists_over_time.R` - Analyzes subspecialist trends over
+    multiple years
+-   `03-search_and_process_npi.R` - Processes National Provider Identifier (NPI)
+    data
+-   `03a-search_and_process_extra.R` - Additional NPI processing for edge cases
+-   `04-geocode.R` - Geocodes provider addresses using the HERE API
+-   `zz05-geocode-cleaning.R` - Old technique with postmaster pulling apart the
+    address.
 
 #### 2. Isochrone Generation and Analysis
-- `06-isochrones.R` - Generates drive time isochrones (30, 60, 120, 180 min)
-- `07-isochrone-mapping.R` - Maps isochrones and performs spatial joins
-- `07.5-prep-get-block-group-overlap.R` - Prepares census block group data
-- `08-get-block-group-overlap.R` - Calculates overlap between isochrones and census blocks
-- `08.5-prep-the-census-variables.R` - Prepares demographic variables from Census
-- `09-get-census-population.R` - Calculates population within/outside isochrones
+
+-   `06-isochrones.R` - Generates drive time isochrones (30, 60, 120, 180 min)
+-   `07-isochrone-mapping.R` - Maps isochrones and performs spatial joins
+-   `07.5-prep-get-block-group-overlap.R` - Prepares census block group data
+-   `08-get-block-group-overlap.R` - Calculates overlap between isochrones and
+    census blocks
+-   `08.5-prep-the-census-variables.R` - Prepares demographic variables from
+    Census
+-   `09-get-census-population.R` - Calculates population within/outside
+    isochrones
 
 #### 3. Results and Analysis
-- `10-calculate-polygon-demographcs.R` - Analyzes demographic characteristics
-- `10-make-region.R` - Creates regional maps and analyses
-- `analyze_isochrone_data.R` - Framework for analyzing isochrone data
-- `calculate_population_in_isochrones_by_race.R` - Analyzes population by race within isochrones
-- `walker_isochrone_maps.R` - Visualizes isochrone changes over time
 
-- `Access_Data.csv` - Data from Tannous that he arranged and is held in `data/`
+-   `10-calculate-polygon-demographcs.R` - Analyzes demographic characteristics
+
+-   `10-make-region.R` - Creates regional maps and analyses
+
+-   `analyze_isochrone_data.R` - Framework for analyzing isochrone data
+
+-   `calculate_population_in_isochrones_by_race.R` - Analyzes population by race
+    within isochrones
+
+-   `walker_isochrone_maps.R` - Visualizes isochrone changes over time
+
+-   `Access_Data.csv` - Data from Tannous that he arranged and is held in
+    `data/`
 
 ### R Markdown Documents
-- `GO_access_analysis_code.Rmd` - Statistical analysis of gynecologic oncology access
-- `for_every_year_script_rmd.Rmd` - Year-by-year analysis of accessibility trends
-- `isochrones.Rmd` - Tutorial on creating and analyzing isochrones
+
+-   `GO_access_analysis_code.Rmd` - Statistical analysis of gynecologic oncology
+    access
+-   `for_every_year_script_rmd.Rmd` - Year-by-year analysis of accessibility
+    trends
+-   `isochrones.Rmd` - Tutorial on creating and analyzing isochrones
 
 ## Execution Order
 
-For a complete analysis, the files should be executed in approximately this order:
+For a complete analysis, the files should be executed in approximately this
+order:
 
 ### Setup Phase
-1. `01-setup.R`
-2. `Postico_database_pull.R` (if external hardrive with the Positico database access is connected)
+
+1.  `01-setup.R`
+2.  `Postico_database_pull.R` (if external hardrive with the Positico database
+    access is connected)
 
 ### Data Collection Phase
-3. `02-search_taxonomy.R`
-4. `02.5-subspecialists_over_time.R`
-5. `03-search_and_process_npi.R` - When did physicians start practicing?
-6. `03a-search_and_process_extra.R`
-7. `04-geocode.R`
-8. `05-geocode-cleaning.R`
-9. `retirement.R`/`retirement_adjusted.R` - When did physicians retire? (if physician retirement analysis is needed)
+
+3.  `02-search_taxonomy.R`
+4.  `02.5-subspecialists_over_time.R`
+5.  `03-search_and_process_npi.R` - When did physicians start practicing?
+6.  `03a-search_and_process_extra.R`
+7.  `04-geocode.R`
+8.  `05-geocode-cleaning.R`
+9.  `retirement.R`/`retirement_adjusted.R` - When did physicians retire? (if
+    physician retirement analysis is needed)
 
 ### Isochrone Analysis Phase
-9. `06-isochrones.R`
+
+9.  `06-isochrones.R`
 10. `07-isochrone-mapping.R`
 11. `07.5-prep-get-block-group-overlap.R`
 12. `08-get-block-group-overlap.R`
@@ -97,12 +536,16 @@ For a complete analysis, the files should be executed in approximately this orde
 14. `09-get-census-population.R`
 
 ### Results and Additional Analysis Phase
+
 15. `10-calculate-polygon-demographcs.R`
+
 16. `10-make-region.R`
 
+17. `script2025.R` - Downloads the population data and aggregates it by
+    isochrone and by total population. Creates tables of women within isochrones
+    and total women.\
 
-18.  `script2025.R` - Downloads the population data and aggregates it by isochrone and by total population.  Creates tables of women within isochrones and total women.  
-```r
+``` r
 > access_merged
 # A tibble: 240 × 6
    year  range category              count     total percent
@@ -111,11 +554,16 @@ For a complete analysis, the files should be executed in approximately this orde
  2 2013   1800 total_female_white 46553359 119180751    39.1
 ```
 
-19. `analyze_isochrone_data.R` - Measures the slope for access from start 2013 to finish 2022.  Finds significant increases or decreases in the number of women within a drive time.  Some notable trends:
-* Total female white population shows significant declines in access across all time thresholds
-* Some categories like `total_female_asian` show significant increases in longer-time thresholds
+19. `analyze_isochrone_data.R` - Measures the slope for access from start 2013
+    to finish 2022. Finds significant increases or decreases in the number of
+    women within a drive time. Some notable trends:
 
-```r
+-   Total female white population shows significant declines in access across
+    all time thresholds
+-   Some categories like `total_female_asian` show significant increases in
+    longer-time thresholds
+
+``` r
 > isochrone_results$trend_analysis
                  category        time_threshold         slope    r_squared     p_value start_year end_year start_value
 year         total_female  access_30min_cleaned -7.363956e+05 1.126669e-01 0.343029928       2013     2022    72362517
@@ -140,70 +588,1206 @@ knitr::include_graphics("figures/access_distribution.png")
 ```
 
 22. `GO_access_analysis_code.Rmd`
-23.  `walker_isochrone_maps.R` - Creates a faceted map of the US, HI, AK, and PR with the isochrones in place. 
 
+23. `walker_isochrone_maps.R` - Creates a faceted map of the US, HI, AK, and PR
+    with the isochrones in place.
 
+24. `zzzcalculate_population_in_isochrones_by_race.R` - I'm unsure if it is
+    needed.\
 
-20. `zzzcalculate_population_in_isochrones_by_race.R` - I'm unsure if it is needed.  
-21. `zzzfor_every_year_script_rmd.Rmd` - This is THE SAME MAP THAT WALKER DID IN `walker_isochrone_maps.R` BUT HE DID IT BETTER. Creates a map of the isochrones for every year.  
+25. `zzzfor_every_year_script_rmd.Rmd` - This is THE SAME MAP THAT WALKER DID IN
+    `walker_isochrone_maps.R` BUT HE DID IT BETTER. Creates a map of the
+    isochrones for every year.
 
-## Methods
+### Methodology Overview
+
+#### Geospatial Analysis
+
+-   **Drive Time Isochrones**: 30, 60, 120, and 180-minute thresholds
+-   **Routing Engine**: HERE Maps API with real-time traffic data
+-   **Reference Time**: Third Friday of October, 9:00 AM (consistent across
+    years)
+-   **Geographic Resolution**: Census block groups (higher precision than
+    counties)
+
+#### Demographic Analysis
+
+-   **Race/Ethnicity Categories**: White, Black, Asian/Pacific Islander,
+    American Indian/Alaska Native
+-   **Geographic Regions**: ACOG (American College of Obstetricians and
+    Gynecologists) Districts
+-   **Urban/Rural Classification**: Census Bureau definitions
+
+#### Physician Identification
+
+``` r
+# Taxonomy codes for OBGYN subspecialists
+obgyn_taxonomy_codes <- c(
+  "207V00000X",    # Obstetrics & Gynecology
+  "207VX0201X",    # Gynecologic Oncology
+  "207VE0102X",    # Reproductive Endocrinology
+  "207VG0400X",    # Gynecology
+  "207VM0101X",    # Maternal & Fetal Medicine
+  "207VF0040X",    # Female Pelvic Medicine/Urogynecology
+  "207VB0002X",    # Bariatric Medicine
+  "207VC0200X",    # Critical Care Medicine
+  "207VC0300X",    # Complex Family Planning
+  "207VH0002X",    # Palliative Care
+  "207VX0000X"     # Obstetrics Only
+)
+```
 
 ### Data Sources
-- Physician Data: National Plan and Provider Enumeration System (NPPES) files from 2013 to 2023
-- Population Data: American Community Survey 5-year estimates and decennial census data
-- Geographic Analysis: Used block groups rather than counties for finer data resolution
-- Geographic Regions: American College of Obstetricians and Gynecologists (ACOG) Districts
+
+-   Physician Data: National Plan and Provider Enumeration System (NPPES) files
+    from 2013 to 2023
+-   Population Data: American Community Survey 5-year estimates and decennial
+    census data
+-   Geographic Analysis: Used block groups rather than counties for finer data
+    resolution
+-   Geographic Regions: American College of Obstetricians and Gynecologists
+    (ACOG) Districts
 
 ### Analysis Approach
-- Drive time isochrones (30, 60, 120, 180 minutes) calculated using HERE API
-- Isochrones generated for the third Friday in October at 9:00 AM for each year
-- Demographic analysis by race/ethnicity (White, Black, Asian or Pacific Islander, American Indian/Alaska Native)
-- Comparison of urban vs. rural accessibility
+
+-   Drive time isochrones (30, 60, 120, 180 minutes) calculated using HERE API
+-   Isochrones generated for the third Friday in October at 9:00 AM for each
+    year
+-   Demographic analysis by race/ethnicity (White, Black, Asian or Pacific
+    Islander, American Indian/Alaska Native)
+-   Comparison of urban vs. rural accessibility
 
 ## Prerequisites
 
-- R 4.0.0 or higher
-- Required R packages (listed in `01-setup.R`)
-- HERE Maps API key
-- Census API key
-- PostgreSQL database (optional, for historical physician data)
+### System Requirements
+
+``` r
+# Check R version (minimum 4.0.0 required)
+if (getRversion() < "4.0.0") {
+  stop("R version 4.0.0 or higher is required. Current version: ", getRversion())
+}
+
+# Check available memory (8GB+ recommended)
+memory_gb <- round(memory.limit() / 1024, 1)  # Windows
+# memory_gb <- round(as.numeric(system("sysctl hw.memsize", intern = TRUE)) / 1024^3, 1)  # macOS
+logger::log_info("Available memory: {memory_gb} GB")
+if (memory_gb < 8) {
+  logger::log_warn("Less than 8GB RAM detected. Large spatial operations may be slow.")
+}
+```
+
+``` r
+# Install required packages
+required_packages <- c(
+  "tidyverse", "sf", "tigris", "logger", "assertthat",
+  "ggplot2", "scales", "viridis", "DT", "knitr"
+)
+
+# Install missing packages
+new_packages <- required_packages[!(required_packages %in% installed.packages()[,"Package"])]
+if(length(new_packages)) install.packages(new_packages)
+
+# Load custom functions
+source("R/bespoke_functions.R")
+```
+
+-   R 4.0.0 or higher
+-   8GB+ RAM recommended for large spatial datasets
+-   Required R packages (listed in `01-setup.R`)
+-   HERE Maps API key
+-   US Census Bureau API key
+-   DuckDB database
+
+### HERE Maps Integration
+
+**Geocoding Pipeline:** 1. Address standardization and cleaning 2. Batch
+geocoding requests (rate limit management) 3. Quality scoring and manual review
+of poor matches 4. Coordinate validation and outlier detection
+
+**Isochrone Generation:** 1. Provider coordinate input 2. Multiple time
+threshold requests per provider 3. Polygon simplification for storage efficiency
+4. Spatial validation and topology checking
+
+**Why DuckDB over PostgreSQL/SQLite:** - **Performance**: Optimized for
+analytical queries (OLAP vs OLTP) - **Simplicity**: Single-file database, no
+server required - **Memory**: Efficient handling of large datasets - **R
+Integration**: Native R DBI support
+
+**Alternative Considered**: PostgreSQL with PostGIS - **Pros**: Better spatial
+functions, multi-user - **Cons**: Server setup complexity, overkill for
+single-user analysis
 
 ## Tools and Data Management
 
-### HERE API
-- Used for geocoding and isochrone generation
-- Geocoding and Search: $0.83 per 1,000 searches after 30,000 free geocodes
-- Isoline Routing: $5.50 per 1,000 after 2,500 free isoline routings
+## 💻 API Configuration
+
+### HERE Maps API Setup
+
+-   Used for geocoding and isochrone generation
+-   Geocoding and Search: \$0.83 per 1,000 searches after 30,000 free geocodes
+-   Isoline Routing: \$5.50 per 1,000 after 2,500 free isoline routings
+
+``` r
+# Set environment variables (add to .Renviron)
+HERE_API_KEY <- "your_here_api_key_here"
+
+# Verify API access
+here_status <- httr::GET("https://geocoder.ls.hereapi.com/6.2/geocode.json",
+                        query = list(apiKey = HERE_API_KEY,
+                                   searchtext = "test"))
+```
+
+### Census API Setup
+
+``` r
+# Install tidycensus if not already installed
+if (!require(tidycensus)) install.packages("tidycensus")
+
+# Set Census API key
+census_api_key("your_census_api_key_here", install = TRUE)
+```
+
+### API Key Setup:
+
+1.  **HERE Maps API**:
+    -   Register at <https://developer.here.com/>
+    -   Create project, generate API key
+    -   Add to `.Renviron`: `HERE_API_KEY=your_key_here`
+2.  **Census Bureau API**:
+    -   Register at <https://api.census.gov/data/key_signup.html>
+    -   Add to `.Renviron`: `CENSUS_API_KEY=your_key_here`
 
 ### Data Storage
-- GitHub LFS (Large File Storage) for managing large files
-- DuckDB for efficient data querying
-- PostgreSQL database for year-specific physician data
+
+-   GitHub LFS (Large File Storage) for managing large files
+-   DuckDB for efficient data querying
+-   PostgreSQL database for year-specific physician data
 
 ### Auxiliary Tools
-- tyler package: Custom package for project-specific functions
-- Exploratory.io: Used for data wrangling
+
+-   tyler package: Custom package for project-specific functions
+-   Exploratory.io: Used for data wrangling
 
 ## Key Outputs
-- Drive time isochrones at multiple thresholds (30, 60, 120, 180 minutes)
-- Population statistics within/outside isochrones
-- Demographic analysis by race/ethnicity
-- Temporal trends in accessibility (2013-2023)
-- Visualizations of geographic access patterns
 
+-   Drive time isochrones at multiple thresholds (30, 60, 120, 180 minutes)
+-   Population statistics within/outside isochrones
+-   Demographic analysis by race/ethnicity
+-   Temporal trends in accessibility (2013-2023)
+-   Visualizations of geographic access patterns
 
 ## Data Sources
 
 For downloading NPPES files:
-```bash
+
+``` bash
 wget -P "/Volumes/Video Projects Muffly 1/nppes_historical_downloads" "https://download.cms.gov/nppes/NPPES_Data_Dissemination_April_2024.zip"
 ```
 
-## License
+## References
 
-[Specify your license here]
+```         
+# ==============================================================================
+# ESSENTIAL REFERENCE CODES FOR GYNECOLOGIC ONCOLOGY ACCESSIBILITY PROJECT
+# ==============================================================================
 
-## Contact
+# 1. RURAL-URBAN COMMUTING AREA (RUCA) CODES
+# Source: USDA Economic Research Service
+# URL: https://www.ers.usda.gov/data-products/rural-urban-commuting-area-codes/
+# Last Updated: 2010 Census-based RUCA codes (most recent available)
 
-Tyler Muffly, MD - [Add contact information if appropriate]
+ruca_codes <- tibble::tibble(
+  ruca_code = c(1.0, 1.1, 2.0, 2.1, 3.0, 4.1, 4.2, 5.0, 5.1, 6.0, 6.1, 
+                7.0, 7.1, 7.2, 7.3, 7.4, 8.0, 8.1, 8.2, 8.3, 8.4, 9.0, 10.0, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6),
+  ruca_description = c(
+    "Metropolitan area core: primary flow within an urbanized area (UA)",
+    "Metropolitan area core: primary flow within an urbanized area (UA)",
+    "Metropolitan area high commuting: primary flow 30% or more to a UA", 
+    "Metropolitan area high commuting: primary flow 30% or more to a UA",
+    "Metropolitan area low commuting: primary flow 10% to 30% to a UA",
+    "Micropolitan area core: primary flow within an urban cluster of 10,000-49,999 (large UC)",
+    "Micropolitan area core: primary flow within an urban cluster of 10,000-49,999 (large UC)", 
+    "Micropolitan high commuting: primary flow 30% or more to a large UC",
+    "Micropolitan high commuting: primary flow 30% or more to a large UC",
+    "Micropolitan low commuting: primary flow 10% to 30% to a large UC",
+    "Micropolitan low commuting: primary flow 10% to 30% to a large UC",
+    "Small town core: primary flow within an urban cluster of 2,500-9,999 (small UC)",
+    "Small town core: primary flow within an urban cluster of 2,500-9,999 (small UC)",
+    "Small town high commuting: primary flow 30% or more to a UA",
+    "Small town high commuting: primary flow 30% or more to a large UC", 
+    "Small town high commuting: primary flow 30% or more to a small UC",
+    "Small town low commuting: primary flow 10% to 30% to a UA",
+    "Small town low commuting: primary flow 10% to 30% to a large UC",
+    "Small town low commuting: primary flow 10% to 30% to a small UC", 
+    "Small town low commuting: primary flow 10% to 30% to a UA",
+    "Small town low commuting: primary flow 10% to 30% to a large UC",
+    "Rural areas: primary flow to a tract outside a UA or UC",
+    "Rural areas: primary flow 10% or more to a UA",
+    "Rural areas: primary flow 10% or more to a UA",
+    "Rural areas: primary flow 10% or more to a large UC",
+    "Rural areas: primary flow 10% or more to a large UC", 
+    "Rural areas: primary flow 10% or more to a small UC",
+    "Rural areas: primary flow 10% or more to a small UC",
+    "Rural areas: primary flow 10% or more to a small UC"
+  ),
+  urban_rural_category = c(
+    "Urban", "Urban", "Urban", "Urban", "Urban", 
+    "Urban", "Urban", "Urban", "Urban", "Urban", "Urban",
+    "Rural", "Rural", "Rural", "Rural", "Rural", 
+    "Rural", "Rural", "Rural", "Rural", "Rural",
+    "Rural", "Rural", "Rural", "Rural", "Rural", "Rural", "Rural", "Rural"
+  ),
+  simplified_category = c(
+    "Metropolitan", "Metropolitan", "Metropolitan", "Metropolitan", "Metropolitan",
+    "Micropolitan", "Micropolitan", "Micropolitan", "Micropolitan", "Micropolitan", "Micropolitan", 
+    "Small Town", "Small Town", "Small Town", "Small Town", "Small Town",
+    "Small Town", "Small Town", "Small Town", "Small Town", "Small Town",
+    "Rural", "Rural", "Rural", "Rural", "Rural", "Rural", "Rural", "Rural"
+  )
+)
+
+# Simplified 4-category classification for analysis
+ruca_simplified <- tibble::tibble(
+  ruca_category = c("Metropolitan", "Micropolitan", "Small Town", "Rural"),
+  ruca_codes_included = c("1.0, 1.1, 2.0, 2.1, 3.0", 
+                         "4.1, 4.2, 5.0, 5.1, 6.0, 6.1",
+                         "7.0, 7.1, 7.2, 7.3, 7.4, 8.0, 8.1, 8.2, 8.3, 8.4",
+                         "9.0, 10.0, 10.1, 10.2, 10.3, 10.4, 10.5, 10.6"),
+  description = c("Large metro areas and surrounding commuting zones",
+                 "Mid-size cities and commuting areas", 
+                 "Small towns and rural areas with some urban influence",
+                 "Isolated rural areas with minimal urban commuting")
+)
+
+# ==============================================================================
+# 2. US CENSUS BUREAU REGIONAL SUBDIVISIONS
+# Source: US Census Bureau Geography Division
+# URL: https://www2.census.gov/geo/pdfs/maps-data/maps/reference/us_regdiv.pdf
+# Current as of: 2010 Census (stable classifications)
+
+us_census_regions <- tibble::tibble(
+  region_code = c(1, 2, 3, 4),
+  region_name = c("Northeast", "Midwest", "South", "West"),
+  region_abbrev = c("NE", "MW", "S", "W")
+) 
+
+us_census_divisions <- tibble::tibble(
+  division_code = c(1, 2, 3, 4, 5, 6, 7, 8, 9),
+  division_name = c("New England", "Middle Atlantic", "East North Central", 
+                   "West North Central", "South Atlantic", "East South Central",
+                   "West South Central", "Mountain", "Pacific"),
+  region_code = c(1, 1, 2, 2, 3, 3, 3, 4, 4),
+  states_included = c("CT, ME, MA, NH, RI, VT",
+                     "NJ, NY, PA", 
+                     "IL, IN, MI, OH, WI",
+                     "IA, KS, MN, MO, NE, ND, SD",
+                     "DE, FL, GA, MD, NC, SC, VA, WV, DC",
+                     "AL, KY, MS, TN",
+                     "AR, LA, OK, TX", 
+                     "AZ, CO, ID, MT, NV, NM, UT, WY",
+                     "AK, CA, HI, OR, WA")
+)
+
+# State-to-Region-Division mapping
+state_region_mapping <- tibble::tibble(
+  state_abbrev = c("AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", 
+                  "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+                  "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+                  "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", 
+                  "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC"),
+  state_name = c("Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", 
+                "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho", 
+                "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", 
+                "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota", 
+                "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada", 
+                "New Hampshire", "New Jersey", "New Mexico", "New York", 
+                "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon", 
+                "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota", 
+                "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington", 
+                "West Virginia", "Wisconsin", "Wyoming", "District of Columbia"),
+  region_code = c(3, 4, 4, 3, 4, 4, 1, 3, 3, 3, 4, 4, 2, 2, 2, 2, 3, 3, 1, 3,
+                 1, 2, 2, 3, 2, 4, 2, 4, 1, 1, 4, 1, 3, 2, 2, 3, 4, 1, 1, 3,
+                 2, 3, 3, 4, 1, 3, 4, 3, 2, 4, 3),
+  division_code = c(6, 9, 8, 7, 9, 8, 1, 5, 5, 5, 9, 8, 3, 3, 4, 4, 6, 7, 1, 5,
+                   1, 3, 4, 6, 4, 8, 4, 8, 1, 2, 8, 2, 5, 4, 3, 7, 9, 2, 1, 5,
+                   4, 6, 7, 8, 1, 5, 9, 5, 3, 8, 5),
+  state_fips = c("01", "02", "04", "05", "06", "08", "09", "10", "12", "13",
+                "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", 
+                "25", "26", "27", "28", "29", "30", "31", "32", "33", "34",
+                "35", "36", "37", "38", "39", "40", "41", "42", "44", "45",
+                "46", "47", "48", "49", "50", "51", "53", "54", "55", "56", "11")
+)
+
+# ==============================================================================
+# 3. ACOG (AMERICAN COLLEGE OF OBSTETRICIANS AND GYNECOLOGISTS) DISTRICTS
+# Source: ACOG Organization Structure
+# URL: https://www.acog.org/about/districts-and-sections
+# Current as of: 2023 (verified current structure)
+
+acog_districts <- tibble::tibble(
+  district_number = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15),
+  district_name = c("District I", "District II", "District III", "District IV", 
+                   "District V", "District VI", "District VII", "District VIII",
+                   "District IX", "District X", "District XI", "District XII",
+                   "Armed Forces District", "Puerto Rico"),
+  states_territories = c(
+    "Connecticut, Maine, Massachusetts, New Hampshire, Rhode Island, Vermont",
+    "New York",
+    "Delaware, New Jersey, Pennsylvania", 
+    "District of Columbia, Maryland, Virginia, West Virginia",
+    "Alabama, Florida, Georgia, Mississippi, South Carolina, Tennessee",
+    "Illinois, Indiana, Iowa, Kentucky, Minnesota, Missouri, Nebraska, North Dakota, Ohio, South Dakota, Wisconsin",
+    "Arizona, Colorado, Nevada, New Mexico, Utah, Wyoming",
+    "Alaska, Idaho, Montana, Oregon, Washington",
+    "California, Hawaii",
+    "Arkansas, Kansas, Louisiana, Oklahoma, Texas",
+    "Michigan, North Carolina",
+    "New York (Upstate regions)",
+    "Armed Forces Personnel Worldwide",
+    "Puerto Rico"
+  ),
+  regional_focus = c("New England", "New York Metro", "Mid-Atlantic", "Southeast", 
+                    "Southeast", "Midwest/Plains", "Mountain West", "Pacific Northwest",
+                    "Pacific West", "South Central", "Great Lakes/Southeast", 
+                    "Upstate New York", "Military", "Caribbean", "Global")
+)
+
+# State-to-ACOG District mapping (detailed)
+state_acog_mapping <- tibble::tibble(
+  state_abbrev = c("CT", "ME", "MA", "NH", "RI", "VT",  # District I
+                  "NY",  # District II 
+                  "DE", "NJ", "PA",  # District III  
+                  "DC", "MD", "VA", "WV",  # District IV
+                  "AL", "FL", "GA", "MS", "SC", "TN",  # District V
+                  "IL", "IN", "IA", "KY", "MN", "MO", "NE", "ND", "OH", "SD", "WI",  # District VI
+                  "AZ", "CO", "NV", "NM", "UT", "WY",  # District VII
+                  "AK", "ID", "MT", "OR", "WA",  # District VIII
+                  "CA", "HI",  # District IX
+                  "AR", "KS", "LA", "OK", "TX",  # District X
+                  "MI", "NC"),  # District XI
+  acog_district = c(rep(1, 6), rep(2, 1), rep(3, 3), rep(4, 4), rep(5, 6), 
+                   rep(6, 11), rep(7, 6), rep(8, 5), rep(9, 2), rep(10, 5), rep(11, 2)),
+  district_name = c(rep("District I", 6), rep("District II", 1), rep("District III", 3),
+                   rep("District IV", 4), rep("District V", 6), rep("District VI", 11),
+                   rep("District VII", 6), rep("District VIII", 5), rep("District IX", 2),
+                   rep("District X", 5), rep("District XI", 2))
+)
+
+# ==============================================================================
+# 4. REFERENCE DATES: THIRD FRIDAY OF OCTOBER AT 9:00 AM (2013-2023)
+# Used for standardized isochrone generation across all analysis years
+# Time zone: Local time at provider location (accounts for regional differences)
+
+reference_dates <- tibble::tibble(
+  year = 2013:2023,
+  date = as.Date(c("2013-10-18", "2014-10-17", "2015-10-16", "2016-10-21", 
+                  "2017-10-20", "2018-10-19", "2019-10-18", "2020-10-16",
+                  "2021-10-15", "2022-10-21", "2023-10-20")),
+  day_of_week = c("Friday", "Friday", "Friday", "Friday", "Friday", "Friday", 
+                 "Friday", "Friday", "Friday", "Friday", "Friday"),
+  time_reference = rep("09:00 AM Local Time", 11),
+  rationale = rep("Standardized weekday morning time avoiding rush hour peak", 11),
+  iso_datetime_format = c("2013-10-18T09:00:00", "2014-10-17T09:00:00", "2015-10-16T09:00:00",
+                         "2016-10-21T09:00:00", "2017-10-20T09:00:00", "2018-10-19T09:00:00",
+                         "2019-10-18T09:00:00", "2020-10-16T09:00:00", "2021-10-15T09:00:00", 
+                         "2022-10-21T09:00:00", "2023-10-20T09:00:00")
+)
+
+# Verification of third Friday calculation
+verify_third_friday <- function(year) {
+  # Find first day of October
+  first_october <- as.Date(paste0(year, "-10-01"))
+  # Find first Friday of October
+  first_friday <- first_october + (6 - as.numeric(format(first_october, "%u"))) %% 7
+  # Add 14 days to get third Friday
+  third_friday <- first_friday + 14
+  return(third_friday)
+}
+
+# Validate our reference dates
+reference_dates$calculated_date <- sapply(reference_dates$year, verify_third_friday)
+reference_dates$date_match <- reference_dates$date == as.Date(reference_dates$calculated_date)
+
+# ==============================================================================
+# 5. COORDINATE REFERENCE SYSTEMS (CRS) AND GEOGRAPHIC PROJECTIONS
+# Essential for spatial analysis accuracy and reproducibility
+
+coordinate_systems <- tibble::tibble(
+  crs_name = c("WGS84 Geographic", "US National Atlas Equal Area", "Web Mercator", 
+              "Albers Equal Area Conic", "US Albers", "Alaska Albers", "Hawaii Albers"),
+  epsg_code = c(4326, 2163, 3857, 5070, 5070, 3338, 4135),
+  proj4_string = c("+proj=longlat +datum=WGS84 +no_defs",
+                  "+proj=laea +lat_0=45 +lon_0=-100 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs",
+                  "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +no_defs",
+                  "+proj=aea +lat_0=23 +lat_1=29.5 +lat_2=45.5 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs",
+                  "+proj=aea +lat_0=23 +lat_1=29.5 +lat_2=45.5 +lon_0=-96 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs",
+                  "+proj=aea +lat_0=50 +lat_1=55 +lat_2=65 +lon_0=-154 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs",
+                  "+proj=aea +lat_0=3 +lat_1=8 +lat_2=18 +lon_0=-157 +x_0=0 +y_0=0 +datum=NAD83 +units=m +no_defs"),
+  use_case = c("Input coordinates from APIs", "US-wide area calculations", "Web mapping display",
+              "Contiguous US analysis", "Contiguous US analysis", "Alaska-specific analysis", 
+              "Hawaii-specific analysis"),
+  recommended_for = c("Data input", "Population calculations", "Interactive maps",
+                     "Statistical analysis", "Final mapping", "Alaska subset", "Hawaii subset")
+)
+
+# ==============================================================================
+# 6. API ENDPOINTS AND PARAMETERS
+# Critical for reproducibility of geocoding and isochrone generation
+
+here_api_endpoints <- tibble::tibble(
+  service = c("Geocoding", "Reverse Geocoding", "Isoline Routing"),
+  endpoint_url = c("https://geocoder.ls.hereapi.com/6.2/geocode.json",
+                  "https://reverse.geocoder.ls.hereapi.com/6.2/reversegeocode.json", 
+                  "https://isoline.route.ls.hereapi.com/routing/7.2/calculateisoline.json"),
+  key_parameters = c("searchtext, apikey, gen=9, maxresults=1",
+                    "pos, apikey, gen=9, maxresults=1",
+                    "start, range, rangetype=time, mode=car, apikey"),
+  rate_limits = c("30,000 free/month, then $0.83/1000", 
+                 "30,000 free/month, then $0.83/1000",
+                 "2,500 free/month, then $5.50/1000"),
+  documentation = c("https://developer.here.com/documentation/geocoder/",
+                   "https://developer.here.com/documentation/geocoder/",
+                   "https://developer.here.com/documentation/routing-api/")
+)
+
+# Standard HERE API parameters used in analysis
+here_isoline_params <- list(
+  mode = "car",
+  traffic = "enabled", 
+  departure = "2022-10-21T09:00:00",  # Example - varies by year
+  rangetype = "time",
+  range = c(1800, 3600, 7200, 10800),  # 30, 60, 120, 180 minutes in seconds
+  resolution = 1,  # Highest resolution
+  maxpoints = 1000,  # Maximum points in polygon
+  quality = 1  # Highest quality
+)
+
+# ==============================================================================
+# 7. CENSUS BUREAU API VARIABLES AND CODES
+# American Community Survey 5-Year Estimates variables used
+
+census_variables <- tibble::tibble(
+  variable_code = c("B01003_001", "B01001_001", "B01001_026", "B03002_001", 
+                   "B03002_003", "B03002_004", "B03002_006", "B03002_005",
+                   "B08303_001", "B25001_001", "B19013_001"),
+  variable_name = c("Total Population", "Total Population by Sex", "Female Population",
+                   "Total Population by Race", "White Alone", "Black or African American Alone",
+                   "Asian Alone", "American Indian and Alaska Native Alone", 
+                   "Commuting to Work", "Total Housing Units", "Median Household Income"),
+  table_title = c("Total Population", "Sex by Age", "Sex by Age", 
+                 "Hispanic or Latino Origin by Race", "Hispanic or Latino Origin by Race",
+                 "Hispanic or Latino Origin by Race", "Hispanic or Latino Origin by Race",
+                 "Hispanic or Latino Origin by Race", "Commuting Characteristics by Sex",
+                 "Housing Units", "Household Income"),
+  used_for = c("Population weighting", "Demographics", "Primary analysis population",
+              "Racial/ethnic analysis", "Racial analysis", "Racial analysis", 
+              "Racial analysis", "Racial analysis", "Commuting patterns",
+              "Housing density", "Socioeconomic analysis"),
+  geography_level = rep("Block Group", 11),
+  survey = rep("ACS 5-Year", 11),
+  years_used = rep("2013-2021 (5-year estimates)", 11)
+)
+
+# ==============================================================================
+# 8. TAXONOMY CODES WITH DESCRIPTIONS AND EFFECTIVE DATES
+# National Uniform Claim Committee (NUCC) Health Care Provider Taxonomy
+
+taxonomy_reference <- tibble::tibble(
+  taxonomy_code = c("207V00000X", "207VX0201X", "207VE0102X", "207VG0400X", 
+                   "207VM0101X", "207VF0040X", "207VB0002X", "207VC0200X",
+                   "207VC0300X", "207VH0002X", "207VX0000X"),
+  specialization = c("Obstetrics & Gynecology", "Gynecologic Oncology", 
+                    "Reproductive Endocrinology and Infertility", "Gynecology",
+                    "Maternal & Fetal Medicine", "Female Pelvic Medicine and Reconstructive Surgery",
+                    "Bariatric Medicine", "Critical Care Medicine", "Complex Family Planning",
+                    "Hospice and Palliative Medicine", "Obstetrics"),
+  subspecialty_level = c("Primary", "Fellowship", "Fellowship", "Primary", "Fellowship", 
+                        "Fellowship", "Additional", "Additional", "Fellowship", "Additional", "Primary"),
+  typical_training = c("4-year residency", "4-yr residency + 1-yr fellowship", 
+                      "4-yr residency + 3-yr fellowship", "4-year residency",
+                      "4-yr residency + 3-yr fellowship", "4-yr residency + 3-yr fellowship",
+                      "Additional certification", "Additional certification", 
+                      "4-yr residency + 1-yr fellowship", "Additional certification",
+                      "4-year residency"),
+  provider_count_estimate = c("40,000+", "1,200+", "1,000+", "25,000+", "1,500+", 
+                             "800+", "500+", "200+", "300+", "1,000+", "5,000+"),
+  effective_date = c("1991-07-01", "1991-07-01", "1991-07-01", "1991-07-01",
+                    "1991-07-01", "2011-07-01", "2003-07-01", "2003-07-01", 
+                    "2011-07-01", "2007-07-01", "1991-07-01"),
+  notes = c("General OBGYN practice", "Cancer subspecialty - PRIMARY FOCUS", 
+           "Fertility subspecialty", "Gynecology-only practice", "High-risk pregnancy",
+           "Formerly FPMRS, name changed ~2019", "Weight management focus",
+           "ICU/critical care", "Advanced contraception/abortion", "End-of-life care",
+           "Obstetrics-only practice")
+)
+
+# ==============================================================================
+# 9. SOFTWARE VERSIONS AND DEPENDENCIES
+# Critical for computational reproducibility
+
+software_environment <- tibble::tibble(
+  component = c("R", "RStudio", "Operating System", "DuckDB", "GDAL", "PROJ", "GEOS"),
+  version_used = c("4.3.0+", "2023.06.0+", "macOS 13+ / Windows 10+", "0.8.0+", 
+                  "3.5.0+", "9.0.0+", "3.11.0+"),
+  critical_packages = c("tidyverse (2.0.0+)", "sf (1.0-12+)", "System dependent", 
+                       "duckdb (0.8.0+)", "System library", "System library", "System library"),
+  installation_notes = c("Use latest stable release", "Latest stable version", 
+                        "64-bit required", "Install via CRAN", 
+                        "Install via system package manager", "Usually bundled with GDAL",
+                        "Usually bundled with sf package"),
+  criticality = c("Essential", "Recommended", "Essential", "Essential", 
+                 "Essential", "Essential", "Essential"),
+  fallback_options = c("Use R 4.0.0 minimum", "Use base R or other IDE", 
+                      "Linux distributions supported", "Use RSQLite as alternative",
+                      "May limit spatial operations", "Coordinate issues possible",
+                      "Geometric operations may fail")
+)
+
+# Key R packages with minimum versions
+required_packages <- tibble::tibble(
+  package = c("tidyverse", "sf", "tigris", "duckdb", "httr", "jsonlite", 
+             "logger", "assertthat", "ggplot2", "viridis", "DT", "knitr"),
+  min_version = c("2.0.0", "1.0-12", "2.0", "0.8.0", "1.4.0", "1.8.0",
+                 "0.2.0", "0.2.1", "3.4.0", "0.6.0", "0.28", "1.42"),
+  cran_available = rep(TRUE, 12),
+  install_command = c("install.packages('tidyverse')", "install.packages('sf')",
+                     "install.packages('tigris')", "install.packages('duckdb')",
+                     "install.packages('httr')", "install.packages('jsonlite')",
+                     "install.packages('logger')", "install.packages('assertthat')",
+                     "install.packages('ggplot2')", "install.packages('viridis')",
+                     "install.packages('DT')", "install.packages('knitr')"),
+  primary_use = c("Data manipulation", "Spatial analysis", "Census geography",
+                 "Database operations", "API requests", "JSON parsing", 
+                 "Logging", "Input validation", "Visualization", "Color palettes",
+                 "Interactive tables", "Report generation")
+)
+
+# ==============================================================================
+# 10. TIMEZONE CONSIDERATIONS FOR ISOCHRONE GENERATION
+# Important for accurate travel time calculations across US time zones
+
+us_timezones <- tibble::tibble(
+  timezone = c("America/New_York", "America/Chicago", "America/Denver", 
+              "America/Los_Angeles", "America/Anchorage", "Pacific/Honolulu"),
+  timezone_name = c("Eastern", "Central", "Mountain", "Pacific", "Alaska", "Hawaii"),
+  utc_offset_standard = c("-05:00", "-06:00", "-07:00", "-08:00", "-09:00", "-10:00"),
+  utc_offset_daylight = c("-04:00", "-05:00", "-06:00", "-07:00", "-08:00", "-10:00"),
+  states_included = c("CT, DE, FL, GA, ME, MD, MA, NH, NJ, NY, NC, OH, PA, RI, SC, TN, VT, VA, WV, DC",
+                     "AL, AR, IL, IN, IA, KS, KY, LA, MN, MS, MO, NE, ND, OK, SD, TX, WI",
+                     "AZ*, CO, ID*, KS*, MT, NE*, NM, ND*, NV*, TX*, UT, WY",
+                     "CA, ID*, NV*, OR*, WA",
+                     "AK", "HI"),
+  daylight_saving = c(TRUE, TRUE, TRUE, TRUE, TRUE, FALSE),
+  notes = c("Most populous timezone", "Central time zone", "Some states split zones",
+           "Pacific coast", "Alaska standard/daylight", "No daylight saving time")
+)
+
+# ==============================================================================
+# USAGE EXAMPLES FOR REFERENCE CODES
+
+# Example: Filter data by rural-urban category
+# rural_providers <- provider_data %>%
+#   left_join(ruca_codes, by = c("ruca_code" = "ruca_code")) %>%
+#   filter(simplified_category == "Rural")
+
+# Example: Group analysis by Census region  
+# regional_analysis <- results_data %>%
+#   left_join(state_region_mapping, by = "state_abbrev") %>%
+#   group_by(region_code) %>%
+#   summarize(total_access = sum(population_with_access))
+
+# Example: ACOG district analysis
+# acog_summary <- provider_data %>%
+#   left_join(state_acog_mapping, by = "state_abbrev") %>%
+#   group_by(acog_district) %>%
+#   summarize(provider_count = n())
+
+# Example: Use reference date for isochrone API call
+# departure_time <- reference_dates %>% 
+#   filter(year == 2022) %>% 
+#   pull(iso_datetime_format)
+
+# ==============================================================================
+# 11. ADDITIONAL CRITICAL REFERENCE MATERIAL FOR REPRODUCIBILITY
+# ==============================================================================
+
+# METROPOLITAN STATISTICAL AREAS (MSAs) - 2020 Census Delineations
+# Source: OMB Bulletin No. 20-01 (March 6, 2020)
+major_msas <- tibble::tibble(
+  cbsa_code = c("35620", "31080", "16980", "19100", "26420", "33460", "37980", 
+               "40140", "41860", "47900", "12060", "14460", "41740", "38060"),
+  msa_name = c("New York-Newark-Jersey City, NY-NJ-PA", 
+              "Los Angeles-Long Beach-Anaheim, CA",
+              "Chicago-Naperville-Elgin, IL-IN-WI",
+              "Dallas-Fort Worth-Arlington, TX", 
+              "Houston-The Woodlands-Sugar Land, TX",
+              "Miami-Fort Lauderdale-West Palm Beach, FL",
+              "Philadelphia-Camden-Wilmington, PA-NJ-DE-MD",
+              "Riverside-San Bernardino-Ontario, CA",
+              "San Francisco-Oakland-Hayward, CA", 
+              "Washington-Arlington-Alexandria, DC-VA-MD-WV",
+              "Atlanta-Sandy Springs-Roswell, GA",
+              "Boston-Cambridge-Newton, MA-NH", 
+              "San Antonio-New Braunfels, TX",
+              "Phoenix-Mesa-Scottsdale, AZ"),
+  population_2020 = c(20140470, 13200998, 9618502, 7637387, 7122240, 6138333, 
+                     6096120, 4599839, 4749008, 6280487, 6089815, 4873019, 
+                     2558143, 4845832),
+  geographic_type = rep("Metropolitan Statistical Area", 14),
+  analysis_priority = rep("High", 14)  # High-priority areas for detailed analysis
+)
+
+# DATA VALIDATION CHECKSUMS AND KEY STATISTICS
+# Expected data ranges and checksums for quality control
+data_validation_thresholds <- tibble::tibble(
+  data_source = c("NPPES Provider Count", "Gynecologic Oncology Count", "Geocoding Success Rate",
+                 "Isochrone Generation Success", "Population Coverage", "Census Block Groups"),
+  expected_range_min = c(40000, 1000, 0.85, 0.90, 0.95, 220000),
+  expected_range_max = c(50000, 1500, 0.98, 0.99, 1.00, 250000),
+  validation_year = c(2022, 2022, 2022, 2022, 2022, 2020),
+  quality_threshold = c("40000+", "1000+", ">85%", ">90%", ">95%", "~220000"),
+  failure_action = c("Check data source", "Verify taxonomy codes", "Review addresses",
+                    "Check API limits", "Verify census join", "Update census vintage"),
+  last_validated = rep("2024-08-30", 6)
+)
+
+# FILE NAMING CONVENTIONS AND DIRECTORY STRUCTURE
+project_file_standards <- tibble::tibble(
+  file_type = c("Raw NPPES Data", "Processed Provider Lists", "Geocoded Addresses", 
+               "Isochrone Polygons", "Census Data", "Final Results", "Quality Control Reports",
+               "Intermediate Processing", "API Cache", "Documentation"),
+  naming_convention = c("nppes_YYYY_raw.csv", "providers_obgyn_YYYY.csv", "geocoded_addresses_YYYY.csv",
+                       "isochrones_YYYY_MMmin.geojson", "census_acs5_YYYY.csv", "results_final_YYYY.csv",
+                       "qc_report_YYYY_MM_DD.html", "temp_processing_YYYY_step.rds", 
+                       "api_cache_service_YYYY.rds", "README_methodology_vX.md"),
+  storage_location = c("data/raw/", "data/processed/", "data/geocoded/", "data/spatial/",
+                      "data/census/", "results/", "reports/quality_control/", "data/temp/",
+                      "cache/", "docs/"),
+  retention_policy = c("Permanent", "Permanent", "Permanent", "Permanent", "Permanent", "Permanent",
+                      "2 years", "Delete after processing", "1 year", "Permanent"),
+  backup_required = c(TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, TRUE)
+)
+
+# PERFORMANCE BENCHMARKS AND SYSTEM REQUIREMENTS
+performance_benchmarks <- tibble::tibble(
+  operation = c("NPPES Database Load", "Provider Extraction", "Geocoding (1000 addresses)",
+               "Isochrone Generation (100 providers)", "Census Block Intersection", 
+               "Full US Analysis", "State-level Analysis", "Report Generation"),
+  expected_runtime_minutes = c(45, 20, 30, 60, 90, 600, 60, 20),
+  memory_requirement_gb = c(8, 4, 2, 4, 16, 32, 8, 4),
+  cpu_cores_used = c(1, 4, 1, 1, 8, 8, 4, 2),
+  disk_space_gb = c(10, 2, 1, 5, 20, 50, 10, 2),
+  api_calls_required = c(0, 0, 1000, 100, 0, 10000, 1000, 0),
+  optimization_notes = c("Use SSD storage", "Parallelize by year", "Batch requests", 
+                        "Monitor rate limits", "Use spatial indexing", "Use HPC cluster",
+                        "Filter by state first", "Use caching")
+)
+
+# COMMON ERROR CODES AND TROUBLESHOOTING
+common_errors <- tibble::tibble(
+  error_source = c("HERE Geocoding API", "HERE Isoline API", "Census API", "DuckDB", 
+                  "Spatial Operations", "Memory", "File I/O", "Package Loading"),
+  error_code = c("401", "429", "400", "IO Error", "GEOS Exception", "Memory Allocation", 
+                "File Not Found", "Package Loading Error"),
+  error_description = c("Invalid API Key", "Rate Limit Exceeded", "Invalid Parameters",
+                       "Database Lock/Corruption", "Invalid Geometry", "Insufficient Memory",
+                       "Missing Input File", "Package Dependencies"),
+  solution = c("Check .Renviron file", "Wait/upgrade plan", "Validate parameters",
+              "Restart R/rebuild DB", "Check CRS/validate geometry", "Increase RAM/process chunks",
+              "Check file paths", "Update/reinstall packages"),
+  prevention = c("Validate keys on startup", "Monitor usage dashboard", "Test with small data",
+                "Regular DB maintenance", "Validate inputs first", "Monitor memory usage",
+                "Use absolute paths", "Use renv for environment")
+)
+
+# QUALITY CONTROL CHECKPOINTS
+quality_checkpoints <- tibble::tibble(
+  checkpoint_name = c("Data Import Validation", "Geocoding Quality Check", "Isochrone Validation",
+                     "Population Sum Check", "Trend Analysis Validation", "Final Results Audit"),
+  validation_method = c("Row counts, column presence", "Success rate, coordinate bounds", 
+                       "Polygon validity, area checks", "Census totals comparison",
+                       "Statistical significance tests", "Cross-validation with known values"),
+  expected_result = c("100% import success", ">90% geocoding success", ">95% valid polygons",
+                     "Within 5% of census totals", "P-values and confidence intervals",
+                     "Results within expected ranges"),
+  failure_threshold = c("<95% import success", "<85% geocoding success", "<90% valid polygons",
+                       ">10% difference from census", "Unexpected significance patterns",
+                       "Results outside validation ranges"),
+  automated_check = c(TRUE, TRUE, TRUE, TRUE, FALSE, FALSE),
+  manual_review = c(FALSE, TRUE, TRUE, TRUE, TRUE, TRUE)
+)
+
+# CENSUS DATA VINTAGE AND GEOGRAPHY REFERENCES
+census_vintages <- tibble::tibble(
+  data_year = 2013:2023,
+  acs_vintage = c("2009-2013", "2010-2014", "2011-2015", "2012-2016", "2013-2017",
+                 "2014-2018", "2015-2019", "2016-2020", "2017-2021", "2018-2022", "2019-2023"),
+  geography_vintage = c(rep("2010 Census", 8), rep("2020 Census", 3)),
+  block_group_count = c(rep(217740, 8), rep(242335, 3)),  # Changed in 2020 Census
+  notes = c(rep("2010 geography boundaries", 8), rep("2020 geography boundaries", 3)),
+  data_availability = c("Available", "Available", "Available", "Available", "Available",
+                       "Available", "Available", "Available", "Available", "Available", "Projected")
+)
+
+# API RATE LIMITING AND COST MANAGEMENT
+api_cost_tracking <- tibble::tibble(
+  service = c("HERE Geocoding", "HERE Isoline", "Census Bureau"),
+  free_tier_limit = c("30,000/month", "2,500/month", "500 calls/day without key"),
+  cost_per_1000 = c("$0.83", "$5.50", "Free with API key"),
+  typical_project_usage = c("5,000-15,000", "3,000-8,000", "50,000+"),
+  estimated_monthly_cost = c("$0-12", "$10-25", "$0"),
+  cost_optimization = c("Batch requests, cache results", "Minimize time thresholds", 
+                       "Get free API key"),
+  monitoring_method = c("HERE Developer Portal", "HERE Developer Portal", "Request headers")
+)
+
+# COORDINATE PRECISION AND ACCURACY STANDARDS
+coordinate_standards <- tibble::tibble(
+  precision_level = c("Street Address", "Intersection", "Postal Code", "City Center", "County Center"),
+  typical_accuracy_meters = c("5-25", "10-50", "500-2000", "1000-5000", "5000-20000"),
+  acceptable_for_analysis = c(TRUE, TRUE, FALSE, FALSE, FALSE),
+  here_api_match_level = c("houseNumber", "street", "postalCode", "city", "county"),
+  quality_score_threshold = c(0.9, 0.8, 0.6, 0.5, 0.3),
+  action_if_below_threshold = c("Accept", "Accept with flag", "Manual review", "Exclude", "Exclude")
+)
+
+# STATE FIPS CODES (COMPLETE REFERENCE)
+state_fips_complete <- tibble::tibble(
+  state_fips = c("01", "02", "04", "05", "06", "08", "09", "10", "11", "12", "13", "15", "16", 
+                "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", 
+                "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", 
+                "44", "45", "46", "47", "48", "49", "50", "51", "53", "54", "55", "56",
+                "60", "66", "69", "72", "78"),
+  state_abbrev = c("AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "DC", "FL", "GA", "HI", "ID",
+                  "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO",
+                  "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA",
+                  "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY",
+                  "AS", "GU", "MP", "PR", "VI"),
+  state_name = c("Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado", "Connecticut",
+                "Delaware", "District of Columbia", "Florida", "Georgia", "Hawaii", "Idaho", "Illinois",
+                "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana", "Maine", "Maryland", "Massachusetts",
+                "Michigan", "Minnesota", "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
+                "New Hampshire", "New Jersey", "New Mexico", "New York", "North Carolina", "North Dakota",
+                "Ohio", "Oklahoma", "Oregon", "Pennsylvania", "Rhode Island", "South Carolina", 
+                "South Dakota", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
+                "West Virginia", "Wisconsin", "Wyoming", "American Samoa", "Guam", "Northern Mariana Islands",
+                "Puerto Rico", "Virgin Islands"),
+  included_in_analysis = c(rep(TRUE, 51), rep(FALSE, 5)),
+  special_considerations = c(rep("None", 50), "Federal district", rep("US Territory", 5))
+)
+
+# REPRODUCIBILITY CHECKLIST
+reproducibility_checklist <- tibble::tibble(
+  category = c("Environment", "Data", "Code", "Documentation", "Validation"),
+  requirements = c("R version, package versions, system info",
+                  "Data sources, vintages, checksums", 
+                  "Version control, script organization",
+                  "README, methodology, parameter settings",
+                  "Quality checks, validation results"),
+  verification_method = c("sessionInfo(), renv lockfile",
+                         "File hashes, row counts, date stamps",
+                         "Git history, script dependencies", 
+                         "Documentation completeness check",
+                         "Automated tests, manual verification"),
+  automation_possible = c(TRUE, TRUE, TRUE, FALSE, TRUE),
+  criticality = c("High", "High", "High", "Medium", "High")
+)
+
+print("Additional reference material loaded successfully!")
+print(paste("Total reference tables created:", 15))
+print("All data validation thresholds, file standards, and quality checkpoints defined.")
+print("Reproducibility framework complete.")
+```
+
+# URL Reference Table - Gynecologic Oncology Accessibility Project
+
+## Data Sources - Primary
+
+| Resource Name | URL | Description | Access Type |
+|----|----|----|----|
+| NPPES (National Plan and Provider Enumeration System) | <https://nppes.cms.hhs.gov/> | Primary provider registry | Public |
+| NBER NPPES Historical Data | <https://www.nber.org/research/data/national-plan-and-provider-enumeration-system-nppes-data> | Historical provider data 2007-2022 | Public |
+| CMS Medicare Part D Prescriber Data | <https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/Medicare-Provider-Charge-Data/Part-D-Prescriber> | Annual prescribing patterns | Public |
+| CMS Physician Compare (Historical) | <https://www.openicpsr.org/openicpsr/project/149961/version/V1/view> | Historical physician data through 2020 | Requires Login |
+| CMS Open Payments (Sunshine Act) | <https://openpaymentsdata.cms.gov/> | Industry payments to physicians | Public |
+| CMS Provider Enrollment Data | <https://www.cms.gov/Research-Statistics-Data-and-Systems/Statistics-Trends-and-Reports/Medicare-Provider-Charge-Data> | Provider enrollment and specialty | Public |
+| NPPES Data Dissemination | <https://download.cms.gov/nppes/NPI_Files.html> | Monthly NPPES data downloads | Public |
+| CMS Data Navigator | <https://www.cms.gov/data-research/statistics-trends-and-reports/cms-data-navigator> | CMS data portal and navigation | Public |
+
+## Census & Geographic Data
+
+| Resource Name | URL | Description | Access Type |
+|----|----|----|----|
+| US Census Bureau API | <https://api.census.gov/data.html> | Main census data API portal | Public |
+| American Community Survey (ACS) | <https://www.census.gov/programs-surveys/acs> | Population and demographic data | Public |
+| TIGER/Line Shapefiles | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Geographic boundary files | Public |
+| Census Geography Products | <https://www.census.gov/programs-surveys/geography.html> | Geographic concepts and products | Public |
+| Rural-Urban Commuting Area Codes | <https://www.ers.usda.gov/data-products/rural-urban-commuting-area-codes/> | RUCA classification system | Public |
+| Metropolitan Statistical Areas | <https://www.census.gov/programs-surveys/metro-micro.html> | MSA definitions and data | Public |
+| Census API Key Registration | <https://api.census.gov/data/key_signup.html> | Free API key registration | Registration |
+| Federal Information Processing Standards | <https://www.census.gov/library/reference/code-lists/ansi.html> | FIPS codes and standards | Public |
+
+## API Documentation
+
+| Resource Name | URL | Description | Access Type |
+|----|----|----|----|
+| HERE Maps Developer Portal | <https://developer.here.com/> | HERE API registration and docs | API Key Required |
+| HERE Geocoding API Documentation | <https://developer.here.com/documentation/geocoder/> | Address geocoding documentation | API Key Required |
+| HERE Isoline Routing API | <https://developer.here.com/documentation/routing-api/> | Drive time isochrone generation | API Key Required |
+| Census Bureau API Documentation | <https://www.census.gov/data/developers/guidance.html> | Census API usage guidelines | Public |
+| HERE API Pricing | <https://developer.here.com/pricing> | Rate limits and pricing tiers | Public |
+| REST API Best Practices | <https://developer.here.com/documentation/identity-access-management/dev_guide/topics/plat-using-apikeys.html> | API key management | Public |
+
+## Healthcare & Medical Resources
+
+| Resource Name | URL | Description | Access Type |
+|----|----|----|----|
+| NUCC Health Care Provider Taxonomy | <https://taxonomy.nucc.org/> | Official provider taxonomy codes | Public |
+| ACOG (American College of Obstetricians and Gynecologists) | <https://www.acog.org/> | Professional organization | Public |
+| ACOG Districts | <https://www.acog.org/about/districts-and-sections> | Geographic district organization | Public |
+| Society of Gynecologic Oncology | <https://www.sgo.org/> | Subspecialty professional society | Public |
+| NCCN Guidelines (Gynecologic Oncology) | <https://www.nccn.org/guidelines/category_1> | Clinical practice guidelines | Registration |
+| ACGME Fellowship Requirements | <https://www.acgme.org/specialties/> | Fellowship training requirements | Public |
+| AAMC Physician Workforce Data | <https://www.aamc.org/data-reports/workforce/data> | Physician workforce statistics | Public |
+| HRSA Health Professional Shortage Areas | <https://data.hrsa.gov/tools/shortage-area> | Underserved area designations | Public |
+
+## Government Resources
+
+| Resource Name | URL | Description | Access Type |
+|----|----|----|----|
+| CMS (Centers for Medicare & Medicaid Services) | <https://www.cms.gov/> | Primary healthcare data agency | Public |
+| HRSA (Health Resources and Services Administration) | <https://www.hrsa.gov/> | Federal health workforce agency | Public |
+| USDA Economic Research Service | <https://www.ers.usda.gov/> | Rural-urban classifications | Public |
+| OMB Metropolitan Area Delineations | <https://www.whitehouse.gov/omb/management/office-federal-financial-management/> | Official MSA definitions | Public |
+| HHS Data Portal | <https://healthdata.gov/> | Federal health data catalog | Public |
+| National Cancer Institute | <https://www.cancer.gov/> | Cancer statistics and resources | Public |
+| Federal Geographic Data Committee | <https://www.fgdc.gov/> | Geographic data standards | Public |
+
+## Technical Documentation
+
+| Resource Name | URL | Description | Access Type |
+|----|----|----|----|
+| R Project | <https://www.r-project.org/> | R statistical software | Open Source |
+| RStudio | <https://www.rstudio.com/> | R development environment | Free/Commercial |
+| sf R Package Documentation | <https://r-spatial.github.io/sf/> | Spatial features for R | Open Source |
+| tigris R Package | <https://github.com/walkerke/tigris> | Census geography in R | Open Source |
+| DuckDB Documentation | <https://duckdb.org/docs/> | Analytical database engine | Open Source |
+| GDAL Documentation | <https://gdal.org/> | Geospatial data abstraction library | Open Source |
+| PROJ Coordinate Transformation | <https://proj.org/> | Cartographic projections library | Open Source |
+| PostGIS Documentation | <https://postgis.net/documentation/> | Spatial database extension | Open Source |
+| GitHub Repository Best Practices | <https://docs.github.com/en/repositories> | Version control and collaboration | Public |
+
+## Academic & Research Resources
+
+| Resource Name | URL | Description | Access Type |
+|----|----|----|----|
+| PubMed | <https://pubmed.ncbi.nlm.nih.gov/> | Medical literature database | Public |
+| SEER Cancer Statistics | <https://seer.cancer.gov/> | National cancer surveillance | Public |
+| Health Affairs Journal | <https://www.healthaffairs.org/> | Health policy research | Subscription |
+| Medical Care Research and Review | <https://journals.sagepub.com/home/mcr> | Healthcare access research | Subscription |
+| Spatial and Spatio-temporal Epidemiology | <https://www.journals.elsevier.com/spatial-and-spatio-temporal-epidemiology> | Spatial health analysis | Subscription |
+| International Journal of Health Geographics | <https://ij-healthgeographics.biomedcentral.com/> | Health geography research | Open Access |
+
+## Software & Tools
+
+| Resource Name | URL | Description | Access Type |
+|----|----|----|----|
+| CRAN (R Package Repository) | <https://cran.r-project.org/> | R package downloads | Open Source |
+| GitHub | <https://github.com/> | Code repository and collaboration | Free/Paid |
+| Docker Hub | <https://hub.docker.com/> | Container registry | Free/Paid |
+| Conda Package Manager | <https://docs.conda.io/> | Package management system | Open Source |
+| renv R Package | <https://rstudio.github.io/renv/> | R environment management | Open Source |
+| Git Documentation | <https://git-scm.com/doc> | Version control system | Open Source |
+| Zenodo | <https://zenodo.org/> | Research data repository | Free |
+| Open Science Framework | <https://osf.io/> | Research project management | Free |
+
+## Professional Organizations & Standards
+
+| Resource Name | URL | Description | Access Type |
+|----|----|----|----|
+| American Medical Association | <https://www.ama-assn.org/> | Medical professional organization | Public |
+| Association of American Medical Colleges | <https://www.aamc.org/> | Medical education organization | Public |
+| National Quality Forum | <https://www.qualityforum.org/> | Healthcare quality standards | Public |
+| International Association of Geographers | <https://iag-online.org/> | Geographic research organization | Public |
+| American Statistical Association | <https://www.amstat.org/> | Statistical methods and standards | Public |
+
+## Data Standards & Metadata
+
+| Resource Name | URL | Description | Access Type |
+|----|----|----|----|
+| HL7 FHIR Standards | <https://www.hl7.org/fhir/> | Healthcare data exchange standards | Public |
+| ISO Geographic Standards | <https://www.iso.org/committee/54904.html> | International geographic standards | Public |
+| OGC Standards | <https://www.ogc.org/standards> | Geospatial data standards | Public |
+| Dublin Core Metadata | <https://www.dublincore.org/> | Metadata standards | Public |
+| Schema.org | <https://schema.org/> | Structured data vocabulary | Public |
+
+## Quality Control & Validation
+
+| Resource Name | URL | Description | Access Type |
+|----|----|----|----|
+| American Community Survey Accuracy Statement | <https://www.census.gov/programs-surveys/acs/guidance/statistical-testing-tool.html> | ACS data accuracy guidelines | Public |
+| HERE Map Quality | <https://developer.here.com/documentation/routing-api/dev_guide/topics/resource-calculate-isoline.html> | API data quality specifications | API Documentation |
+| CMS Data Quality Assurance | <https://www.cms.gov/Research-Statistics-Data-and-Systems/CMS-Information-Technology/AccesstoDataApplication/DataUseAgreements> | Data quality standards | Public |
+| Spatial Data Quality Standards | <https://www.fgdc.gov/standards/projects/framework-data-standard> | Federal spatial data quality | Public |
+
+# SHAPEFILE - Geographic Boundaries for Healthcare Accessibility Analysis
+
+## US Census Bureau Geographic Boundaries
+
+| Geographic Unit | Data Source | Download URL | File Format | Coverage | Update Frequency | Notes |
+|----|----|----|----|----|----|----|
+| **Census Tracts** | US Census Bureau | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile, KML, GeoJSON | National, State, County | Annual | Primary analysis unit for demographics |
+| **Census Block Groups** | US Census Bureau | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile, KML, GeoJSON | National, State, County | Annual | Highest resolution demographic data |
+| **Census Blocks** | US Census Bureau | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile, KML, GeoJSON | National, State, County | Annual | Most detailed geographic unit |
+| **State Boundaries** | US Census Bureau | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile, KML, GeoJSON | National | Annual | State-level analysis |
+| **County Boundaries** | US Census Bureau | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile, KML, GeoJSON | National, State | Annual | County-level aggregation |
+| **ZIP Code Tabulation Areas (ZCTAs)** | US Census Bureau | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile, KML, GeoJSON | National | Decennial Census | Approximate ZIP code areas |
+| **Urban Areas** | US Census Bureau | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile, KML, GeoJSON | National | Decennial Census | Urban vs rural classification |
+
+## Health Resources and Services Administration (HRSA) Areas
+
+| Geographic Unit | Data Source | Download URL | File Format | Coverage | Update Frequency | Notes |
+|----|----|----|----|----|----|----|
+| **Health Professional Shortage Areas (HPSAs)** | HRSA | <https://data.hrsa.gov/data/download> | Shapefile, GeoJSON, CSV | National | Quarterly | Primary care, dental, mental health |
+| **Medically Underserved Areas (MUAs)** | HRSA | <https://data.hrsa.gov/data/download> | Shapefile, GeoJSON, CSV | National | Quarterly | Areas lacking medical care |
+| **Medically Underserved Populations (MUPs)** | HRSA | <https://data.hrsa.gov/data/download> | Shapefile, GeoJSON, CSV | National | Quarterly | Population-based designations |
+| **Federally Qualified Health Centers (FQHCs)** | HRSA | <https://data.hrsa.gov/data/download> | Point data, CSV | National | Monthly | FQHC locations |
+| **Rural Health Clinics** | HRSA | <https://data.hrsa.gov/data/download> | Point data, CSV | National | Monthly | RHC locations |
+| **Critical Access Hospitals** | HRSA | <https://data.hrsa.gov/data/download> | Point data, CSV | National | Monthly | CAH locations |
+
+## Rural-Urban Classifications
+
+| Geographic Unit | Data Source | Download URL | File Format | Coverage | Update Frequency | Notes |
+|----|----|----|----|----|----|----|
+| **Rural-Urban Commuting Areas (RUCAs)** | USDA ERS | <https://www.ers.usda.gov/data-products/rural-urban-commuting-area-codes/documentation/> | CSV with FIPS codes | National (Census Tracts) | \~10 years | 2010 Census-based (most recent) |
+| **Urban Influence Codes** | USDA ERS | <https://www.ers.usda.gov/data-products/urban-influence-codes/> | CSV with FIPS codes | National (Counties) | \~10 years | County-level rural-urban |
+| **Rural-Urban Continuum Codes** | USDA ERS | <https://www.ers.usda.gov/data-products/rural-urban-continuum-codes/> | CSV with FIPS codes | National (Counties) | \~10 years | Metro and non-metro counties |
+
+## ACOG Districts and Medical Professional Areas
+
+| Geographic Unit | Data Source | Download URL | File Format | Coverage | Update Frequency | Notes |
+|----|----|----|----|----|----|----|
+| **Hospital Referral Regions (HRRs)** | Dartmouth Atlas | <https://www.dartmouthatlas.org/tools/downloads.aspx> | Shapefile | National | \~10 years | Healthcare market areas |
+| **Hospital Service Areas (HSAs)** | Dartmouth Atlas | <https://www.dartmouthatlas.org/tools/downloads.aspx> | Shapefile | National | \~10 years | Local hospital markets |
+
+## Transportation and Infrastructure
+
+| Geographic Unit | Data Source | Download URL | File Format | Coverage | Update Frequency | Notes |
+|----|----|----|----|----|----|----|
+| **Primary Roads** | US Census Bureau | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile | National, State | Annual | Major highways and roads |
+| **All Roads** | US Census Bureau | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile | National, State, County | Annual | Complete road network |
+
+## Major Highway Systems and Interstate Corridors
+
+| Highway System | Data Source | Download URL | File Format | Coverage | Update Frequency | Specific Routes Included |
+|----|----|----|----|----|----|----|
+| **Interstate Highway System** | US Census Bureau TIGER | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile | National | Annual | I-95, I-10, I-5, I-75, I-80, I-40, I-35, I-25, I-70, I-90, etc. |
+| **US Highway System** | US Census Bureau TIGER | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile | National | Annual | US-1, US-50, US-101, US-Route 66 (historic), etc. |
+| **Primary Roads (Interstate + US)** | US Census Bureau TIGER | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile | National | Annual | All Interstate and US highways combined |
+| **National Highway System (NHS)** | FHWA | <https://www.fhwa.dot.gov/planning/national_highway_system/> | Shapefile, GeoJSON | National | Annual | Congressionally designated strategic highways |
+
+## Major Interstate Highways (Detailed Reference)
+
+### East-West Interstate Corridors
+
+| Route | Description | States Traversed | Length (Miles) | Key Cities Connected | Healthcare Relevance |
+|----|----|----|----|----|----|
+| **I-10** | Southern transcontinental | CA, AZ, NM, TX, LA, MS, AL, FL | 2,460 | Los Angeles - Houston - New Orleans - Jacksonville | Major Sun Belt corridor |
+| **I-20** | Southern route | TX, LA, MS, AL, GA, SC | 1,535 | Dallas - Atlanta - Columbia | Connects major Southern medical centers |
+| **I-30** | Arkansas-Texas | TX, AR | 367 | Dallas - Little Rock | Links Dallas medical district |
+| **I-40** | Central transcontinental | CA, AZ, NM, TX, OK, AR, TN, NC | 2,555 | Los Angeles - Nashville - Raleigh | Major cross-country medical corridor |
+| **I-70** | Central route | UT, CO, KS, MO, IL, IN, OH, WV, PA, MD | 2,151 | Denver - Kansas City - St. Louis - Columbus | Mountain West to Mid-Atlantic |
+| **I-80** | Northern transcontinental | CA, NV, UT, WY, NE, IA, IL, IN, OH, PA, NJ, NY | 2,899 | San Francisco - Chicago - New York | Major Northern medical corridor |
+| **I-90** | Northern border route | WA, ID, MT, WY, SD, MN, WI, IL, IN, OH, PA, NY, MA | 3,020 | Seattle - Chicago - Boston | Longest interstate, connects major Northern cities |
+
+### North-South Interstate Corridors
+
+| Route | Description | States Traversed | Length (Miles) | Key Cities Connected | Healthcare Relevance |
+|----|----|----|----|----|----|
+| **I-5** | West Coast | CA, OR, WA | 1,381 | San Diego - Los Angeles - San Francisco - Portland - Seattle | Pacific Coast medical corridor |
+| **I-15** | Southwestern | CA, NV, AZ, UT, ID, MT | 1,433 | San Diego - Las Vegas - Salt Lake City | Desert Southwest access |
+| **I-25** | Mountain corridor | NM, CO, WY | 1,062 | Albuquerque - Denver - Cheyenne | Front Range medical access |
+| **I-35** | Central Plains | TX, OK, KS, MO, IA, MN | 1,568 | Laredo - San Antonio - Austin - Dallas - Minneapolis | Texas to Twin Cities corridor |
+| **I-65** | South Central | AL, TN, KY, IN | 887 | Mobile - Birmingham - Nashville - Louisville - Indianapolis | Connects Southern to Midwest medical centers |
+| **I-75** | Eastern corridor | FL, GA, TN, KY, OH, MI | 1,786 | Miami - Atlanta - Cincinnati - Detroit | Major Eastern medical corridor |
+| **I-85** | Southeastern | AL, GA, SC, NC, VA | 666 | Montgomery - Atlanta - Charlotte - Richmond | Southeast medical corridor |
+| **I-95** | East Coast | ME, NH, MA, RI, CT, NY, NJ, PA, DE, MD, DC, VA, NC, SC, GA, FL | 1,908 | Miami - Savannah - Richmond - Washington - Philadelphia - New York - Boston | Primary East Coast medical corridor |
+
+## Alternative Transportation Network Data Sources
+
+| Data Source | Download URL | File Format | Coverage | Cost | Licensing | Quality Level |
+|----|----|----|----|----|----|----|
+| **OpenStreetMap (OSM)** | <https://www.openstreetmap.org/> | Various | Global | Free | Open Data License | High, community maintained |
+| **HERE Maps Road Data** | <https://developer.here.com/> | API/Download | Global | Commercial | HERE License | Very High, commercial grade |
+| **TomTom Road Network** | <https://developer.tomtom.com/> | API | Global | Commercial | TomTom License | Very High, commercial grade |
+
+## Highway-Specific R Package Resources
+
+| Package | Function | Data Included | Usage Example | Notes |
+|----|----|----|----|----|
+| **tigris** | `primary_roads()`, `primary_secondary_roads()` | Census TIGER roads | `tigris::primary_roads(cb = TRUE)` | Automatically downloads highways |
+| **osmdata** | `opq()`, `add_osm_feature()` | OpenStreetMap data | `osmdata::opq("USA") %>% add_osm_feature("highway", "motorway")` | Query specific highway types |
+| **tidytransit** | Transit and road network analysis | GTFS + road networks | Various | Public transportation integration |
+| **dodgr** | Distance calculations on road networks | OSM road networks | Network analysis | Route optimization |
+
+## Highway Data Download Examples
+
+### Interstate Highways via tigris
+
+``` r
+# Download all primary roads (includes Interstates)
+primary_roads <- tigris::primary_roads(cb = TRUE)
+
+# Filter for Interstate highways only
+interstates <- primary_roads %>%
+  filter(stringr::str_detect(FULLNAME, "^I "))
+
+# Specific Interstate (example: I-25)
+i25 <- primary_roads %>%
+  filter(stringr::str_detect(FULLNAME, "I 25"))
+```
+
+### Major Highways via OpenStreetMap
+
+``` r
+library(osmdata)
+
+# Download Interstate highways
+interstates_osm <- opq("United States") %>%
+  add_osm_feature(key = "highway", value = "motorway") %>%
+  add_osm_feature(key = "ref", value = c("I 95", "I 25", "I 70")) %>%
+  osmdata_sf()
+
+# Download US highways  
+us_highways <- opq("United States") %>%
+  add_osm_feature(key = "highway", value = "trunk") %>%
+  add_osm_feature(key = "ref", value = c("US 50", "US 101")) %>%
+  osmdata_sf()
+```
+
+### State-Specific Highway Downloads
+
+``` r
+# Colorado highways (example for I-25, I-70, I-76)
+co_roads <- tigris::primary_secondary_roads(state = "CO", cb = TRUE)
+
+co_interstates <- co_roads %>%
+  filter(stringr::str_detect(FULLNAME, "^I ")) %>%
+  filter(stringr::str_detect(FULLNAME, "I 25|I 70|I 76"))
+```
+
+## Highway Analysis Applications for Healthcare Accessibility
+
+### Interstate Corridor Analysis
+
+-   **I-95 Corridor**: East Coast medical referral patterns
+-   **I-10 Corridor**: Southern transcontinental access
+-   **I-25 Front Range**: Denver-Colorado Springs-Albuquerque medical corridor
+-   **I-70 Mountain Corridor**: Mountain West healthcare access
+
+### Highway Buffer Analysis
+
+``` r
+# Create buffers around major highways for accessibility analysis
+highway_buffers <- interstates %>%
+  st_buffer(dist = units::set_units(50, "miles"))  # 50-mile highway corridor
+```
+
+## Cancer Care and Specialty Medical Areas
+
+| Geographic Unit | Data Source | Download URL | File Format | Coverage | Update Frequency | Notes |
+|----|----|----|----|----|----|----|
+| **NCI-Designated Cancer Centers** | National Cancer Institute | <https://www.cancer.gov/research/infrastructure/cancer-centers/find> | Point data (geocode addresses) | National | As designated | Comprehensive cancer centers |
+| **CoC-Accredited Cancer Programs** | Commission on Cancer | <https://www.facs.org/quality-programs/cancer-programs/commission-cancer/coc-accredited-programs/> | Point data (geocode addresses) | National | Annual | Accredited cancer programs |
+| **NCCN Member Institutions** | NCCN | <https://www.nccn.org/about/member-institutions> | Point data (geocode addresses) | National | As membership changes | Leading cancer centers |
+
+## American Community Survey Geographic Summary Levels
+
+| Geographic Unit | Summary Level Code | Download URL | File Format | Coverage | Update Frequency | Notes |
+|----|----|----|----|----|----|----|
+| **Nation** | 010 | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile | US | Annual | National boundary |
+| **Regions** | 020 | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile | US | Annual | 4 Census regions |
+| **Divisions** | 030 | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile | US | Annual | 9 Census divisions |
+| **States** | 040 | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile | US | Annual | 50 states + DC |
+| **Counties** | 050 | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile | US | Annual | \~3,100 counties |
+| **County Subdivisions** | 060 | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile | US | Annual | Townships, boroughs, etc. |
+| **Census Tracts** | 140 | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile | US | Annual | \~74,000 tracts |
+| **Block Groups** | 150 | <https://www.census.gov/geographies/mapping-files/time-series/geo/tiger-line-file.html> | Shapefile | US | Annual | \~220,000 block groups |
+
+## Special R Package Resources for Geographic Data
+
+| Package | Function | Data Included | Usage | Notes |
+|----|----|----|----|----|
+| **tigris** | `states()`, `counties()`, `tracts()`, `block_groups()` | All Census boundaries | `tigris::states(cb = TRUE)` | Automatically downloads and caches |
+| **tidycensus** | `get_acs(..., geometry = TRUE)` | Census data + boundaries | `get_acs(geography = "tract", geometry = TRUE)` | Data and geography combined |
+| **sf** | Spatial data processing | \- | `st_read("shapefile.shp")` | Core spatial analysis |
+| **USAboundaries** | Historical US boundaries | Counties, states (1629-2000) | `us_states(map_date = "2000-01-01")` | Historical analysis |
+| **spData** | Spatial datasets | Various example datasets | `data(us_states)` | Teaching and examples |
+
+## File Download Examples and R Code
+
+### Census Boundaries via tigris Package
+
+``` r
+# Download state boundaries
+states_sf <- tigris::states(cb = TRUE, resolution = "20m")
+
+# Download census tracts for specific state  
+tracts_sf <- tigris::tracts(state = "CO", cb = TRUE)
+
+# Download block groups for specific county
+bg_sf <- tigris::block_groups(state = "CO", county = "001", cb = TRUE)
+```
+
+### HRSA Data Download
+
+``` r
+# Download HPSA data
+hpsa_url <- "https://data.hrsa.gov/data/download/hrsa-hpsa-primary-care-shortage-areas.csv"
+hpsa_data <- readr::read_csv(hpsa_url)
+```
+
+## Data Vintage and Compatibility Notes
+
+| Geographic Unit | 2010 Census Vintage | 2020 Census Vintage | Compatibility Issues |
+|----|----|----|----|
+| **Census Tracts** | \~74,000 tracts | \~84,000 tracts | Tract boundaries changed significantly |
+| **Block Groups** | \~217,000 BGs | \~242,000 BGs | Many boundary changes |
+| **Counties** | 3,143 counties | 3,143 counties | Stable boundaries |
+| **States** | 50 + DC | 50 + DC | No changes |
+| **ZCTAs** | 2010 ZIP patterns | 2020 ZIP patterns | Significant changes in suburban areas |
+
+# License
+
+MIT (allows commercial and academic use with attribution)
+
+# 🤝 Contributing
+
+We welcome contributions!
+
+# 📜 Citation
+
+If you use this work in your research, please cite:
+
+``` bibtex
+@misc{muffly2025gynoncaccess,
+  title={Gynecologic Oncology Accessibility Project: Nationwide Analysis of Access to OBGYN Subspecialists Using Drive Time Isochrones (2013-2023)},
+  author={Muffly, Tyler},
+  year={2025},
+  url={https://github.com/mufflyt/isochrones},
+  note={Version 2.0.0}
+}
+```
+
+# Contact
+
+**Primary Contact**: Tyler Muffly, MD\
+**Email**: [tyler.muffly\@dhha.org](mailto:tyler.muffly@dhha.org){.email}\
+**GitHub**: <https://github.com/mufflyt/isochrones>
+
+# Project Maintenance Schedule
+
+-   **Annual Updates**: New NPPES data release (typically March)
+-   **API Monitoring**: Monthly checks of rate limits and costs
+-   **Data Validation**: Biannual review of provider lists
+-   **Code Updates**: As needed for R package changes

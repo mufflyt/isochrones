@@ -24,25 +24,25 @@ base_url <- "http://data.nber.org/nppes/zip-orig/"
 # Complete list of files to download - covering 2007-2022 timespan
 # These files contain complete snapshots of the entire NPI registry at different points in time
 file_names <- c(
-  "NPPES_Data_Disseminat_April_2021.zip",
-  "NPPES_Data_Disseminat_April_2022.zip",
+  "NPPES_Data_Dissemination_Nov_2007.zip",
+  "NPPES_Data_Dissemination_May_2008.zip",
+  "NPPES_Data_Dissemination_June_2009.zip",
   "NPPES_Data_Dissemination_Apr_2009.zip",
+  "NPPES_Data_Dissemination_Feb_2010.zip",
+  "NPPES_Data_Dissemination_April_2011.zip",
   "NPPES_Data_Dissemination_Apr_2012.zip",
   "NPPES_Data_Dissemination_Apr_2013.zip",
   "NPPES_Data_Dissemination_Apr_2014.zip",
-  "NPPES_Data_Dissemination_Apr_2016.zip",
-  "NPPES_Data_Dissemination_April_2011.zip",
   "NPPES_Data_Dissemination_April_2015.zip",
+  "NPPES_Data_Dissemination_Apr_2016.zip",
   "NPPES_Data_Dissemination_April_2017.zip",
   "NPPES_Data_Dissemination_April_2018.zip",
   "NPPES_Data_Dissemination_April_2019.zip",
-  "NPPES_Data_Dissemination_Feb_2010.zip",
   "NPPES_Data_Dissemination_February_2020.zip",
   "NPPES_Data_Dissemination_July_2020.zip",
-  "NPPES_Data_Dissemination_June_2009.zip",
-  "NPPES_Data_Dissemination_May_2008.zip",
-  "NPPES_Data_Dissemination_Nov_2007.zip",
-  "NPPES_Data_Dissemination_October_2020.zip"
+  "NPPES_Data_Dissemination_October_2020.zip",
+  "NPPES_Data_Disseminat_April_2021.zip",
+  "NPPES_Data_Disseminat_April_2022.zip"
 )
 
 # Create directory for storing large downloaded files
