@@ -1,0 +1,251 @@
+---
+title: "What is a census tract?"
+author: "Tyler Muffly, MD"
+date: "2025-05-23"
+output: html_document
+---
+
+## What is a Census Tract?
+```{r, include = FALSE}
+# Enhanced Multi-scale Census Tract Visualization
+# This script creates an improved multi-scale view of US census tracts
+
+# Load required packages
+library(tigris)      # For Census geography
+library(sf)          # For spatial data handling
+library(ggplot2)     # For visualization
+library(dplyr)       # For data manipulation
+library(patchwork)   # For combining plots
+library(viridis)     # For color palettes
+library(ggspatial)   # For scale bars and north arrows
+
+# Set tigris options
+options(tigris_use_cache = TRUE, tigris_class = "sf")
+
+# Set theme for all maps
+map_theme <- theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_text(size = 11),
+    legend.position = "bottom",
+    legend.title = element_text(size = 10),
+    legend.text = element_text(size = 9),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    plot.background = element_rect(fill = "white", color = NA),
+    panel.background = element_rect(fill = "white", color = NA)
+  )
+
+# Function to create enhanced multi-scale visualization
+# Function to create enhanced multi-scale visualization with larger text
+create_enhanced_multiscale_viz <- function() {
+  # Define the map theme with LARGER text sizes
+  map_theme <- theme_minimal() +
+    theme(
+      # Larger text for all elements
+      text = element_text(size = 14),
+      # Larger, bolder titles
+      plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
+      plot.subtitle = element_text(size = 16, hjust = 0.5),
+      # Remove grid lines
+      panel.grid.major = element_blank(),
+      panel.grid.minor = element_blank(),
+      # Larger axis text
+      axis.text = element_text(size = 12),
+      axis.title = element_blank(),
+      # Larger legend
+      legend.title = element_text(size = 14, face = "bold"),
+      legend.text = element_text(size = 12),
+      legend.position = "bottom",
+      # Larger strip text for facets
+      strip.text = element_text(size = 14, face = "bold")
+    )
+  
+  # Get base geometries
+  states <- states(cb = TRUE, resolution = "20m")
+  co <- states %>% filter(STUSPS == "CO")
+  state_boundaries <- st_union(states)
+  
+  co_counties <- counties(state = "08", cb = TRUE)
+  co_tracts <- tracts(state = "08", cb = TRUE)
+  
+  # Denver metro counties
+  denver_counties_fips <- c("031", "005", "059", "001", "035") # Denver, Arapahoe, Jefferson, Adams, Douglas
+  denver_counties <- co_counties %>%
+    filter(COUNTYFP %in% denver_counties_fips)
+  
+  # Calculate county centroids for labels
+  denver_county_centers <- st_centroid(denver_counties)
+  
+  denver_tracts <- tracts(state = "08", county = denver_counties_fips, cb = TRUE)
+  
+  # Get major cities for context
+  co_places <- places(state = "08", cb = TRUE) %>%
+    filter(NAME %in% c("Denver", "Colorado Springs", "Aurora", "Fort Collins", "Boulder", "Pueblo"))
+  
+  # 1. NATIONAL VIEW WITH IMPROVED STYLING AND LARGER TEXT
+  national <- ggplot() +
+    # Base US with light gray fill
+    geom_sf(data = states, fill = "#f5f5f5", color = "#cccccc", size = 0.2) +
+    # Country outline
+    geom_sf(data = state_boundaries, fill = NA, color = "#888888", size = 0.5) +
+    # Highlight Colorado
+    geom_sf(data = co, fill = "#4e73df", color = "#000000", size = 0.5, alpha = 0.7) +
+    # Add state labels - INCREASED SIZE from 3 to 5
+    geom_sf_text(data = states %>% filter(STUSPS == "CO"), aes(label = STUSPS), 
+                 color = "white", fontface = "bold", size = 5) +
+    # Set boundaries to ensure Alaska and Hawaii are shown
+    coord_sf(crs = st_crs(states), xlim = c(-125, -65), ylim = c(25, 50)) +
+    # Add title
+    labs(title = "National View",
+         subtitle = "Colorado highlighted") +
+    # Apply theme
+    map_theme
+
+  # 2. COLORADO VIEW WITH COUNTY BOUNDARIES AND CITIES - LARGER TEXT
+  state <- ggplot() +
+    # Census tracts with very light fill
+    geom_sf(data = co_tracts, fill = "#f8f8f8", color = "#e5e5e5", size = 0.05) +
+    # County boundaries
+    geom_sf(data = co_counties, fill = NA, color = "#888888", size = 0.3) +
+    # Highlight Denver metro area
+    geom_sf(data = denver_counties, fill = "#4e73df", color = "#000000", size = 0.5, alpha = 0.3) +
+    # Add major cities
+    geom_sf(data = co_places, color = "#e74a3b", size = 3) + # Increased from 2 to 3
+    # Add city labels - INCREASED SIZE from 2.5 to 4
+    geom_sf_text(data = co_places, aes(label = NAME), nudge_y = 0.05, 
+                 color = "#e74a3b", fontface = "bold", size = 4) +
+    # Add Colorado state boundary
+    geom_sf(data = co, fill = NA, color = "#000000", size = 0.8) +
+    # Scale bar
+    annotation_scale(location = "bl", width_hint = 0.2, 
+                     text_cex = 1.2) + # Increased text size
+    # Add north arrow
+    annotation_north_arrow(location = "tr", which_north = "true", 
+                          style = north_arrow_minimal, 
+                          height = unit(1.0, "cm"), width = unit(1.0, "cm")) + # Larger arrow
+    # Add title
+    labs(title = "Colorado View",
+         subtitle = "Denver metro area highlighted") +
+    # Apply theme
+    map_theme
+
+  # 3. DENVER METRO VIEW WITH DETAILED CENSUS TRACTS - LARGER TEXT
+  metro <- ggplot() +
+    # Census tracts with white fill and light gray borders
+    geom_sf(data = denver_tracts, fill = "#ffffff", color = "#cccccc", size = 0.1) +
+    # County boundaries
+    geom_sf(data = denver_counties, fill = NA, color = "#888888", size = 0.5) +
+    # Add major cities
+    geom_sf(data = co_places %>% filter(NAME %in% c("Denver", "Aurora")), 
+            color = "#e74a3b", size = 3) + # Increased from 2 to 3
+    # Add city labels - INCREASED SIZE from 3 to 5
+    geom_sf_text(data = co_places %>% filter(NAME %in% c("Denver", "Aurora")), 
+                aes(label = NAME), nudge_y = 0.01, 
+                color = "#e74a3b", fontface = "bold", size = 5) +
+    # Add county labels - INCREASED SIZE from 2.5 to 4
+    geom_sf_label(data = denver_county_centers, 
+                 aes(label = NAME), 
+                 size = 4, 
+                 fill = alpha("white", 0.8), 
+                 color = "#333333",
+                 label.padding = unit(0.3, "lines"), # Increased padding
+                 label.r = unit(0.15, "lines")) +
+    # Scale bar - Larger text
+    annotation_scale(location = "bl", width_hint = 0.2, 
+                     text_cex = 1.2) +
+    # Add north arrow - Larger arrow
+    annotation_north_arrow(location = "tr", which_north = "true", 
+                          style = north_arrow_minimal, 
+                          height = unit(1.0, "cm"), width = unit(1.0, "cm")) +
+    # Add title
+    labs(title = "Denver Metro View",
+         subtitle = "Detailed census tracts with county boundaries") +
+    # Apply theme
+    map_theme
+
+  # 4. CREATE A SAMPLE CHOROPLETH WITH SIMULATED ACCESS DATA - LARGER TEXT
+  # Simulate access data (this would be replaced with your actual data)
+  set.seed(123)
+  denver_tracts$access_rate <- sample(
+    c(20:90), 
+    size = nrow(denver_tracts), 
+    replace = TRUE, 
+    prob = c(rep(0.5, 20), rep(1, 20), rep(2, 15), rep(1.5, 16))
+  )
+  
+  # Create choropleth
+  choropleth <- ggplot() +
+    # Census tracts with access rate fill
+    geom_sf(data = denver_tracts, aes(fill = access_rate), color = NA) +
+    # Add county boundaries
+    geom_sf(data = denver_counties, fill = NA, color = "#333333", size = 0.3) +
+    # Add color scale with LARGER legend text
+    scale_fill_viridis_c(
+      option = "plasma",
+      name = "Access Rate (%)",
+      limits = c(20, 90),
+      breaks = seq(20, 90, by = 10),
+      guide = guide_colorbar(
+        barwidth = 20, # Wider bar
+        barheight = 0.8, # Taller bar
+        title.position = "top",
+        title.hjust = 0.5,
+        label.theme = element_text(size = 12) # Larger legend labels
+      )
+    ) +
+    # Add major cities
+    geom_sf(data = co_places %>% filter(NAME %in% c("Denver", "Aurora")), 
+            color = "black", size = 3) + # Increased from 2 to 3
+    # Add city labels - INCREASED SIZE from 3 to 5
+    geom_sf_text(data = co_places %>% filter(NAME %in% c("Denver", "Aurora")), 
+                aes(label = NAME), nudge_y = 0.01, 
+                color = "black", fontface = "bold", size = 5) +
+    # Scale bar with larger text
+    annotation_scale(location = "bl", width_hint = 0.2, 
+                     text_cex = 1.2) +
+    # Add title
+    labs(title = "Denver Metro: Simulated Access Rates",
+         subtitle = "Census tract level gynecologic oncology access (simulated data)") +
+    # Apply theme
+    map_theme
+
+  # Combine the maps using patchwork
+  layout <- "
+  AB
+  CD
+  "
+  
+  combined <- national + state + metro + choropleth +
+    plot_layout(design = layout) +
+    plot_annotation(
+      title = "Multi-scale View of Census Tracts with Access Analysis",
+      subtitle = "From national overview to detailed metro area access patterns",
+      caption = "Source: US Census Bureau | Simulated access data for demonstration",
+      theme = theme(
+        # SIGNIFICANTLY LARGER annotation text
+        plot.title = element_text(size = 24, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 18, hjust = 0.5),
+        plot.caption = element_text(size = 12, hjust = 0, face = "italic"),
+        # Add margins for better spacing
+        plot.margin = margin(10, 10, 10, 10)
+      )
+    )
+  
+  return(combined)
+}
+
+# Create and display the enhanced visualization
+enhanced_multiscale_viz <- create_enhanced_multiscale_viz()
+```
+
+```{r, include = TRUE, fig.width = 24, fig.height = 20}
+print(enhanced_multiscale_viz)
+
+# Save the plot as a high-resolution image
+ggsave("enhanced_census_tract_map.png", enhanced_multiscale_viz, 
+       width = 18, height = 14, dpi = 300)
+```
+

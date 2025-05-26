@@ -94,129 +94,16 @@ create_nppes_table_mapping <- function(con) {
   return(mapping_df)
 }
 
-#' Find Medical Specialty Practitioners Across Multiple Years
-#'
-#' This function queries NPPES data across multiple years to find practitioners 
-#' with specified taxonomy codes, filtering specifically for physicians.
-#' It ensures consistent data types across all years of data.
-#' 
-#' @param con A DBI connection object to a DuckDB database containing NPPES data
-#' @param table_year_mapping Data frame. Mapping between table names and years.
-#'        Must contain columns 'table_name' and 'year'.
-#' @param taxonomy_codes Character vector. The taxonomy codes to search for.
-#' @param years_to_include Numeric vector. Optional. Years to include from the mapping.
-#'        If NULL, all years in the mapping will be included.
-#' @param max_results_per_year Numeric. Maximum number of results per year. Default 1000.
-#' @param verbose Logical. Whether to print additional logging information. Default TRUE.
-#'
-#' @return A tibble containing physicians matching the specified taxonomy codes
-#'         across all specified years, with a 'Year' column.
-#'
-#' @examples
-#' # Example 1: Query all years with default settings
-#' \dontrun{
-#' # Create a DuckDB connection
-#' nppes_con <- DBI::dbConnect(duckdb::duckdb(), dbdir = "nppes_data.duckdb")
-#' 
-#' # Create a table-year mapping
-#' year_map <- tibble::tibble(
-#'   table_name = c("nppes_2019", "nppes_2020", "nppes_2021"),
-#'   year = c(2019, 2020, 2021)
-#' )
-#' 
-#' # Find cardiology practitioners across all available years
-#' cardio_practitioners <- find_physicians_across_years(
-#'   con = nppes_con,
-#'   table_year_mapping = year_map,
-#'   taxonomy_codes = c("207RC0000X", "207RI0011X"),
-#'   verbose = TRUE
-#' )
-#' 
-#' # Results will contain physician data filtered by taxonomy codes with Year column
-#' print(cardio_practitioners)
-#' 
-#' # Close the connection
-#' DBI::dbDisconnect(nppes_con)
-#' }
-#'
-#' # Example 2: Query specific years with limit per year
-#' \dontrun{
-#' # Create a DuckDB connection
-#' nppes_con <- DBI::dbConnect(duckdb::duckdb(), dbdir = "nppes_data.duckdb")
-#' 
-#' # Create a table-year mapping
-#' year_map <- tibble::tibble(
-#'   table_name = c("nppes_2019", "nppes_2020", "nppes_2021", "nppes_2022"),
-#'   year = c(2019, 2020, 2021, 2022)
-#' )
-#' 
-#' # Find neurology practitioners for specific years with lower limit
-#' neuro_practitioners <- find_physicians_across_years(
-#'   con = nppes_con,
-#'   table_year_mapping = year_map,
-#'   taxonomy_codes = c("2084N0400X", "2084P0804X"),
-#'   years_to_include = c(2020, 2022),
-#'   max_results_per_year = 500,
-#'   verbose = FALSE
-#' )
-#' 
-#' # Results will contain physicians from 2020 and 2022 only
-#' print(neuro_practitioners)
-#' 
-#' # Close the connection
-#' DBI::dbDisconnect(nppes_con)
-#' }
-#'
-#' # Example 3: Empty result handling
-#' \dontrun{
-#' # Create a DuckDB connection
-#' nppes_con <- DBI::dbConnect(duckdb::duckdb(), dbdir = "nppes_data.duckdb")
-#' 
-#' # Create a table-year mapping
-#' year_map <- tibble::tibble(
-#'   table_name = c("nppes_2020", "nppes_2021", "nppes_2022"),
-#'   year = c(2020, 2021, 2022)
-#' )
-#' 
-#' # Search for non-existent taxonomy code
-#' empty_result <- find_physicians_across_years(
-#'   con = nppes_con,
-#'   table_year_mapping = year_map,
-#'   taxonomy_codes = c("NONEXISTENT"),
-#'   years_to_include = 2022,
-#'   max_results_per_year = 100,
-#'   verbose = TRUE
-#' )
-#' 
-#' # Will return an empty tibble with appropriate structure
-#' print(nrow(empty_result))
-#' print(colnames(empty_result))
-#' 
-#' # Close the connection
-#' DBI::dbDisconnect(nppes_con)
-#' }
-#'
-#' @importFrom dplyr bind_rows filter select rename mutate collect left_join
-#' @importFrom logger log_info log_debug log_error log_threshold
-#' @importFrom assertthat assert_that
-#' @importFrom stringr str_sub
-#' @importFrom tibble tibble
-#' @importFrom purrr map reduce map_df
 find_physicians_across_years <- function(con,
                                          table_year_mapping,
                                          taxonomy_codes,
                                          years_to_include = NULL,
-                                         max_results_per_year = 1000000,
                                          verbose = TRUE) {
-  # Initialize logger
-  logger::log_threshold(if(verbose) logger::INFO else logger::WARN)
+  logger::log_threshold(if (verbose) logger::INFO else logger::WARN)
   logger::log_info("Starting physician search across years")
   
-  # Validate inputs
-  validate_inputs(con, table_year_mapping, taxonomy_codes, years_to_include, 
-                  max_results_per_year)
+  validate_inputs(con, table_year_mapping, taxonomy_codes, years_to_include)
   
-  # Filter to specified years if provided
   filtered_mapping <- filter_year_mapping(table_year_mapping, years_to_include)
   
   if (nrow(filtered_mapping) == 0) {
@@ -224,127 +111,54 @@ find_physicians_across_years <- function(con,
     return(create_empty_physician_tibble())
   }
   
-  # Query each year/table and collect results
-  physician_listings <- query_all_years(con, filtered_mapping, taxonomy_codes, 
-                                        max_results_per_year, verbose)
+  physician_listings <- query_all_years(con, filtered_mapping, taxonomy_codes, verbose)
   
-  # Combine all results with consistent data types
   combined_physicians <- combine_physician_results_with_consistent_types(physician_listings)
   
-  # Return the combined results
   return(combined_physicians)
 }
 
-#' @noRd
-validate_inputs <- function(con, table_year_mapping, taxonomy_codes, 
-                            years_to_include, max_results_per_year) {
-  # Database connection validation
-  assertthat::assert_that(DBI::dbIsValid(con), 
-                          msg = "Database connection is not valid")
-  
-  # Table mapping validation
+validate_inputs <- function(con, table_year_mapping, taxonomy_codes, years_to_include) {
+  assertthat::assert_that(DBI::dbIsValid(con), msg = "Database connection is not valid")
   assertthat::assert_that(is.data.frame(table_year_mapping),
                           msg = "table_year_mapping must be a data frame")
   assertthat::assert_that(all(c("table_name", "year") %in% colnames(table_year_mapping)),
                           msg = "table_year_mapping must contain 'table_name' and 'year' columns")
-  
-  # Taxonomy codes validation
   assertthat::assert_that(is.character(taxonomy_codes), 
                           msg = "Taxonomy codes must be a character vector")
   assertthat::assert_that(length(taxonomy_codes) > 0, 
                           msg = "At least one taxonomy code must be provided")
-  
-  # Years validation (if provided)
   if (!is.null(years_to_include)) {
     assertthat::assert_that(is.numeric(years_to_include),
                             msg = "years_to_include must be a numeric vector")
-    assertthat::assert_that(length(years_to_include) > 0,
-                            msg = "At least one year must be provided if years_to_include is not NULL")
   }
-  
-  # Max results validation
-  assertthat::assert_that(is.numeric(max_results_per_year),
-                          msg = "max_results_per_year must be numeric")
-  assertthat::assert_that(max_results_per_year > 0,
-                          msg = "max_results_per_year must be greater than 0")
-  
   logger::log_info("Input validation completed successfully")
 }
 
-#' @noRd
-filter_year_mapping <- function(table_year_mapping, years_to_include) {
-  # Filter to years_to_include if provided
-  filtered_mapping <- table_year_mapping
-  if (!is.null(years_to_include)) {
-    filtered_mapping <- table_year_mapping[table_year_mapping$year %in% years_to_include, ]
-    logger::log_info("Filtered to %d years from the mapping", nrow(filtered_mapping))
-  }
-  return(filtered_mapping)
-}
-
-#' @noRd
-create_empty_physician_tibble <- function() {
-  return(tibble::tibble(
-    NPI = character(),
-    LastName = character(),
-    FirstName = character(),
-    MiddleName = character(),
-    Gender = character(),
-    TaxonomyCode1 = character(),
-    City = character(),
-    State = character(),
-    Zip = character(),
-    Year = integer(),
-    `NPI Deactivation Date` = character(),
-    `Last Update Date` = character(),
-    `Provider Enumeration Date` = character(),
-    `Provider Organization Name (Legal Business Name)` = character(),
-    `Provider Credential Text` = character(),
-    `Provider First Line Business Mailing Address` = character(),
-    `Provider Business Mailing Address City Name` = character(),
-    `Provider Business Mailing Address State Name` = character(),
-    `Provider Business Mailing Address Postal Code` = character(),
-    `Provider Business Mailing Address Country Code (If outside U.S.)` = character(),
-    `Provider Business Practice Location Address Country Code (If outside U.S.)` = character()
-  ))
-}
-
-#' @noRd
-query_all_years <- function(con, filtered_mapping, taxonomy_codes, 
-                            max_results_per_year, verbose) {
-  # Log the tables that will be queried
+query_all_years <- function(con, filtered_mapping, taxonomy_codes, verbose) {
   logger::log_info("Querying %d tables/years: %s", 
                    nrow(filtered_mapping),
                    paste(filtered_mapping$year, collapse = ", "))
   
-  # Initialize list to store results from each year
   all_physicians <- list()
   
-  # Query each table/year
   for (i in 1:nrow(filtered_mapping)) {
     current_table <- filtered_mapping$table_name[i]
     current_year <- filtered_mapping$year[i]
     
     logger::log_info("Querying table for year %d: %s", current_year, current_table)
     
-    # Check if table exists
     if (!current_table %in% DBI::dbListTables(con)) {
       logger::log_warn("Table '%s' not found in database, skipping", current_table)
       next
     }
     
-    # Try to query the table
-    physicians_found <- FALSE
-    physicians_data <- try_query_methods(con, current_table, current_year, 
-                                         taxonomy_codes, max_results_per_year)
+    physicians_data <- try_query_methods(con, current_table, current_year, taxonomy_codes)
     
-    # Add to results list if any physicians were found
     if (!is.null(physicians_data) && nrow(physicians_data) > 0) {
-      # Apply consistent types for each data frame as they're retrieved
       physicians_data <- standardize_column_types(physicians_data)
       all_physicians[[i]] <- physicians_data
-      logger::log_info("Added %d physicians for year %d", 
-                       nrow(physicians_data), current_year)
+      logger::log_info("Added %d physicians for year %d", nrow(physicians_data), current_year)
     } else {
       logger::log_info("No physicians found for year %d", current_year)
     }
@@ -353,498 +167,837 @@ query_all_years <- function(con, filtered_mapping, taxonomy_codes,
   return(all_physicians)
 }
 
-#' @noRd
-try_query_methods <- function(con, current_table, current_year, taxonomy_codes, 
-                              max_results_per_year) {
-  # Try dplyr approach first
-  physicians_data <- try_dplyr_approach(con, current_table, current_year, 
-                                        taxonomy_codes, max_results_per_year)
+try_query_methods <- function(con, current_table, current_year, taxonomy_codes) {
+  physicians_data <- try_dplyr_approach(con, current_table, current_year, taxonomy_codes)
   
-  # If dplyr approach failed, try direct SQL
   if (is.null(physicians_data)) {
-    physicians_data <- try_sql_approach(con, current_table, current_year, 
-                                        taxonomy_codes, max_results_per_year)
+    physicians_data <- try_sql_approach(con, current_table, current_year, taxonomy_codes)
   }
   
   return(physicians_data)
 }
 
-#' @noRd
-try_dplyr_approach <- function(con, current_table, current_year, taxonomy_codes, 
-                               max_results_per_year) {
+try_dplyr_approach <- function(con, current_table, current_year, taxonomy_codes) {
   physicians_data <- NULL
-  
   tryCatch({
     logger::log_info("Attempting dplyr-based approach")
-    
-    # Create reference to the table
     nppes_table <- dplyr::tbl(con, current_table)
     
-    # Find taxonomy code columns
-    col_names <- colnames(nppes_table)
-    taxonomy_columns <- grep("Healthcare Provider Taxonomy Code_[0-9]+", 
-                             col_names, value = TRUE)
+    taxonomy_columns <- grep("Healthcare Provider Taxonomy Code_[0-9]+", colnames(nppes_table), value = TRUE)
     
     if (length(taxonomy_columns) > 0) {
-      logger::log_info("Found %d taxonomy code columns", length(taxonomy_columns))
+      filter_expr <- purrr::reduce(taxonomy_columns, ~rlang::expr(!!.x | .data[[.y]] %in% !!taxonomy_codes), 
+                                   .init = rlang::expr(.data[[taxonomy_columns[1]]] %in% !!taxonomy_codes))
       
-      # Determine if Entity Type Code column exists
-      entity_type_col_exists <- "Entity Type Code" %in% col_names
+      query <- nppes_table %>%
+        dplyr::filter(!!filter_expr) %>%
+        dplyr::filter(`Entity Type Code` == 1L) %>%
+        dplyr::mutate(Year = current_year)
       
-      # Build the query with a composite filter for ALL taxonomy columns
-      query <- nppes_table
+      physicians_data <- dplyr::collect(query)
       
-      # Create a dynamic OR-based filter for all taxonomy columns
-      # Initialize filter expression
-      filter_expr <- NULL
-      
-      # Loop through all taxonomy columns and build a combined OR filter
-      for (i in seq_along(taxonomy_columns)) {
-        tax_col <- taxonomy_columns[i]
-        
-        # For the first column, start the filter
-        if (i == 1) {
-          filter_expr <- rlang::expr(.data[[tax_col]] %in% !!taxonomy_codes)
-        } else {
-          # For subsequent columns, add with OR operator
-          filter_expr <- rlang::expr(!!filter_expr | .data[[tax_col]] %in% !!taxonomy_codes)
-        }
-      }
-      
-      # Apply the combined filter
-      query <- dplyr::filter(query, !!filter_expr)
-      logger::log_info("Applied combined filter across all %d taxonomy columns", 
-                       length(taxonomy_columns))
-      
-      # Add entity type filter if column exists
-      if (entity_type_col_exists) {
-        query <- query %>% dplyr::filter(`Entity Type Code` == 1L)
-        logger::log_info("Applied Entity Type Code filter for physicians (1)")
-      } else {
-        logger::log_warn("Entity Type Code column not found, skipping filter")
-      }
-      
-      # Prepare list of all columns to select
-      cols_to_select <- c(
-        "NPI", 
-        "Provider Last Name (Legal Name)", 
-        "Provider First Name",
-        "Provider Middle Name", 
-        "Provider Gender Code",
-        taxonomy_columns[1],  # Use first taxonomy column for consistency in output
-        "Provider Business Practice Location Address City Name",
-        "Provider Business Practice Location Address State Name",
-        "Provider Business Practice Location Address Postal Code",
-        "NPI Deactivation Date", 
-        "Last Update Date", 
-        "Provider Enumeration Date", 
-        "Provider Organization Name (Legal Business Name)", 
-        "Provider Credential Text", 
-        "Provider First Line Business Mailing Address", 
-        "Provider Business Mailing Address City Name", 
-        "Provider Business Mailing Address State Name", 
-        "Provider Business Mailing Address Postal Code", 
-        "Provider Business Mailing Address Country Code (If outside U.S.)", 
-        "Provider Business Practice Location Address Country Code (If outside U.S.)"
-      )
-      
-      # Also include all other taxonomy columns
-      if (length(taxonomy_columns) > 1) {
-        cols_to_select <- c(cols_to_select, taxonomy_columns[-1])
-        logger::log_info("Including all %d taxonomy columns in output", length(taxonomy_columns))
-      }
-      
-      # Ensure all columns exist
-      available_cols <- cols_to_select[cols_to_select %in% col_names]
-      logger::log_info("Found %d of %d requested columns", 
-                       length(available_cols), length(cols_to_select))
-      
-      # Select available columns
-      query <- query %>% dplyr::select(dplyr::all_of(available_cols))
-      
-      # Define column renames
-      rename_map <- c(
-        NPI = "NPI",
-        LastName = "Provider Last Name (Legal Name)",
-        FirstName = "Provider First Name",
-        MiddleName = "Provider Middle Name",
-        Gender = "Provider Gender Code",
-        TaxonomyCode1 = taxonomy_columns[1],
-        City = "Provider Business Practice Location Address City Name",
-        State = "Provider Business Practice Location Address State Name",
-        Zip = "Provider Business Practice Location Address Postal Code"
-      )
-      
-      # Prepare rename command (only for columns that exist)
-      rename_cols <- rename_map[names(rename_map) %in% col_names]
-      
-      # Execute the query
-      physicians_data <- query %>%
-        dplyr::rename(!!!rename_cols) %>%
-        dplyr::mutate(Year = as.integer(current_year)) %>%
-        dplyr::collect(n = max_results_per_year)
-      
-      # Clean zip code
-      if ("Zip" %in% colnames(physicians_data)) {
+      if ("Provider Business Practice Location Address Postal Code" %in% colnames(physicians_data)) {
         physicians_data <- physicians_data %>%
-          dplyr::mutate(Zip = stringr::str_sub(Zip, 1, 5))
-        logger::log_info("Cleaned Zip codes to 5 digits")
+          dplyr::mutate(Zip = stringr::str_sub(`Provider Business Practice Location Address Postal Code`, 1, 5))
       }
       
-      # Check if we found results
-      if (nrow(physicians_data) > 0) {
-        logger::log_info("Dplyr approach succeeded, found %d physicians", 
-                         nrow(physicians_data))
-      } else {
-        logger::log_info("No results from dplyr approach")
-        physicians_data <- NULL
-      }
+      logger::log_info("Dplyr approach retrieved %d physicians", nrow(physicians_data))
     }
   }, error = function(e) {
     logger::log_error("Dplyr approach failed: %s", e$message)
-    physicians_data <- NULL
   })
   
   return(physicians_data)
 }
 
-#' @noRd
-try_sql_approach <- function(con, current_table, current_year, taxonomy_codes, 
-                             max_results_per_year) {
+try_sql_approach <- function(con, current_table, current_year, taxonomy_codes) {
   physicians_data <- NULL
-  
   tryCatch({
-    logger::log_info("Attempting direct SQL approach")
-    
-    # First find taxonomy columns for the query
-    sample_data <- DBI::dbGetQuery(con, sprintf("SELECT * FROM \"%s\" LIMIT 1", current_table))
-    taxonomy_columns <- grep("Healthcare Provider Taxonomy Code_[0-9]+", 
-                             colnames(sample_data), value = TRUE)
-    
-    logger::log_info("Found %d taxonomy columns in database", length(taxonomy_columns))
+    logger::log_info("Attempting SQL approach")
+    taxonomy_columns <- DBI::dbListFields(con, current_table) %>%
+      grep("Healthcare Provider Taxonomy Code_[0-9]+", ., value = TRUE)
     
     if (length(taxonomy_columns) > 0) {
-      # Build taxonomy code filter strings for ALL available taxonomy columns
-      taxonomy_filter_parts <- c()
+      taxonomy_filter <- paste(sapply(taxonomy_columns, function(col) {
+        sprintf("\"%s\" IN ('%s')", col, paste(taxonomy_codes, collapse = "','"))
+      }), collapse = " OR ")
       
-      # Create a filter for each taxonomy column
-      for (tax_col in taxonomy_columns) {
-        taxonomy_filter_parts <- c(
-          taxonomy_filter_parts,
-          sprintf("\"%s\" IN ('%s')", 
-                  tax_col, 
-                  paste(taxonomy_codes, collapse = "','"))
-        )
-      }
+      query <- sprintf('
+        SELECT *, %d AS Year FROM "%s"
+        WHERE (%s) AND "Entity Type Code" = 1', 
+                       current_year, current_table, taxonomy_filter)
       
-      # Combine with OR
-      taxonomy_filter <- paste(taxonomy_filter_parts, collapse = " OR ")
-      
-      # Add entity type filter if column exists
-      entity_filter <- ""
-      if ("Entity Type Code" %in% colnames(sample_data)) {
-        entity_filter <- "AND \"Entity Type Code\" = 1"
-        logger::log_info("Added Entity Type Code filter for physicians (1)")
-      } else {
-        logger::log_warn("Entity Type Code column not found in SQL approach, skipping filter")
-      }
-      
-      # Define the columns to select
-      core_columns <- c(
-        "\"NPI\"", 
-        "\"Provider Last Name (Legal Name)\" AS LastName",
-        "\"Provider First Name\" AS FirstName",
-        "\"Provider Middle Name\" AS MiddleName",
-        "\"Provider Gender Code\" AS Gender",
-        sprintf("\"%s\" AS TaxonomyCode1", taxonomy_columns[1]),
-        "\"Provider Business Practice Location Address City Name\" AS City",
-        "\"Provider Business Practice Location Address State Name\" AS State",
-        "\"Provider Business Practice Location Address Postal Code\" AS Zip"
-      )
-      
-      additional_columns <- c(
-        "\"NPI Deactivation Date\"",
-        "\"Last Update Date\"",
-        "\"Provider Enumeration Date\"",
-        "\"Provider Organization Name (Legal Business Name)\"",
-        "\"Provider Credential Text\"",
-        "\"Provider First Line Business Mailing Address\"",
-        "\"Provider Business Mailing Address City Name\"",
-        "\"Provider Business Mailing Address State Name\"",
-        "\"Provider Business Mailing Address Postal Code\"",
-        "\"Provider Business Mailing Address Country Code (If outside U.S.)\"",
-        "\"Provider Business Practice Location Address Country Code (If outside U.S.)\""
-      )
-      
-      # Add other taxonomy columns
-      if (length(taxonomy_columns) > 1) {
-        for (i in 2:length(taxonomy_columns)) {
-          additional_columns <- c(
-            additional_columns,
-            sprintf("\"%s\"", taxonomy_columns[i])
-          )
-        }
-      }
-      
-      # Filter additional columns to those that exist
-      available_additional_cols <- c()
-      for (col in additional_columns) {
-        # Extract column name from SQL expression (remove quotes and AS part)
-        col_name <- gsub("\"(.*)\".*", "\\1", col)
-        if (col_name %in% colnames(sample_data)) {
-          available_additional_cols <- c(available_additional_cols, col)
-        }
-      }
-      
-      logger::log_info("Found %d of %d additional columns", 
-                       length(available_additional_cols), length(additional_columns))
-      
-      # Combine all columns
-      all_columns <- c(core_columns, available_additional_cols)
-      column_sql <- paste(all_columns, collapse = ", ")
-      
-      # Build the query
-      logger::log_info("Building SQL query")
-      query <- sprintf(
-        "SELECT %s, %d AS Year
-         FROM \"%s\"
-         WHERE (%s) %s
-         LIMIT %d",
-        column_sql,
-        current_year,
-        current_table,
-        taxonomy_filter,
-        entity_filter,
-        max_results_per_year
-      )
-      
-      # Execute query
-      logger::log_info("Executing SQL query")
       physicians_data <- DBI::dbGetQuery(con, query)
       
-      # Clean zip code
-      if ("Zip" %in% colnames(physicians_data)) {
-        physicians_data <- physicians_data %>%
-          dplyr::mutate(Zip = stringr::str_sub(Zip, 1, 5))
-        logger::log_info("Cleaned Zip codes to 5 digits")
+      if ("Provider Business Practice Location Address Postal Code" %in% colnames(physicians_data)) {
+        physicians_data$Zip <- stringr::str_sub(physicians_data$`Provider Business Practice Location Address Postal Code`, 1, 5)
       }
       
-      if (nrow(physicians_data) > 0) {
-        logger::log_info("SQL approach succeeded, found %d physicians", 
-                         nrow(physicians_data))
-      } else {
-        logger::log_info("No results from SQL approach")
-        physicians_data <- NULL
-      }
+      logger::log_info("SQL approach retrieved %d physicians", nrow(physicians_data))
     }
   }, error = function(e) {
     logger::log_error("SQL approach failed: %s", e$message)
-    physicians_data <- NULL
   })
   
   return(physicians_data)
 }
 
-#' Standardize column types for a data frame
-#'
-#' @param df Data frame to standardize
-#'
-#' @noRd
-standardize_column_types <- function(df) {
-  if (is.null(df) || nrow(df) == 0) {
-    return(df)
-  }
-  
-  logger::log_info("Standardizing column types for a result set with %d rows", nrow(df))
-  
-  # Columns to ensure are character
-  char_columns <- c(
-    "NPI", "LastName", "FirstName", "MiddleName", "Gender", "TaxonomyCode1",
-    "City", "State", "Zip", "NPI Deactivation Date", "Last Update Date", 
-    "Provider Enumeration Date", "Provider Organization Name (Legal Business Name)",
-    "Provider Credential Text", "Provider First Line Business Mailing Address",
-    "Provider Business Mailing Address City Name", "Provider Business Mailing Address State Name",
-    "Provider Business Mailing Address Postal Code",
-    "Provider Business Mailing Address Country Code (If outside U.S.)",
-    "Provider Business Practice Location Address Country Code (If outside U.S.)"
-  )
-  
-  # Add additional taxonomy columns if they exist
-  taxonomy_cols <- grep("Healthcare Provider Taxonomy Code_[0-9]+", names(df), value = TRUE)
-  if (length(taxonomy_cols) > 0) {
-    char_columns <- c(char_columns, taxonomy_cols)
-  }
-  
-  # Columns to ensure are integer
-  int_columns <- c("Year")
-  
-  # Standardize character columns
-  for (col in char_columns) {
-    if (col %in% names(df)) {
-      # Convert various types to character
-      if (is.factor(df[[col]])) {
-        logger::log_debug("Converting factor column %s to character", col)
-        df[[col]] <- as.character(df[[col]])
-      } else if (is.numeric(df[[col]])) {
-        logger::log_debug("Converting numeric column %s to character", col)
-        df[[col]] <- as.character(df[[col]])
-      } else if (inherits(df[[col]], "Date") || inherits(df[[col]], "POSIXt")) {
-        logger::log_debug("Converting date/time column %s to character", col)
-        df[[col]] <- as.character(df[[col]])
-      } else if (!is.character(df[[col]])) {
-        logger::log_debug("Converting column %s from %s to character", 
-                          col, class(df[[col]])[1])
-        df[[col]] <- as.character(df[[col]])
-      }
-    }
-  }
-  
-  # Standardize integer columns
-  for (col in int_columns) {
-    if (col %in% names(df)) {
-      # Convert various types to integer
-      if (is.factor(df[[col]]) || is.character(df[[col]])) {
-        logger::log_debug("Converting factor/character column %s to integer", col)
-        df[[col]] <- as.integer(as.character(df[[col]]))
-      } else if (is.numeric(df[[col]]) && !is.integer(df[[col]])) {
-        logger::log_debug("Converting numeric column %s to integer", col)
-        df[[col]] <- as.integer(df[[col]])
-      } else if (!is.integer(df[[col]])) {
-        logger::log_debug("Converting column %s from %s to integer", 
-                          col, class(df[[col]])[1])
-        df[[col]] <- as.integer(as.character(df[[col]]))
-      }
-    }
-  }
-  
-  # Handle missing columns by adding them with appropriate default values
-  expected_columns <- c(char_columns, int_columns)
-  missing_columns <- setdiff(expected_columns, names(df))
-  
-  if (length(missing_columns) > 0) {
-    logger::log_debug("Adding %d missing columns with appropriate default values", 
-                      length(missing_columns))
-    
-    for (col in missing_columns) {
-      # Add with appropriate type
-      if (col %in% char_columns) {
-        df[[col]] <- NA_character_
-      } else if (col %in% int_columns) {
-        df[[col]] <- NA_integer_
-      }
-    }
-  }
-  
-  return(df)
-}
 
-#' Combine physician results with consistent data types
-#'
-#' @param physician_listings List of data frames with physician data
-#'
-#' @noRd
-combine_physician_results_with_consistent_types <- function(physician_listings) {
-  # Filter out NULL or non-data frame entries
-  valid_listings <- Filter(function(x) {
-    return(!is.null(x) && (is.data.frame(x) || is.list(x) && length(x) > 0))
-  }, physician_listings)
-  
-  # If no valid data remains, return empty data frame
-  if (length(valid_listings) == 0) {
-    logger::log_warn("No valid physician data found after filtering")
-    return(create_empty_physician_tibble())
-  }
-  
-  # Log how many valid entries remain
-  logger::log_info("Combining %d valid data sources out of %d total", 
-                   length(valid_listings), length(physician_listings))
-  
-  # Get a list of all column names across all data frames
-  all_columns <- unique(unlist(lapply(valid_listings, names)))
-  logger::log_debug("Found a total of %d unique columns across all data sources", 
-                    length(all_columns))
-  
-  # Standardize each data frame to have all columns with consistent types
-  standardized_listings <- lapply(valid_listings, function(df) {
-    # Add any missing columns
-    missing_cols <- setdiff(all_columns, names(df))
-    for (col in missing_cols) {
-      if (col %in% c("Year")) {
-        df[[col]] <- NA_integer_
-      } else {
-        df[[col]] <- NA_character_
-      }
-    }
-    return(df)
-  })
-  
-  # Combine all results
-  tryCatch({
-    # Use safer approach with reduce instead of bind_rows
-    all_physicians <- purrr::reduce(standardized_listings, function(acc, x) {
-      # Ensure column order matches
-      x <- x[, names(acc)]
-      return(rbind(acc, x))
-    })
-    
-    logger::log_info("Found a total of %d physicians across all years", 
-                     nrow(all_physicians))
-    
-    # Convert to tibble for consistent output
-    all_physicians <- tibble::as_tibble(all_physicians)
-    
-    return(all_physicians)
-  }, error = function(e) {
-    logger::log_error("Error combining physician data: %s", e$message)
-    
-    # Fallback to a more cautious approach
-    logger::log_warn("Attempting fallback approach for combining data")
-    
-    tryCatch({
-      # Try using a template for consistent structure
-      template <- create_empty_physician_tibble()
-      
-      # Process each data frame to match the template
-      processed_listings <- lapply(standardized_listings, function(df) {
-        # Select only columns in template
-        common_cols <- intersect(names(df), names(template))
-        new_df <- df[, common_cols, drop = FALSE]
-        
-        # Add missing columns from template
-        missing_cols <- setdiff(names(template), names(new_df))
-        for (col in missing_cols) {
-          if (col %in% c("Year")) {
-            new_df[[col]] <- NA_integer_
-          } else {
-            new_df[[col]] <- NA_character_
-          }
-        }
-        
-        # Ensure correct column order
-        new_df <- new_df[, names(template)]
-        return(new_df)
-      })
-      
-      # Bind the processed data frames
-      all_physicians <- do.call(rbind, processed_listings)
-      all_physicians <- tibble::as_tibble(all_physicians)
-      
-      logger::log_info("Fallback approach succeeded with %d physicians", 
-                       nrow(all_physicians))
-      return(all_physicians)
-    }, error = function(inner_e) {
-      logger::log_error("Fallback approach also failed: %s", inner_e$message)
-      
-      # Last resort: return just the first data source
-      if (length(valid_listings) > 0) {
-        logger::log_warn("Returning only the first data source as final fallback")
-        return(valid_listings[[1]])
-      } else {
-        return(create_empty_physician_tibble())
-      }
-    })
-  })
-}
+#' #' Find Medical Specialty Practitioners Across Multiple Years
+#' #'
+#' #' This function queries NPPES data across multiple years to find practitioners 
+#' #' with specified taxonomy codes, filtering specifically for physicians.
+#' #' It ensures consistent data types across all years of data.
+#' #' 
+#' #' @param con A DBI connection object to a DuckDB database containing NPPES data
+#' #' @param table_year_mapping Data frame. Mapping between table names and years.
+#' #'        Must contain columns 'table_name' and 'year'.
+#' #' @param taxonomy_codes Character vector. The taxonomy codes to search for.
+#' #' @param years_to_include Numeric vector. Optional. Years to include from the mapping.
+#' #'        If NULL, all years in the mapping will be included.
+#' #' @param max_results_per_year Numeric. Maximum number of results per year. Default 1000.
+#' #' @param verbose Logical. Whether to print additional logging information. Default TRUE.
+#' #'
+#' #' @return A tibble containing physicians matching the specified taxonomy codes
+#' #'         across all specified years, with a 'Year' column.
+#' #'
+#' #' @examples
+#' #' # Example 1: Query all years with default settings
+#' #' \dontrun{
+#' #' # Create a DuckDB connection
+#' #' nppes_con <- DBI::dbConnect(duckdb::duckdb(), dbdir = "nppes_data.duckdb")
+#' #' 
+#' #' # Create a table-year mapping
+#' #' year_map <- tibble::tibble(
+#' #'   table_name = c("nppes_2019", "nppes_2020", "nppes_2021"),
+#' #'   year = c(2019, 2020, 2021)
+#' #' )
+#' #' 
+#' #' # Find cardiology practitioners across all available years
+#' #' cardio_practitioners <- find_physicians_across_years(
+#' #'   con = nppes_con,
+#' #'   table_year_mapping = year_map,
+#' #'   taxonomy_codes = c("207RC0000X", "207RI0011X"),
+#' #'   verbose = TRUE
+#' #' )
+#' #' 
+#' #' # Results will contain physician data filtered by taxonomy codes with Year column
+#' #' print(cardio_practitioners)
+#' #' 
+#' #' # Close the connection
+#' #' DBI::dbDisconnect(nppes_con)
+#' #' }
+#' #'
+#' #' # Example 2: Query specific years with limit per year
+#' #' \dontrun{
+#' #' # Create a DuckDB connection
+#' #' nppes_con <- DBI::dbConnect(duckdb::duckdb(), dbdir = "nppes_data.duckdb")
+#' #' 
+#' #' # Create a table-year mapping
+#' #' year_map <- tibble::tibble(
+#' #'   table_name = c("nppes_2019", "nppes_2020", "nppes_2021", "nppes_2022"),
+#' #'   year = c(2019, 2020, 2021, 2022)
+#' #' )
+#' #' 
+#' #' # Find neurology practitioners for specific years with lower limit
+#' #' neuro_practitioners <- find_physicians_across_years(
+#' #'   con = nppes_con,
+#' #'   table_year_mapping = year_map,
+#' #'   taxonomy_codes = c("2084N0400X", "2084P0804X"),
+#' #'   years_to_include = c(2020, 2022),
+#' #'   max_results_per_year = 500,
+#' #'   verbose = FALSE
+#' #' )
+#' #' 
+#' #' # Results will contain physicians from 2020 and 2022 only
+#' #' print(neuro_practitioners)
+#' #' 
+#' #' # Close the connection
+#' #' DBI::dbDisconnect(nppes_con)
+#' #' }
+#' #'
+#' #' # Example 3: Empty result handling
+#' #' \dontrun{
+#' #' # Create a DuckDB connection
+#' #' nppes_con <- DBI::dbConnect(duckdb::duckdb(), dbdir = "nppes_data.duckdb")
+#' #' 
+#' #' # Create a table-year mapping
+#' #' year_map <- tibble::tibble(
+#' #'   table_name = c("nppes_2020", "nppes_2021", "nppes_2022"),
+#' #'   year = c(2020, 2021, 2022)
+#' #' )
+#' #' 
+#' #' # Search for non-existent taxonomy code
+#' #' empty_result <- find_physicians_across_years(
+#' #'   con = nppes_con,
+#' #'   table_year_mapping = year_map,
+#' #'   taxonomy_codes = c("NONEXISTENT"),
+#' #'   years_to_include = 2022,
+#' #'   max_results_per_year = 100,
+#' #'   verbose = TRUE
+#' #' )
+#' #' 
+#' #' # Will return an empty tibble with appropriate structure
+#' #' print(nrow(empty_result))
+#' #' print(colnames(empty_result))
+#' #' 
+#' #' # Close the connection
+#' #' DBI::dbDisconnect(nppes_con)
+#' #' }
+#' #'
+#' #' @importFrom dplyr bind_rows filter select rename mutate collect left_join
+#' #' @importFrom logger log_info log_debug log_error log_threshold
+#' #' @importFrom assertthat assert_that
+#' #' @importFrom stringr str_sub
+#' #' @importFrom tibble tibble
+#' #' @importFrom purrr map reduce map_df
+#' find_physicians_across_years <- function(con,
+#'                                          table_year_mapping,
+#'                                          taxonomy_codes,
+#'                                          years_to_include = NULL,
+#'                                          #max_results_per_year = 1000000,
+#'                                          verbose = TRUE) {
+#'   # Initialize logger
+#'   logger::log_threshold(if(verbose) logger::INFO else logger::WARN)
+#'   logger::log_info("Starting physician search across years")
+#'   
+#'   # Validate inputs
+#'   validate_inputs(con, table_year_mapping, taxonomy_codes, years_to_include, 
+#'                   max_results_per_year)
+#'   
+#'   # Filter to specified years if provided
+#'   filtered_mapping <- filter_year_mapping(table_year_mapping, years_to_include)
+#'   
+#'   if (nrow(filtered_mapping) == 0) {
+#'     logger::log_warn("No matching years found in the mapping")
+#'     return(create_empty_physician_tibble())
+#'   }
+#'   
+#'   # Query each year/table and collect results
+#'   physician_listings <- query_all_years(con, filtered_mapping, taxonomy_codes, 
+#'                                         max_results_per_year, verbose)
+#'   
+#'   # Combine all results with consistent data types
+#'   combined_physicians <- combine_physician_results_with_consistent_types(physician_listings)
+#'   
+#'   # Return the combined results
+#'   return(combined_physicians)
+#' }
+#' 
+#' #' @noRd
+#' validate_inputs <- function(con, table_year_mapping, taxonomy_codes, 
+#'                             years_to_include #max_results_per_year
+#'                             ) {
+#'   # Database connection validation
+#'   assertthat::assert_that(DBI::dbIsValid(con), 
+#'                           msg = "Database connection is not valid")
+#'   
+#'   # Table mapping validation
+#'   assertthat::assert_that(is.data.frame(table_year_mapping),
+#'                           msg = "table_year_mapping must be a data frame")
+#'   assertthat::assert_that(all(c("table_name", "year") %in% colnames(table_year_mapping)),
+#'                           msg = "table_year_mapping must contain 'table_name' and 'year' columns")
+#'   
+#'   # Taxonomy codes validation
+#'   assertthat::assert_that(is.character(taxonomy_codes), 
+#'                           msg = "Taxonomy codes must be a character vector")
+#'   assertthat::assert_that(length(taxonomy_codes) > 0, 
+#'                           msg = "At least one taxonomy code must be provided")
+#'   
+#'   # Years validation (if provided)
+#'   if (!is.null(years_to_include)) {
+#'     assertthat::assert_that(is.numeric(years_to_include),
+#'                             msg = "years_to_include must be a numeric vector")
+#'     assertthat::assert_that(length(years_to_include) > 0,
+#'                             msg = "At least one year must be provided if years_to_include is not NULL")
+#'   }
+#'   
+#' #   # Max results validation
+#' #   assertthat::assert_that(is.numeric(max_results_per_year),
+#' #                           msg = "max_results_per_year must be numeric")
+#' #   assertthat::assert_that(max_results_per_year > 0,
+#' #                           msg = "max_results_per_year must be greater than 0")
+#' #   
+#' #   logger::log_info("Input validation completed successfully")
+#' # }
+#' 
+#' #' @noRd
+#' filter_year_mapping <- function(table_year_mapping, years_to_include) {
+#'   # Filter to years_to_include if provided
+#'   filtered_mapping <- table_year_mapping
+#'   if (!is.null(years_to_include)) {
+#'     filtered_mapping <- table_year_mapping[table_year_mapping$year %in% years_to_include, ]
+#'     logger::log_info("Filtered to %d years from the mapping", nrow(filtered_mapping))
+#'   }
+#'   return(filtered_mapping)
+#' }
+#' 
+#' #' @noRd
+#' create_empty_physician_tibble <- function() {
+#'   return(tibble::tibble(
+#'     NPI = character(),
+#'     LastName = character(),
+#'     FirstName = character(),
+#'     MiddleName = character(),
+#'     Gender = character(),
+#'     TaxonomyCode1 = character(),
+#'     City = character(),
+#'     State = character(),
+#'     Zip = character(),
+#'     Year = integer(),
+#'     `NPI Deactivation Date` = character(),
+#'     `Last Update Date` = character(),
+#'     `Provider Enumeration Date` = character(),
+#'     `Provider Organization Name (Legal Business Name)` = character(),
+#'     `Provider Credential Text` = character(),
+#'     `Provider First Line Business Mailing Address` = character(),
+#'     `Provider Business Mailing Address City Name` = character(),
+#'     `Provider Business Mailing Address State Name` = character(),
+#'     `Provider Business Mailing Address Postal Code` = character(),
+#'     `Provider Business Mailing Address Country Code (If outside U.S.)` = character(),
+#'     `Provider Business Practice Location Address Country Code (If outside U.S.)` = character()
+#'   ))
+#' }
+#' 
+#' #' @noRd
+#' query_all_years <- function(con, filtered_mapping, taxonomy_codes, 
+#'                             #max_results_per_year, 
+#'                             verbose) {
+#'   # Log the tables that will be queried
+#'   logger::log_info("Querying %d tables/years: %s", 
+#'                    nrow(filtered_mapping),
+#'                    paste(filtered_mapping$year, collapse = ", "))
+#'   
+#'   # Initialize list to store results from each year
+#'   all_physicians <- list()
+#'   
+#'   # Query each table/year
+#'   for (i in 1:nrow(filtered_mapping)) {
+#'     current_table <- filtered_mapping$table_name[i]
+#'     current_year <- filtered_mapping$year[i]
+#'     
+#'     logger::log_info("Querying table for year %d: %s", current_year, current_table)
+#'     
+#'     # Check if table exists
+#'     if (!current_table %in% DBI::dbListTables(con)) {
+#'       logger::log_warn("Table '%s' not found in database, skipping", current_table)
+#'       next
+#'     }
+#'     
+#'     # Try to query the table
+#'     physicians_found <- FALSE
+#'     physicians_data <- try_query_methods(con, current_table, current_year, 
+#'                                          taxonomy_codes#, max_results_per_year
+#'                                          )
+#'     
+#'     # Add to results list if any physicians were found
+#'     if (!is.null(physicians_data) && nrow(physicians_data) > 0) {
+#'       # Apply consistent types for each data frame as they're retrieved
+#'       physicians_data <- standardize_column_types(physicians_data)
+#'       all_physicians[[i]] <- physicians_data
+#'       logger::log_info("Added %d physicians for year %d", 
+#'                        nrow(physicians_data), current_year)
+#'     } else {
+#'       logger::log_info("No physicians found for year %d", current_year)
+#'     }
+#'   }
+#'   
+#'   return(all_physicians)
+#' }
+#' 
+#' #' @noRd
+#' try_query_methods <- function(con, current_table, current_year, taxonomy_codes#, 
+#'                               #max_results_per_year
+#'                               ) {
+#'   # Try dplyr approach first
+#'   physicians_data <- try_dplyr_approach(con, current_table, current_year, 
+#'                                         taxonomy_codes, max_results_per_year)
+#'   
+#'   # If dplyr approach failed, try direct SQL
+#'   if (is.null(physicians_data)) {
+#'     physicians_data <- try_sql_approach(con, current_table, current_year, 
+#'                                         taxonomy_codes, max_results_per_year)
+#'   }
+#'   
+#'   return(physicians_data)
+#' }
+#' 
+#' #' @noRd
+#' try_dplyr_approach <- function(con, current_table, current_year, taxonomy_codes, 
+#'                                max_results_per_year) {
+#'   physicians_data <- NULL
+#'   
+#'   tryCatch({
+#'     logger::log_info("Attempting dplyr-based approach")
+#'     
+#'     # Create reference to the table
+#'     nppes_table <- dplyr::tbl(con, current_table)
+#'     
+#'     # Find taxonomy code columns
+#'     col_names <- colnames(nppes_table)
+#'     taxonomy_columns <- grep("Healthcare Provider Taxonomy Code_[0-9]+", 
+#'                              col_names, value = TRUE)
+#'     
+#'     if (length(taxonomy_columns) > 0) {
+#'       logger::log_info("Found %d taxonomy code columns", length(taxonomy_columns))
+#'       
+#'       # Determine if Entity Type Code column exists
+#'       entity_type_col_exists <- "Entity Type Code" %in% col_names
+#'       
+#'       # Build the query with a composite filter for ALL taxonomy columns
+#'       query <- nppes_table
+#'       
+#'       # Create a dynamic OR-based filter for all taxonomy columns
+#'       # Initialize filter expression
+#'       filter_expr <- NULL
+#'       
+#'       # Loop through all taxonomy columns and build a combined OR filter
+#'       for (i in seq_along(taxonomy_columns)) {
+#'         tax_col <- taxonomy_columns[i]
+#'         
+#'         # For the first column, start the filter
+#'         if (i == 1) {
+#'           filter_expr <- rlang::expr(.data[[tax_col]] %in% !!taxonomy_codes)
+#'         } else {
+#'           # For subsequent columns, add with OR operator
+#'           filter_expr <- rlang::expr(!!filter_expr | .data[[tax_col]] %in% !!taxonomy_codes)
+#'         }
+#'       }
+#'       
+#'       # Apply the combined filter
+#'       query <- dplyr::filter(query, !!filter_expr)
+#'       logger::log_info("Applied combined filter across all %d taxonomy columns", 
+#'                        length(taxonomy_columns))
+#'       
+#'       # Add entity type filter if column exists
+#'       if (entity_type_col_exists) {
+#'         query <- query %>% dplyr::filter(`Entity Type Code` == 1L)
+#'         logger::log_info("Applied Entity Type Code filter for physicians (1)")
+#'       } else {
+#'         logger::log_warn("Entity Type Code column not found, skipping filter")
+#'       }
+#'       
+#'       # Prepare list of all columns to select
+#'       cols_to_select <- c(
+#'         "NPI", 
+#'         "Provider Last Name (Legal Name)", 
+#'         "Provider First Name",
+#'         "Provider Middle Name", 
+#'         "Provider Gender Code",
+#'         taxonomy_columns[1],  # Use first taxonomy column for consistency in output
+#'         "Provider Business Practice Location Address City Name",
+#'         "Provider Business Practice Location Address State Name",
+#'         "Provider Business Practice Location Address Postal Code",
+#'         "NPI Deactivation Date", 
+#'         "Last Update Date", 
+#'         "Provider Enumeration Date", 
+#'         "Provider Organization Name (Legal Business Name)", 
+#'         "Provider Credential Text", 
+#'         "Provider First Line Business Mailing Address", 
+#'         "Provider Business Mailing Address City Name", 
+#'         "Provider Business Mailing Address State Name", 
+#'         "Provider Business Mailing Address Postal Code", 
+#'         "Provider Business Mailing Address Country Code (If outside U.S.)", 
+#'         "Provider Business Practice Location Address Country Code (If outside U.S.)"
+#'       )
+#'       
+#'       # Also include all other taxonomy columns
+#'       if (length(taxonomy_columns) > 1) {
+#'         cols_to_select <- c(cols_to_select, taxonomy_columns[-1])
+#'         logger::log_info("Including all %d taxonomy columns in output", length(taxonomy_columns))
+#'       }
+#'       
+#'       # Ensure all columns exist
+#'       available_cols <- cols_to_select[cols_to_select %in% col_names]
+#'       logger::log_info("Found %d of %d requested columns", 
+#'                        length(available_cols), length(cols_to_select))
+#'       
+#'       # Select available columns
+#'       query <- query %>% dplyr::select(dplyr::all_of(available_cols))
+#'       
+#'       # Define column renames
+#'       rename_map <- c(
+#'         NPI = "NPI",
+#'         LastName = "Provider Last Name (Legal Name)",
+#'         FirstName = "Provider First Name",
+#'         MiddleName = "Provider Middle Name",
+#'         Gender = "Provider Gender Code",
+#'         TaxonomyCode1 = taxonomy_columns[1],
+#'         City = "Provider Business Practice Location Address City Name",
+#'         State = "Provider Business Practice Location Address State Name",
+#'         Zip = "Provider Business Practice Location Address Postal Code"
+#'       )
+#'       
+#'       # Prepare rename command (only for columns that exist)
+#'       rename_cols <- rename_map[names(rename_map) %in% col_names]
+#'       
+#'       # Execute the query
+#'       physicians_data <- query %>%
+#'         dplyr::rename(!!!rename_cols) %>%
+#'         dplyr::mutate(Year = as.integer(current_year)) %>%
+#'         dplyr::collect(n = max_results_per_year)
+#'       
+#'       # Clean zip code
+#'       if ("Zip" %in% colnames(physicians_data)) {
+#'         physicians_data <- physicians_data %>%
+#'           dplyr::mutate(Zip = stringr::str_sub(Zip, 1, 5))
+#'         logger::log_info("Cleaned Zip codes to 5 digits")
+#'       }
+#'       
+#'       # Check if we found results
+#'       if (nrow(physicians_data) > 0) {
+#'         logger::log_info("Dplyr approach succeeded, found %d physicians", 
+#'                          nrow(physicians_data))
+#'       } else {
+#'         logger::log_info("No results from dplyr approach")
+#'         physicians_data <- NULL
+#'       }
+#'     }
+#'   }, error = function(e) {
+#'     logger::log_error("Dplyr approach failed: %s", e$message)
+#'     physicians_data <- NULL
+#'   })
+#'   
+#'   return(physicians_data)
+#' }
+#' 
+#' #' @noRd
+#' try_sql_approach <- function(con, current_table, current_year, taxonomy_codes, 
+#'                              max_results_per_year) {
+#'   physicians_data <- NULL
+#'   
+#'   tryCatch({
+#'     logger::log_info("Attempting direct SQL approach")
+#'     
+#'     # First find taxonomy columns for the query
+#'     sample_data <- DBI::dbGetQuery(con, sprintf("SELECT * FROM \"%s\" LIMIT 1", current_table))
+#'     taxonomy_columns <- grep("Healthcare Provider Taxonomy Code_[0-9]+", 
+#'                              colnames(sample_data), value = TRUE)
+#'     
+#'     logger::log_info("Found %d taxonomy columns in database", length(taxonomy_columns))
+#'     
+#'     if (length(taxonomy_columns) > 0) {
+#'       # Build taxonomy code filter strings for ALL available taxonomy columns
+#'       taxonomy_filter_parts <- c()
+#'       
+#'       # Create a filter for each taxonomy column
+#'       for (tax_col in taxonomy_columns) {
+#'         taxonomy_filter_parts <- c(
+#'           taxonomy_filter_parts,
+#'           sprintf("\"%s\" IN ('%s')", 
+#'                   tax_col, 
+#'                   paste(taxonomy_codes, collapse = "','"))
+#'         )
+#'       }
+#'       
+#'       # Combine with OR
+#'       taxonomy_filter <- paste(taxonomy_filter_parts, collapse = " OR ")
+#'       
+#'       # Add entity type filter if column exists
+#'       entity_filter <- ""
+#'       if ("Entity Type Code" %in% colnames(sample_data)) {
+#'         entity_filter <- "AND \"Entity Type Code\" = 1"
+#'         logger::log_info("Added Entity Type Code filter for physicians (1)")
+#'       } else {
+#'         logger::log_warn("Entity Type Code column not found in SQL approach, skipping filter")
+#'       }
+#'       
+#'       # Define the columns to select
+#'       core_columns <- c(
+#'         "\"NPI\"", 
+#'         "\"Provider Last Name (Legal Name)\" AS LastName",
+#'         "\"Provider First Name\" AS FirstName",
+#'         "\"Provider Middle Name\" AS MiddleName",
+#'         "\"Provider Gender Code\" AS Gender",
+#'         sprintf("\"%s\" AS TaxonomyCode1", taxonomy_columns[1]),
+#'         "\"Provider Business Practice Location Address City Name\" AS City",
+#'         "\"Provider Business Practice Location Address State Name\" AS State",
+#'         "\"Provider Business Practice Location Address Postal Code\" AS Zip"
+#'       )
+#'       
+#'       additional_columns <- c(
+#'         "\"NPI Deactivation Date\"",
+#'         "\"Last Update Date\"",
+#'         "\"Provider Enumeration Date\"",
+#'         "\"Provider Organization Name (Legal Business Name)\"",
+#'         "\"Provider Credential Text\"",
+#'         "\"Provider First Line Business Mailing Address\"",
+#'         "\"Provider Business Mailing Address City Name\"",
+#'         "\"Provider Business Mailing Address State Name\"",
+#'         "\"Provider Business Mailing Address Postal Code\"",
+#'         "\"Provider Business Mailing Address Country Code (If outside U.S.)\"",
+#'         "\"Provider Business Practice Location Address Country Code (If outside U.S.)\""
+#'       )
+#'       
+#'       # Add other taxonomy columns
+#'       if (length(taxonomy_columns) > 1) {
+#'         for (i in 2:length(taxonomy_columns)) {
+#'           additional_columns <- c(
+#'             additional_columns,
+#'             sprintf("\"%s\"", taxonomy_columns[i])
+#'           )
+#'         }
+#'       }
+#'       
+#'       # Filter additional columns to those that exist
+#'       available_additional_cols <- c()
+#'       for (col in additional_columns) {
+#'         # Extract column name from SQL expression (remove quotes and AS part)
+#'         col_name <- gsub("\"(.*)\".*", "\\1", col)
+#'         if (col_name %in% colnames(sample_data)) {
+#'           available_additional_cols <- c(available_additional_cols, col)
+#'         }
+#'       }
+#'       
+#'       logger::log_info("Found %d of %d additional columns", 
+#'                        length(available_additional_cols), length(additional_columns))
+#'       
+#'       # Combine all columns
+#'       all_columns <- c(core_columns, available_additional_cols)
+#'       column_sql <- paste(all_columns, collapse = ", ")
+#'       
+#'       # Build the query
+#'       logger::log_info("Building SQL query")
+#'       query <- sprintf(
+#'         "SELECT %s, %d AS Year
+#'          FROM \"%s\"
+#'          WHERE (%s) %s
+#'          LIMIT %d",
+#'         column_sql,
+#'         current_year,
+#'         current_table,
+#'         taxonomy_filter,
+#'         entity_filter,
+#'         max_results_per_year
+#'       )
+#'       
+#'       # Execute query
+#'       logger::log_info("Executing SQL query")
+#'       physicians_data <- DBI::dbGetQuery(con, query)
+#'       
+#'       # Clean zip code
+#'       if ("Zip" %in% colnames(physicians_data)) {
+#'         physicians_data <- physicians_data %>%
+#'           dplyr::mutate(Zip = stringr::str_sub(Zip, 1, 5))
+#'         logger::log_info("Cleaned Zip codes to 5 digits")
+#'       }
+#'       
+#'       if (nrow(physicians_data) > 0) {
+#'         logger::log_info("SQL approach succeeded, found %d physicians", 
+#'                          nrow(physicians_data))
+#'       } else {
+#'         logger::log_info("No results from SQL approach")
+#'         physicians_data <- NULL
+#'       }
+#'     }
+#'   }, error = function(e) {
+#'     logger::log_error("SQL approach failed: %s", e$message)
+#'     physicians_data <- NULL
+#'   })
+#'   
+#'   return(physicians_data)
+#' }
+#' 
+#' #' Standardize column types for a data frame
+#' #'
+#' #' @param df Data frame to standardize
+#' #'
+#' #' @noRd
+#' standardize_column_types <- function(df) {
+#'   if (is.null(df) || nrow(df) == 0) {
+#'     return(df)
+#'   }
+#'   
+#'   logger::log_info("Standardizing column types for a result set with %d rows", nrow(df))
+#'   
+#'   # Columns to ensure are character
+#'   char_columns <- c(
+#'     "NPI", "LastName", "FirstName", "MiddleName", "Gender", "TaxonomyCode1",
+#'     "City", "State", "Zip", "NPI Deactivation Date", "Last Update Date", 
+#'     "Provider Enumeration Date", "Provider Organization Name (Legal Business Name)",
+#'     "Provider Credential Text", "Provider First Line Business Mailing Address",
+#'     "Provider Business Mailing Address City Name", "Provider Business Mailing Address State Name",
+#'     "Provider Business Mailing Address Postal Code",
+#'     "Provider Business Mailing Address Country Code (If outside U.S.)",
+#'     "Provider Business Practice Location Address Country Code (If outside U.S.)"
+#'   )
+#'   
+#'   # Add additional taxonomy columns if they exist
+#'   taxonomy_cols <- grep("Healthcare Provider Taxonomy Code_[0-9]+", names(df), value = TRUE)
+#'   if (length(taxonomy_cols) > 0) {
+#'     char_columns <- c(char_columns, taxonomy_cols)
+#'   }
+#'   
+#'   # Columns to ensure are integer
+#'   int_columns <- c("Year")
+#'   
+#'   # Standardize character columns
+#'   for (col in char_columns) {
+#'     if (col %in% names(df)) {
+#'       # Convert various types to character
+#'       if (is.factor(df[[col]])) {
+#'         logger::log_debug("Converting factor column %s to character", col)
+#'         df[[col]] <- as.character(df[[col]])
+#'       } else if (is.numeric(df[[col]])) {
+#'         logger::log_debug("Converting numeric column %s to character", col)
+#'         df[[col]] <- as.character(df[[col]])
+#'       } else if (inherits(df[[col]], "Date") || inherits(df[[col]], "POSIXt")) {
+#'         logger::log_debug("Converting date/time column %s to character", col)
+#'         df[[col]] <- as.character(df[[col]])
+#'       } else if (!is.character(df[[col]])) {
+#'         logger::log_debug("Converting column %s from %s to character", 
+#'                           col, class(df[[col]])[1])
+#'         df[[col]] <- as.character(df[[col]])
+#'       }
+#'     }
+#'   }
+#'   
+#'   # Standardize integer columns
+#'   for (col in int_columns) {
+#'     if (col %in% names(df)) {
+#'       # Convert various types to integer
+#'       if (is.factor(df[[col]]) || is.character(df[[col]])) {
+#'         logger::log_debug("Converting factor/character column %s to integer", col)
+#'         df[[col]] <- as.integer(as.character(df[[col]]))
+#'       } else if (is.numeric(df[[col]]) && !is.integer(df[[col]])) {
+#'         logger::log_debug("Converting numeric column %s to integer", col)
+#'         df[[col]] <- as.integer(df[[col]])
+#'       } else if (!is.integer(df[[col]])) {
+#'         logger::log_debug("Converting column %s from %s to integer", 
+#'                           col, class(df[[col]])[1])
+#'         df[[col]] <- as.integer(as.character(df[[col]]))
+#'       }
+#'     }
+#'   }
+#'   
+#'   # Handle missing columns by adding them with appropriate default values
+#'   expected_columns <- c(char_columns, int_columns)
+#'   missing_columns <- setdiff(expected_columns, names(df))
+#'   
+#'   if (length(missing_columns) > 0) {
+#'     logger::log_debug("Adding %d missing columns with appropriate default values", 
+#'                       length(missing_columns))
+#'     
+#'     for (col in missing_columns) {
+#'       # Add with appropriate type
+#'       if (col %in% char_columns) {
+#'         df[[col]] <- NA_character_
+#'       } else if (col %in% int_columns) {
+#'         df[[col]] <- NA_integer_
+#'       }
+#'     }
+#'   }
+#'   
+#'   return(df)
+#' }
+#' 
+#' #' Combine physician results with consistent data types
+#' #'
+#' #' @param physician_listings List of data frames with physician data
+#' #'
+#' #' @noRd
+#' combine_physician_results_with_consistent_types <- function(physician_listings) {
+#'   # Filter out NULL or non-data frame entries
+#'   valid_listings <- Filter(function(x) {
+#'     return(!is.null(x) && (is.data.frame(x) || is.list(x) && length(x) > 0))
+#'   }, physician_listings)
+#'   
+#'   # If no valid data remains, return empty data frame
+#'   if (length(valid_listings) == 0) {
+#'     logger::log_warn("No valid physician data found after filtering")
+#'     return(create_empty_physician_tibble())
+#'   }
+#'   
+#'   # Log how many valid entries remain
+#'   logger::log_info("Combining %d valid data sources out of %d total", 
+#'                    length(valid_listings), length(physician_listings))
+#'   
+#'   # Get a list of all column names across all data frames
+#'   all_columns <- unique(unlist(lapply(valid_listings, names)))
+#'   logger::log_debug("Found a total of %d unique columns across all data sources", 
+#'                     length(all_columns))
+#'   
+#'   # Standardize each data frame to have all columns with consistent types
+#'   standardized_listings <- lapply(valid_listings, function(df) {
+#'     # Add any missing columns
+#'     missing_cols <- setdiff(all_columns, names(df))
+#'     for (col in missing_cols) {
+#'       if (col %in% c("Year")) {
+#'         df[[col]] <- NA_integer_
+#'       } else {
+#'         df[[col]] <- NA_character_
+#'       }
+#'     }
+#'     return(df)
+#'   })
+#'   
+#'   # Combine all results
+#'   tryCatch({
+#'     # Use safer approach with reduce instead of bind_rows
+#'     all_physicians <- purrr::reduce(standardized_listings, function(acc, x) {
+#'       # Ensure column order matches
+#'       x <- x[, names(acc)]
+#'       return(rbind(acc, x))
+#'     })
+#'     
+#'     logger::log_info("Found a total of %d physicians across all years", 
+#'                      nrow(all_physicians))
+#'     
+#'     # Convert to tibble for consistent output
+#'     all_physicians <- tibble::as_tibble(all_physicians)
+#'     
+#'     return(all_physicians)
+#'   }, error = function(e) {
+#'     logger::log_error("Error combining physician data: %s", e$message)
+#'     
+#'     # Fallback to a more cautious approach
+#'     logger::log_warn("Attempting fallback approach for combining data")
+#'     
+#'     tryCatch({
+#'       # Try using a template for consistent structure
+#'       template <- create_empty_physician_tibble()
+#'       
+#'       # Process each data frame to match the template
+#'       processed_listings <- lapply(standardized_listings, function(df) {
+#'         # Select only columns in template
+#'         common_cols <- intersect(names(df), names(template))
+#'         new_df <- df[, common_cols, drop = FALSE]
+#'         
+#'         # Add missing columns from template
+#'         missing_cols <- setdiff(names(template), names(new_df))
+#'         for (col in missing_cols) {
+#'           if (col %in% c("Year")) {
+#'             new_df[[col]] <- NA_integer_
+#'           } else {
+#'             new_df[[col]] <- NA_character_
+#'           }
+#'         }
+#'         
+#'         # Ensure correct column order
+#'         new_df <- new_df[, names(template)]
+#'         return(new_df)
+#'       })
+#'       
+#'       # Bind the processed data frames
+#'       all_physicians <- do.call(rbind, processed_listings)
+#'       all_physicians <- tibble::as_tibble(all_physicians)
+#'       
+#'       logger::log_info("Fallback approach succeeded with %d physicians", 
+#'                        nrow(all_physicians))
+#'       return(all_physicians)
+#'     }, error = function(inner_e) {
+#'       logger::log_error("Fallback approach also failed: %s", inner_e$message)
+#'       
+#'       # Last resort: return just the first data source
+#'       if (length(valid_listings) > 0) {
+#'         logger::log_warn("Returning only the first data source as final fallback")
+#'         return(valid_listings[[1]])
+#'       } else {
+#'         return(create_empty_physician_tibble())
+#'       }
+#'     })
+#'   })
+#' }
 
 
 

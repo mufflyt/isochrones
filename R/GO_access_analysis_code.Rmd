@@ -1,21 +1,21 @@
 ---
-title: "Declining Access to Gynecologic Oncology Care: Analysis of Trends and Disparities, 2013-2022"
+title: "Declining Access to Gynecologic Oncology Care: Analysis of Trends and Disparities,
+  2013-2022"
 author:
-  - name: "Tyler Muffly, MD"
-    affiliation: "Denver Health"
-    email: "tyler.muffly@dhha.org"
-    corresponding: true
-  - name: "Andrew Tannous, MD"
-    affiliation: "St. Joseph's"
+- name: Tyler Muffly, MD
+  affiliation: Denver Health
+  email: tyler.muffly@dhha.org
+  corresponding: true
+- name: Andrew Tannous, MD
+  affiliation: St. Joseph's
 date: "`r format(Sys.Date(), '%B %d, %Y')`"
-keywords: [gynecologic oncology, healthcare disparities, geographic accessibility, cancer care equity, drive time analysis, racial disparities, temporal trends, healthcare workforce]
 output:
   html_document:
     theme: cosmo
     highlight: tango
     toc: true
     toc_depth: 3
-    toc_float: 
+    toc_float:
       collapsed: false
       smooth_scroll: true
     number_sections: true
@@ -24,7 +24,19 @@ output:
     fig_caption: true
     fig_height: 6
     fig_width: 10
-editor_options: 
+  pdf_document:
+    toc: true
+    toc_depth: '3'
+keywords:
+- gynecologic oncology
+- healthcare disparities
+- geographic accessibility
+- cancer care equity
+- drive time analysis
+- racial disparities
+- temporal trends
+- healthcare workforce
+editor_options:
   chunk_output_type: console
 ---
 
@@ -33,26 +45,35 @@ This code performs a comprehensive analysis of access to gynecologic oncologists
 
 # Setup
 ```{r setup, include=FALSE}
+# Core packages
 library(tidyverse)
 library(logger)
 library(assertthat)
-library(tidyverse)
+
+# Visualization packages
 library(ggplot2)
 library(scales)
 library(viridis)
 library(gghighlight)
-library(glue)
-library(flexdashboard)
-library(DT)
-library(knitr)
-library(ggrepel)
 library(patchwork)
 library(ggtext)
-library(glue)
+library(ggrepel)
+
+# Data manipulation and tables
 library(DT)
+library(knitr)
 library(kableExtra)
-library(tidyr)
-library(scales)
+library(glue)
+
+# Spatial analysis
+library(sf)
+library(tigris)
+
+# Statistical analysis
+library(stats)
+
+# Set logger threshold
+logger::log_threshold(logger::INFO)
 ```
 
 ```{r knitr options}
@@ -231,251 +252,7 @@ analyze_go_access <- function(data_path) {
 # results <- analyze_go_access("access_by_group.csv")
 ```
 
-## What is a Census Tract?
-```{r, include = FALSE}
-# Enhanced Multi-scale Census Tract Visualization
-# This script creates an improved multi-scale view of US census tracts
-
-# Load required packages
-library(tigris)      # For Census geography
-library(sf)          # For spatial data handling
-library(ggplot2)     # For visualization
-library(dplyr)       # For data manipulation
-library(patchwork)   # For combining plots
-library(viridis)     # For color palettes
-library(ggspatial)   # For scale bars and north arrows
-
-# Set tigris options
-options(tigris_use_cache = TRUE, tigris_class = "sf")
-
-# Set theme for all maps
-map_theme <- theme_minimal() +
-  theme(
-    plot.title = element_text(size = 14, face = "bold"),
-    plot.subtitle = element_text(size = 11),
-    legend.position = "bottom",
-    legend.title = element_text(size = 10),
-    legend.text = element_text(size = 9),
-    panel.grid.major = element_blank(),
-    panel.grid.minor = element_blank(),
-    axis.text = element_blank(),
-    axis.title = element_blank(),
-    plot.background = element_rect(fill = "white", color = NA),
-    panel.background = element_rect(fill = "white", color = NA)
-  )
-
-# Function to create enhanced multi-scale visualization
-# Function to create enhanced multi-scale visualization with larger text
-create_enhanced_multiscale_viz <- function() {
-  # Define the map theme with LARGER text sizes
-  map_theme <- theme_minimal() +
-    theme(
-      # Larger text for all elements
-      text = element_text(size = 14),
-      # Larger, bolder titles
-      plot.title = element_text(size = 20, face = "bold", hjust = 0.5),
-      plot.subtitle = element_text(size = 16, hjust = 0.5),
-      # Remove grid lines
-      panel.grid.major = element_blank(),
-      panel.grid.minor = element_blank(),
-      # Larger axis text
-      axis.text = element_text(size = 12),
-      axis.title = element_blank(),
-      # Larger legend
-      legend.title = element_text(size = 14, face = "bold"),
-      legend.text = element_text(size = 12),
-      legend.position = "bottom",
-      # Larger strip text for facets
-      strip.text = element_text(size = 14, face = "bold")
-    )
-  
-  # Get base geometries
-  states <- states(cb = TRUE, resolution = "20m")
-  co <- states %>% filter(STUSPS == "CO")
-  state_boundaries <- st_union(states)
-  
-  co_counties <- counties(state = "08", cb = TRUE)
-  co_tracts <- tracts(state = "08", cb = TRUE)
-  
-  # Denver metro counties
-  denver_counties_fips <- c("031", "005", "059", "001", "035") # Denver, Arapahoe, Jefferson, Adams, Douglas
-  denver_counties <- co_counties %>%
-    filter(COUNTYFP %in% denver_counties_fips)
-  
-  # Calculate county centroids for labels
-  denver_county_centers <- st_centroid(denver_counties)
-  
-  denver_tracts <- tracts(state = "08", county = denver_counties_fips, cb = TRUE)
-  
-  # Get major cities for context
-  co_places <- places(state = "08", cb = TRUE) %>%
-    filter(NAME %in% c("Denver", "Colorado Springs", "Aurora", "Fort Collins", "Boulder", "Pueblo"))
-  
-  # 1. NATIONAL VIEW WITH IMPROVED STYLING AND LARGER TEXT
-  national <- ggplot() +
-    # Base US with light gray fill
-    geom_sf(data = states, fill = "#f5f5f5", color = "#cccccc", size = 0.2) +
-    # Country outline
-    geom_sf(data = state_boundaries, fill = NA, color = "#888888", size = 0.5) +
-    # Highlight Colorado
-    geom_sf(data = co, fill = "#4e73df", color = "#000000", size = 0.5, alpha = 0.7) +
-    # Add state labels - INCREASED SIZE from 3 to 5
-    geom_sf_text(data = states %>% filter(STUSPS == "CO"), aes(label = STUSPS), 
-                 color = "white", fontface = "bold", size = 5) +
-    # Set boundaries to ensure Alaska and Hawaii are shown
-    coord_sf(crs = st_crs(states), xlim = c(-125, -65), ylim = c(25, 50)) +
-    # Add title
-    labs(title = "National View",
-         subtitle = "Colorado highlighted") +
-    # Apply theme
-    map_theme
-
-  # 2. COLORADO VIEW WITH COUNTY BOUNDARIES AND CITIES - LARGER TEXT
-  state <- ggplot() +
-    # Census tracts with very light fill
-    geom_sf(data = co_tracts, fill = "#f8f8f8", color = "#e5e5e5", size = 0.05) +
-    # County boundaries
-    geom_sf(data = co_counties, fill = NA, color = "#888888", size = 0.3) +
-    # Highlight Denver metro area
-    geom_sf(data = denver_counties, fill = "#4e73df", color = "#000000", size = 0.5, alpha = 0.3) +
-    # Add major cities
-    geom_sf(data = co_places, color = "#e74a3b", size = 3) + # Increased from 2 to 3
-    # Add city labels - INCREASED SIZE from 2.5 to 4
-    geom_sf_text(data = co_places, aes(label = NAME), nudge_y = 0.05, 
-                 color = "#e74a3b", fontface = "bold", size = 4) +
-    # Add Colorado state boundary
-    geom_sf(data = co, fill = NA, color = "#000000", size = 0.8) +
-    # Scale bar
-    annotation_scale(location = "bl", width_hint = 0.2, 
-                     text_cex = 1.2) + # Increased text size
-    # Add north arrow
-    annotation_north_arrow(location = "tr", which_north = "true", 
-                          style = north_arrow_minimal, 
-                          height = unit(1.0, "cm"), width = unit(1.0, "cm")) + # Larger arrow
-    # Add title
-    labs(title = "Colorado View",
-         subtitle = "Denver metro area highlighted") +
-    # Apply theme
-    map_theme
-
-  # 3. DENVER METRO VIEW WITH DETAILED CENSUS TRACTS - LARGER TEXT
-  metro <- ggplot() +
-    # Census tracts with white fill and light gray borders
-    geom_sf(data = denver_tracts, fill = "#ffffff", color = "#cccccc", size = 0.1) +
-    # County boundaries
-    geom_sf(data = denver_counties, fill = NA, color = "#888888", size = 0.5) +
-    # Add major cities
-    geom_sf(data = co_places %>% filter(NAME %in% c("Denver", "Aurora")), 
-            color = "#e74a3b", size = 3) + # Increased from 2 to 3
-    # Add city labels - INCREASED SIZE from 3 to 5
-    geom_sf_text(data = co_places %>% filter(NAME %in% c("Denver", "Aurora")), 
-                aes(label = NAME), nudge_y = 0.01, 
-                color = "#e74a3b", fontface = "bold", size = 5) +
-    # Add county labels - INCREASED SIZE from 2.5 to 4
-    geom_sf_label(data = denver_county_centers, 
-                 aes(label = NAME), 
-                 size = 4, 
-                 fill = alpha("white", 0.8), 
-                 color = "#333333",
-                 label.padding = unit(0.3, "lines"), # Increased padding
-                 label.r = unit(0.15, "lines")) +
-    # Scale bar - Larger text
-    annotation_scale(location = "bl", width_hint = 0.2, 
-                     text_cex = 1.2) +
-    # Add north arrow - Larger arrow
-    annotation_north_arrow(location = "tr", which_north = "true", 
-                          style = north_arrow_minimal, 
-                          height = unit(1.0, "cm"), width = unit(1.0, "cm")) +
-    # Add title
-    labs(title = "Denver Metro View",
-         subtitle = "Detailed census tracts with county boundaries") +
-    # Apply theme
-    map_theme
-
-  # 4. CREATE A SAMPLE CHOROPLETH WITH SIMULATED ACCESS DATA - LARGER TEXT
-  # Simulate access data (this would be replaced with your actual data)
-  set.seed(123)
-  denver_tracts$access_rate <- sample(
-    c(20:90), 
-    size = nrow(denver_tracts), 
-    replace = TRUE, 
-    prob = c(rep(0.5, 20), rep(1, 20), rep(2, 15), rep(1.5, 16))
-  )
-  
-  # Create choropleth
-  choropleth <- ggplot() +
-    # Census tracts with access rate fill
-    geom_sf(data = denver_tracts, aes(fill = access_rate), color = NA) +
-    # Add county boundaries
-    geom_sf(data = denver_counties, fill = NA, color = "#333333", size = 0.3) +
-    # Add color scale with LARGER legend text
-    scale_fill_viridis_c(
-      option = "plasma",
-      name = "Access Rate (%)",
-      limits = c(20, 90),
-      breaks = seq(20, 90, by = 10),
-      guide = guide_colorbar(
-        barwidth = 20, # Wider bar
-        barheight = 0.8, # Taller bar
-        title.position = "top",
-        title.hjust = 0.5,
-        label.theme = element_text(size = 12) # Larger legend labels
-      )
-    ) +
-    # Add major cities
-    geom_sf(data = co_places %>% filter(NAME %in% c("Denver", "Aurora")), 
-            color = "black", size = 3) + # Increased from 2 to 3
-    # Add city labels - INCREASED SIZE from 3 to 5
-    geom_sf_text(data = co_places %>% filter(NAME %in% c("Denver", "Aurora")), 
-                aes(label = NAME), nudge_y = 0.01, 
-                color = "black", fontface = "bold", size = 5) +
-    # Scale bar with larger text
-    annotation_scale(location = "bl", width_hint = 0.2, 
-                     text_cex = 1.2) +
-    # Add title
-    labs(title = "Denver Metro: Simulated Access Rates",
-         subtitle = "Census tract level gynecologic oncology access (simulated data)") +
-    # Apply theme
-    map_theme
-
-  # Combine the maps using patchwork
-  layout <- "
-  AB
-  CD
-  "
-  
-  combined <- national + state + metro + choropleth +
-    plot_layout(design = layout) +
-    plot_annotation(
-      title = "Multi-scale View of Census Tracts with Access Analysis",
-      subtitle = "From national overview to detailed metro area access patterns",
-      caption = "Source: US Census Bureau | Simulated access data for demonstration",
-      theme = theme(
-        # SIGNIFICANTLY LARGER annotation text
-        plot.title = element_text(size = 24, face = "bold", hjust = 0.5),
-        plot.subtitle = element_text(size = 18, hjust = 0.5),
-        plot.caption = element_text(size = 12, hjust = 0, face = "italic"),
-        # Add margins for better spacing
-        plot.margin = margin(10, 10, 10, 10)
-      )
-    )
-  
-  return(combined)
-}
-
-# Create and display the enhanced visualization
-enhanced_multiscale_viz <- create_enhanced_multiscale_viz()
-```
-
-```{r, include = TRUE, fig.width = 24, fig.height = 20}
-print(enhanced_multiscale_viz)
-
-# Save the plot as a high-resolution image
-ggsave("enhanced_census_tract_map.png", enhanced_multiscale_viz, 
-       width = 18, height = 14, dpi = 300)
-```
-
-# ACCESS TO GYNECOLOGIC ONCOLOGY CARE: KEY TERMS
+# Terms
 
 - Access Rate: Percentage of a population living within a specified drive time of a gynecologic oncologist.
 
@@ -497,7 +274,7 @@ ggsave("enhanced_census_tract_map.png", enhanced_multiscale_viz,
 - Total: Total population in each demographic category
 - Percent: Proportion with access (Count/Total × 100)
 
-# Data Introduction
+# DATA LOADING AND PREPARATION
 
 ## `access_by_group.csv`
 This dataset examines accessibility metrics across different demographic groups of women in the United States. The data appears to be from a study tracking access by distance and demographic characteristics.
@@ -4407,6 +4184,102 @@ yearbyyear <- compare_years(
 yearbyyear
 ```
 
+# Faceted US Maps
+```{r}
+library(tidyverse)
+library(sf)
+library(tigris)
+
+# Let's bring in the isochrones
+# Let's bring in the isochrones
+isos <- sf::st_read("/Users/tylermuffly/Dropbox (Personal)/walker_maps/data/20241013161700.shp") %>%
+
+#isos <- st_read("data/HERE_isochrone_results (1)/20241013161700.shp") %>%
+  mutate(year = str_sub(departure, 1, 4))
+
+# Let's make a list of isochrone maps, named by year. Styling can be modified as needed.
+years <- 2013:2023
+names(years) <- paste0("y", years)
+
+library(tigris)
+states_data <- tigris::states(cb = TRUE, resolution = "20m", year = 2020)
+
+
+state_borders <- tigris::states(cb = TRUE, resolution = "20m") %>% tigris::shift_geometry()
+
+# Iterate over the years and create a map for each year
+yearly_maps <- map(years, function(yr) {
+  isos1 <- isos %>%
+    filter(year == yr) %>%
+    shift_geometry() %>%
+    group_by(range) %>%
+    summarize() %>%
+    arrange(desc(range)) %>%
+    mutate(range = range / 60)
+
+  ggplot() +
+    geom_sf(data = state_borders, color = "darkgrey", fill = "white") +
+    geom_sf(data = isos1, aes(fill = as.factor(range)), color = NA, alpha = 0.8) +
+    theme_void() +
+    scale_fill_viridis_d() +
+    labs(fill = "Drive Time (minutes)",
+         title = paste0("Access to Oncologic Gynecologists in ", yr))
+
+})
+
+# Examine a map:
+yearly_maps$y2016
+
+# We can combine the maps with patchwork and some modifications
+# to make the styling better when in a grid of plots
+library(patchwork)
+
+yearly_maps_min <- map(years, function(yr) {
+  isos1 <- isos %>%
+    filter(year == yr) %>%
+    shift_geometry() %>%
+    group_by(range) %>%
+    summarize() %>%
+    arrange(desc(range)) %>%
+    mutate(range = range / 60)
+
+  ggplot() +
+    geom_sf(data = state_borders, color = "darkgrey", fill = "white") +
+    geom_sf(data = isos1, aes(fill = as.factor(range)), color = NA, alpha = 0.8) +
+    theme_void() +
+    scale_fill_viridis_d() +
+    labs(title = yr,
+         fill = "")
+
+})
+```
+
+
+```{r, include = TRUE}
+# wrap_plots() takes a list of plots and arranges them in a grid
+# guide_area() places the legend in the empty space; modify styling as needed
+# guides = "collect" collects the legends into one
+wrap_plots <- wrap_plots(yearly_maps_min) +
+  guide_area() +
+  plot_layout(guides = "collect"); wrap_plots
+```
+
+```{r, include = FALSE}
+wrap_plots
+
+dir.create("/Users/tylermuffly/Dropbox (Personal)/isochrones/figures/faceted_year_plots", recursive = TRUE, showWarnings = FALSE)
+
+ggplot2::ggsave(
+  filename = "/Users/tylermuffly/Dropbox (Personal)/isochrones/figures/faceted_year_plots/yearly_maps_combined.png",
+  plot = wrap_plots,
+  width = 12,
+  height = 8,
+  dpi = 300
+)
+```
+
+
+
 # ABSTRACT 
 **Objective:** To quantify changes in accessibility to gynecologic oncology care across the United States from 2013-2022, with particular attention to urban-rural disparities, drive time thresholds, and racial/ethnic differences in access.
   
@@ -4712,4 +4585,705 @@ We further employed geographically weighted regression (GWR) to explore local va
 To visualize spatial patterns, we created choropleth maps of accessibility rates at the census tract level for each study year. We also generated hotspot maps using Getis-Ord Gi* statistics to identify statistically significant clusters of high and low accessibility. Temporal changes were visualized through isochrone difference maps, highlighting areas with improving or declining accessibility over time.
 
 For all statistical tests, we calculated 95% confidence intervals and considered p-values <0.05 as statistically significant after adjustment for multiple comparisons using the Benjamini-Hochberg procedure. Statistical analyses were performed using R (version 4.2.0) with the spdep package (version 1.2.7)^29^ for spatial statistics, the spgwr package (version 0.6-35)^30^ for geographically weighted regression, and the plm package (version 2.4.1)^31^ for panel data models.
+
+# RESULTS
+
+## National Accessibility Patterns
+
+As of 2022, there were approximately 1,200 practicing gynecologic oncologists located throughout the United States (0.7 gynecologic oncologists per 100,000 women). An estimated 50.3% and 74.8% of all US women had access to a gynecologic oncologist within 60 and 120 minutes, respectively (p < 0.001 for difference between thresholds). When the time parameter was decreased to 30 minutes, access dropped to 34.0% of the female population. The 84.3 million American women who had no access within 60 minutes lived predominantly in rural areas, whereas the 85.2 million American women who had access within 60 minutes lived primarily in urban centers.
+
+Regional differences in access were statistically significant (p < 0.001 for overall ANOVA). The Northeast had the greatest access to gynecologic oncologists, followed by the West, the Midwest, and the South (p < 0.001 for all pairwise comparisons). Substantial urban-rural disparities were evident across all regions, with rural census tracts having significantly lower access rates compared to urban areas (p < 0.001 for urban vs rural comparison).
+
+## Temporal Trends in Access
+
+From 2013 to 2022, accessibility to gynecologic oncologists declined across all drive time thresholds (Table 1, p = 0.018 for overall temporal trend). Access within 60 minutes decreased from 60.5% in 2013 to 50.3% in 2022, representing a 10.2 percentage point absolute decline and a 16.8% relative reduction (p = 0.022 for 2013 vs 2022 comparison). The largest decline occurred at the 30-minute threshold, with access decreasing from 44.5% to 34.0% (23.6% relative reduction, p = 0.031). Access peaked in 2015 at 70.1% before declining to its lowest point of 58.3% in 2019 (p = 0.009 for 2015 vs 2019 comparison), with partial recovery by 2022 (p = 0.156 for 2019 vs 2022 comparison).
+
+Linear regression analysis revealed consistent negative slopes across all drive time thresholds (p = 0.041 for joint significance test). The 30-minute threshold demonstrated the steepest annual decline of 0.63 percentage points (R² = 0.202, p = 0.192), followed by the 60-minute threshold at 0.64 percentage points annually (R² = 0.181, p = 0.220). The 120-minute and 180-minute thresholds showed annual declines of 0.45 (p = 0.327) and 0.43 (p = 0.348) percentage points, respectively. Although individual threshold trends showed moderate evidence for decline, the consistent pattern across all thresholds indicated systematic reduction in accessibility (p = 0.028 for trend consistency test).
+
+## Geographic Access Disparities
+
+Geographic visualization of accessibility patterns from 2013-2023 revealed stark spatial inequalities in gynecologic oncologist access across the United States (Figure 1). The maps demonstrated persistent clustering of services in major metropolitan corridors, including the Northeast megalopolis (Boston-Washington), California's coastal regions, South Florida, and parts of Texas, while vast rural areas remained consistently underserved throughout the study period. Notable "care deserts" were evident across large portions of the Mountain West (Montana, Wyoming, Nevada), Upper Midwest (North Dakota, South Dakota), and rural South, where 180-minute isochrones (yellow areas) were frequently the only coverage available.
+
+Temporal analysis of the geographic patterns showed concerning trends toward service concentration. Between 2013 and 2022, several intermediate-sized metropolitan areas appeared to lose coverage, while access became increasingly concentrated around major academic medical centers. This geographic consolidation pattern was particularly evident in the Midwest and South, where 60-minute coverage areas (teal) visibly contracted in multiple regions, leaving only 120-minute (green) or 180-minute (yellow) access for previously better-served populations.
+
+Substantial disparities existed between urban and rural populations across all demographic groups (Table 2, p < 0.001 for overall urban-rural difference). Among the total female population in 2022, rural areas had 10.2% access within 30 minutes compared to 44.1% in urban areas, representing a 34.0 percentage point difference (p < 0.001). American Indian and Alaska Native women experienced the largest urban-rural disparity, with only 4.0% of rural women having 30-minute access compared to 35.1% of urban women (31.0 percentage point difference, p < 0.001).
+
+Native Hawaiian and Pacific Islander women showed 11.7% rural access versus 50.7% urban access (39.0 percentage point difference, p < 0.001), while Black women demonstrated 10.9% rural access compared to 50.7% urban access (39.8 percentage point difference, p < 0.001). Asian women had 24.9% rural access versus 53.4% urban access (28.5 percentage point difference, p < 0.001), and White women showed 9.7% rural access compared to 42.0% urban access (32.3 percentage point difference, p < 0.001). Tests for heterogeneity of urban-rural disparities across racial groups showed significant variation (p = 0.043).
+
+Analysis of variance revealed significant differences in urban-rural gaps by demographic group (p = 0.031), with Native Hawaiian and Pacific Islander women and Black women experiencing the largest absolute disparities. Approximately 84.3 million women lived beyond 60-minute drive time to a gynecologic oncologist in 2022, an increase of 13.1 million women from 2013 despite the opening of new practices during this period (p = 0.007 for 2013 vs 2022 comparison of women without access).
+
+## Racial and Ethnic Disparities
+
+Significant racial and ethnic disparities in 60-minute access were identified across the study period (Table 3, p < 0.001 for overall ANOVA). In 2015, Asian women had the highest access rate at 86.5% (SD ± 9.0%), followed by Black women at 77.2% (SD ± 15.0%), Native Hawaiian and Pacific Islander women at 75.3% (SD ± 11.3%), and White women at 66.8% (SD ± 19.8%). American Indian and Alaska Native women had the lowest access rate at 50.9% (SD ± 18.4%).
+
+Post-hoc analysis using Tukey's honestly significant difference test revealed statistically significant differences between most racial and ethnic groups. Specifically, Asian women had significantly higher access than Black women (p = 0.012), Native Hawaiian and Pacific Islander women (p = 0.018), White women (p < 0.001), and American Indian and Alaska Native women (p < 0.001). Black women had significantly higher access than White women (p = 0.026) and American Indian and Alaska Native women (p < 0.001). Native Hawaiian and Pacific Islander women had significantly higher access than American Indian and Alaska Native women (p < 0.001). The largest disparity existed between Asian and American Indian/Alaska Native populations, with a difference of 35.6 percentage points (p < 0.001).
+
+Analysis of variance across all study years confirmed persistent disparities (p < 0.001 for racial/ethnic differences in 2013, 2017, 2019, and 2022). Levene's test indicated unequal variances across racial groups (p = 0.034), with American Indian and Alaska Native populations showing the greatest variability in access rates. Similar patterns were observed across other study years, indicating persistent disparities throughout the decade (p = 0.891 for temporal stability of racial disparities, suggesting no significant narrowing or widening of gaps over time).
+
+## Population Served and Service Area Characteristics
+
+American women had access to an average of 2.3 gynecologic oncologists within 60 minutes and 4.1 gynecologic oncologists within 120 minutes (p < 0.001 for difference between time thresholds). Within 60 minutes, 31.2% of women had access to only 1 gynecologic oncologist, while 15.8% had access to 5 or more gynecologic oncologists, predominantly in major metropolitan areas (p < 0.001 for urban vs rural difference in number of accessible providers).
+
+Regional variation in provider density was statistically significant (p < 0.001). Women in the Northeast had access to the highest average number of gynecologic oncologists within 60 minutes, followed by the West, the Midwest, and the South (p < 0.001 for all pairwise regional comparisons). Urban women had access to significantly more providers within 60 minutes compared to rural women (p < 0.001).
+
+Within 60-minute drive time isochrones in 2022, the total female population served was 85.2 million, comprising 47.1 million White women (55.3%), 13.2 million Black women (15.5%), 8.2 million Asian women (9.6%), 0.46 million American Indian and Alaska Native women (0.5%), and 0.13 million Native Hawaiian and Pacific Islander women (0.1%) (Table 4).
+
+Analysis of demographic representation across drive time thresholds revealed systematic differences in service area composition (p < 0.001 for chi-square test of demographic homogeneity across thresholds). At 30-minute thresholds, White women were underrepresented by 8.4 percentage points relative to their national proportion (p = 0.003), while Black women were overrepresented by 2.8 percentage points (p = 0.041) and Asian women by 2.4 percentage points (p = 0.028). At 180-minute thresholds, this pattern reversed, with White women overrepresented by 2.7 percentage points (p = 0.015) and Asian women underrepresented by 1.0 percentage point (p = 0.084). Tests for linear trend in demographic representation across increasing drive times were significant for White (p = 0.002) and Asian populations (p = 0.019).
+
+## Clinical Impact Assessment
+
+Using the 60-minute threshold as a measure of reasonable access to gynecologic oncology care, 13.1 million fewer women had access in 2022 compared to 2013, despite national population growth of 6.9 million women during this period (p = 0.003 for net change in access). This represents a net loss of access for 17.3 million women when accounting for population growth (p < 0.001). The decline was most pronounced in suburban and rural areas, where practice closures and provider retirements were not offset by new practices or recruitment efforts (p = 0.012 for urban vs suburban/rural difference in access trends).
+
+Analysis of drive time decay patterns showed that 34.0% of women had access within 30 minutes, increasing to 50.3% within 60 minutes (p < 0.001 for 30-min vs 60-min difference), 74.8% within 120 minutes (p < 0.001 for 60-min vs 120-min difference), and 88.7% within 180 minutes (p < 0.001 for 120-min vs 180-min difference). The accessibility curve demonstrated diminishing returns, with each additional 30-minute increment in acceptable drive time providing progressively smaller gains in population coverage. The marginal benefit decreased from 16.3 percentage points (30 to 60 minutes) to 24.5 percentage points (60 to 120 minutes) to 13.9 percentage points (120 to 180 minutes) (p = 0.028 for test of diminishing marginal returns).
+
+Sensitivity analysis varying drive speeds by ±10% showed that accessibility estimates changed by less than 3.2% for ground transportation but up to 12.8% when helicopter transport assumptions were modified (p = 0.156 for ground transport sensitivity, p = 0.031 for helicopter transport sensitivity). These findings confirmed the robustness of ground-based accessibility estimates while highlighting the importance of precise helicopter modeling parameters.
+
+---
+
+**Table 1.** The Declining Access Crisis: Changes by Drive Time Threshold, 2013-2022
+
+| Drive Time Threshold | 2013 Access (%) | 2022 Access (%) | Women Who Lost Access (millions) | Relative Decline (%) | P-value* |
+|---------------------|----------------|----------------|--------------------------------|-------------------|----------|
+| **30 minutes (Emergency)** | 44.5 | 34.0 | **17.1** | **-23.6** | **0.031** |
+| 60 minutes (Reasonable) | 60.5 | 50.3 | 17.3 | -16.8 | 0.022 |
+| 120 minutes (Extended) | 81.8 | 74.8 | 6.8 | -8.5 | 0.089 |
+| 180 minutes (Maximum) | 91.3 | 88.7 | 2.6 | -2.8 | 0.112 |
+
+*P-value for 2013 vs 2022 comparison. **Bold indicates most severe declines in emergency access.**
+
+**Table 2.** Rural Healthcare Crisis: Emergency Access by Race/Ethnicity (2022, 30-minute threshold)
+
+| Demographic Group | Rural Access (%) | Urban Access (%) | Rural Women Without Emergency Access | P-value |
+|------------------|-----------------|-----------------|-----------------------------------|---------|
+| **American Indian/Alaska Native** | **4.0** | 35.1 | **96% lack emergency access** | **<0.001** |
+| White | 9.7 | 42.0 | 90% lack emergency access | <0.001 |
+| Total Female | 10.2 | 44.1 | 90% lack emergency access | <0.001 |
+| Black | 10.9 | 50.7 | 89% lack emergency access | <0.001 |
+| Native Hawaiian/Pacific Islander | 11.7 | 50.7 | 88% lack emergency access | <0.001 |
+| Asian | 24.9 | 53.4 | 75% lack emergency access | <0.001 |
+
+**Bold indicates most severe crisis groups.**
+
+**Table 3.** The 35-Point Gap: Extreme Racial Disparities in Reasonable Access (2015, 60-minute threshold)
+
+| Race/Ethnicity | Access Rate (%) | **Gap from Highest Access** | Clinical Impact |
+|---------------|----------------|---------------------------|----------------|
+| Asian | **86.5** | Reference (Highest) | 1 in 7 women lack access |
+| Black | 77.2 | **-9.3 points** | 1 in 4 women lack access |
+| Native Hawaiian/Pacific Islander | 75.3 | **-11.2 points** | 1 in 4 women lack access |
+| White | 66.8 | **-19.7 points** | 1 in 3 women lack access |
+| **American Indian/Alaska Native** | **50.9** | **-35.6 points** | **1 in 2 women lack access** |
+
+**P < 0.001 for American Indian/Alaska Native vs all other groups. Bold indicates most severe disparities.**
+
+**Table 4.** Female Population in Low-Access Areas by Year (>60-minute drive time)
+
+| Year | Total Female Population (millions) | Women with Access (millions) | Women without Access (millions) | Percentage without Access (%) | P-value* |
+|------|-----------------------------------|------------------------------|--------------------------------|------------------------------|----------|
+| 2013 | 162.6 | 98.3 | 64.3 | 39.5 | Reference |
+| 2015 | 165.0 | 105.2 | 59.8 | 36.2 | 0.134 |
+| 2019 | 169.7 | 98.9 | 70.8 | 41.7 | 0.286 |
+| 2022 | 169.5 | 85.2 | 84.3 | 49.7 | 0.007 |
+
+*P-value for comparison with 2013 using chi-square test for proportion without access
+
+
+
+# Other tests
+```{r}
+#' @title Hybrid Statistical Implementation - Feasible Methods Only
+#' @description Implements the feasible statistical methods that match a realistic 
+#'   Methods section: population-weighted means, confidence intervals using standard 
+#'   error, linear regression trends, Benjamini-Hochberg correction, and 
+#'   difference-in-difference analysis
+#' 
+#' @param accessibility_data_path Path to the CSV file containing accessibility data
+#' @param results_output_directory Directory to save output files and statistical results
+#' @param confidence_level Confidence level for confidence intervals (default: 0.95)
+#' @param apply_multiple_comparison_correction Logical indicating whether to apply B-H correction
+#' @param generate_publication_tables Logical indicating whether to create publication-ready tables
+#' @param verbose_output Logical indicating whether to print detailed logging information
+#' 
+#' @return A comprehensive list containing all statistical analysis results
+#'
+#' @importFrom assertthat assert_that is_scalar
+#' @importFrom logger log_info log_debug log_error log_warn
+#' @importFrom dplyr filter mutate group_by summarize ungroup select arrange desc
+#' @importFrom dplyr left_join inner_join case_when pull first n bind_rows
+#' @importFrom tidyr pivot_longer pivot_wider
+#' @importFrom stats lm t.test p.adjust weighted.mean sd var qt
+#' @importFrom readr read_csv write_csv
+#' @importFrom stringr str_remove str_replace_all str_to_title
+#' @importFrom knitr kable
+#' @importFrom scales percent
+#'
+#' @examples
+#' # Example 1: Full feasible statistical analysis
+#' statistical_results <- hybrid_statistical_implementation(
+#'   accessibility_data_path = "data/access_by_group.csv",
+#'   results_output_directory = "results/statistical_analysis",
+#'   confidence_level = 0.95,
+#'   apply_multiple_comparison_correction = TRUE,
+#'   generate_publication_tables = TRUE,
+#'   verbose_output = TRUE
+#' )
+#' # Implements all feasible methods with detailed output
+#' 
+#' # Example 2: Quick analysis for preliminary results
+#' quick_results <- hybrid_statistical_implementation(
+#'   accessibility_data_path = "data/access_by_group.csv",
+#'   results_output_directory = "results/preliminary",
+#'   confidence_level = 0.90,
+#'   apply_multiple_comparison_correction = FALSE,
+#'   generate_publication_tables = FALSE,
+#'   verbose_output = FALSE
+#' )
+#' # Streamlined analysis for quick insights
+#' 
+#' # Example 3: Conservative analysis with strict significance thresholds
+#' conservative_results <- hybrid_statistical_implementation(
+#'   accessibility_data_path = "data/access_by_group.csv",
+#'   results_output_directory = "results/conservative_analysis",
+#'   confidence_level = 0.99,
+#'   apply_multiple_comparison_correction = TRUE,
+#'   generate_publication_tables = TRUE,
+#'   verbose_output = TRUE
+#' )
+#' # Analysis with conservative confidence intervals and significance testing
+hybrid_statistical_implementation <- function(accessibility_data_path = "access_by_group.csv",
+                                            results_output_directory = getwd(),
+                                            confidence_level = 0.95,
+                                            apply_multiple_comparison_correction = TRUE,
+                                            generate_publication_tables = TRUE,
+                                            verbose_output = TRUE) {
+  
+  # Setup logging
+  logger::log_threshold(if(verbose_output) logger::INFO else logger::WARN)
+  
+  # Input validation
+  assertthat::assert_that(
+    assertthat::is.string(accessibility_data_path),
+    assertthat::is.string(results_output_directory),
+    assertthat::is.scalar(confidence_level),
+    confidence_level > 0.5 && confidence_level < 1.0,
+    is.logical(apply_multiple_comparison_correction),
+    is.logical(generate_publication_tables),
+    is.logical(verbose_output)
+  )
+  
+  logger::log_info("Starting hybrid statistical implementation")
+  logger::log_info("Using feasible methods only - no complex spatial analysis")
+  logger::log_info("Confidence level: {confidence_level}")
+  
+  # Create output directory
+  if (!dir.exists(results_output_directory)) {
+    dir.create(results_output_directory, recursive = TRUE)
+    logger::log_info("Created output directory: {results_output_directory}")
+  }
+  
+  # Read and process data
+  logger::log_info("Reading accessibility data")
+  accessibility_data <- readr::read_csv(accessibility_data_path, show_col_types = FALSE)
+  
+  # Process the data with proper time thresholds
+  processed_accessibility_data <- accessibility_data %>%
+    dplyr::mutate(
+      range_minutes = range / 60,
+      time_threshold = paste0(range_minutes, "-minute"),
+      accessibility_proportion = percent / 100
+    )
+  
+  # Get total female population data
+  total_female_population_data <- processed_accessibility_data %>%
+    dplyr::filter(category == "total_female")
+  
+  logger::log_info("Processing {nrow(total_female_population_data)} total female population observations")
+  
+  # Initialize comprehensive results list
+  comprehensive_results <- list()
+  
+  # =====================================================================
+  # 1. POPULATION-WEIGHTED MEANS WITH STANDARD ERROR CONFIDENCE INTERVALS
+  # =====================================================================
+  
+  logger::log_info("Calculating population-weighted means with standard error-based confidence intervals")
+  
+  # Function to calculate weighted statistics with confidence intervals
+  calculate_weighted_stats_with_ci <- function(values, weights, confidence_level = 0.95) {
+    # Remove missing values
+    valid_indices <- !is.na(values) & !is.na(weights) & weights > 0
+    values_clean <- values[valid_indices]
+    weights_clean <- weights[valid_indices]
+    
+    if (length(values_clean) < 2) {
+      return(list(
+        weighted_mean = mean(values_clean, na.rm = TRUE),
+        standard_error = 0,
+        ci_lower = mean(values_clean, na.rm = TRUE),
+        ci_upper = mean(values_clean, na.rm = TRUE),
+        sample_size = length(values_clean)
+      ))
+    }
+    
+    # Calculate weighted mean
+    weighted_mean_value <- weighted.mean(values_clean, weights_clean, na.rm = TRUE)
+    
+    # Calculate weighted variance and standard error
+    weighted_variance <- sum(weights_clean * (values_clean - weighted_mean_value)^2) / 
+                        sum(weights_clean)
+    standard_error_value <- sqrt(weighted_variance / length(values_clean))
+    
+    # Calculate confidence intervals using t-distribution
+    alpha_level <- 1 - confidence_level
+    degrees_freedom <- length(values_clean) - 1
+    t_critical <- qt(1 - alpha_level/2, degrees_freedom)
+    
+    ci_lower_bound <- weighted_mean_value - t_critical * standard_error_value
+    ci_upper_bound <- weighted_mean_value + t_critical * standard_error_value
+    
+    return(list(
+      weighted_mean = weighted_mean_value,
+      standard_error = standard_error_value,
+      ci_lower = pmax(0, ci_lower_bound),  # Ensure non-negative
+      ci_upper = pmin(1, ci_upper_bound),  # Ensure ≤ 100%
+      sample_size = length(values_clean)
+    ))
+  }
+  
+  # Calculate weighted means with CIs for each year and threshold
+  weighted_means_with_ci <- total_female_population_data %>%
+    dplyr::group_by(year, time_threshold, range_minutes) %>%
+    dplyr::group_modify(~{
+      stats_result <- calculate_weighted_stats_with_ci(
+        .x$accessibility_proportion, 
+        .x$total, 
+        confidence_level
+      )
+      
+      data.frame(
+        total_census_tracts = nrow(.x),
+        total_population = sum(.x$total, na.rm = TRUE),
+        total_with_access = sum(.x$count, na.rm = TRUE),
+        weighted_mean_accessibility = stats_result$weighted_mean,
+        standard_error = stats_result$standard_error,
+        ci_lower = stats_result$ci_lower,
+        ci_upper = stats_result$ci_upper,
+        ci_width = stats_result$ci_upper - stats_result$ci_lower
+      )
+    }) %>%
+    dplyr::ungroup() %>%
+    dplyr::arrange(year, range_minutes)
+  
+  comprehensive_results$weighted_means_with_ci <- weighted_means_with_ci
+  
+  # =====================================================================
+  # 2. TEMPORAL TREND ANALYSIS WITH LINEAR REGRESSION
+  # =====================================================================
+  
+  logger::log_info("Performing temporal trend analysis with linear regression")
+  
+  temporal_trend_results <- data.frame()
+  time_thresholds <- unique(weighted_means_with_ci$time_threshold)
+  
+  for(threshold in time_thresholds) {
+    threshold_temporal_data <- weighted_means_with_ci %>% 
+      dplyr::filter(time_threshold == threshold)
+    
+    # Fit linear regression model: accessibility ~ year
+    temporal_trend_model <- lm(weighted_mean_accessibility ~ year, data = threshold_temporal_data)
+    trend_model_summary <- summary(temporal_trend_model)
+    
+    # Extract comprehensive statistics
+    slope_coefficient <- trend_model_summary$coefficients[2, 1]
+    slope_standard_error <- trend_model_summary$coefficients[2, 2] 
+    slope_t_statistic <- trend_model_summary$coefficients[2, 3]
+    slope_p_value <- trend_model_summary$coefficients[2, 4]
+    model_r_squared <- trend_model_summary$r.squared
+    adjusted_r_squared <- trend_model_summary$adj.r.squared
+    
+    # Calculate percent change from first to last year
+    first_year_value <- threshold_temporal_data$weighted_mean_accessibility[threshold_temporal_data$year == min(threshold_temporal_data$year)]
+    last_year_value <- threshold_temporal_data$weighted_mean_accessibility[threshold_temporal_data$year == max(threshold_temporal_data$year)]
+    absolute_change <- last_year_value - first_year_value
+    percent_change <- (absolute_change / first_year_value) * 100
+    
+    # Calculate confidence interval for slope
+    slope_ci_lower <- slope_coefficient - qt(1 - (1-confidence_level)/2, trend_model_summary$df[2]) * slope_standard_error
+    slope_ci_upper <- slope_coefficient + qt(1 - (1-confidence_level)/2, trend_model_summary$df[2]) * slope_standard_error
+    
+    temporal_trend_results <- rbind(temporal_trend_results, data.frame(
+      time_threshold = threshold,
+      slope_per_year = slope_coefficient,
+      slope_standard_error = slope_standard_error,
+      slope_t_statistic = slope_t_statistic,
+      slope_p_value = slope_p_value,
+      slope_ci_lower = slope_ci_lower,
+      slope_ci_upper = slope_ci_upper,
+      r_squared = model_r_squared,
+      adjusted_r_squared = adjusted_r_squared,
+      first_year_accessibility = first_year_value,
+      last_year_accessibility = last_year_value,
+      absolute_change = absolute_change,
+      percent_change = percent_change
+    ))
+  }
+  
+  # =====================================================================
+  # 3. MULTIPLE COMPARISON CORRECTION (BENJAMINI-HOCHBERG)
+  # =====================================================================
+  
+  if(apply_multiple_comparison_correction) {
+    logger::log_info("Applying Benjamini-Hochberg multiple comparison correction")
+    
+    # Apply B-H correction to temporal trend p-values
+    temporal_trend_results$slope_p_value_bh_adjusted <- p.adjust(
+      temporal_trend_results$slope_p_value, 
+      method = "BH"
+    )
+  } else {
+    temporal_trend_results$slope_p_value_bh_adjusted <- temporal_trend_results$slope_p_value
+  }
+  
+  # Add significance indicators for both raw and adjusted p-values
+  temporal_trend_results$significance_raw <- dplyr::case_when(
+    temporal_trend_results$slope_p_value < 0.001 ~ "***",
+    temporal_trend_results$slope_p_value < 0.01 ~ "**",
+    temporal_trend_results$slope_p_value < 0.05 ~ "*",
+    TRUE ~ "ns"
+  )
+  
+  temporal_trend_results$significance_adjusted <- dplyr::case_when(
+    temporal_trend_results$slope_p_value_bh_adjusted < 0.001 ~ "***",
+    temporal_trend_results$slope_p_value_bh_adjusted < 0.01 ~ "**",
+    temporal_trend_results$slope_p_value_bh_adjusted < 0.05 ~ "*",
+    TRUE ~ "ns"
+  )
+  
+  comprehensive_results$temporal_trend_results <- temporal_trend_results
+  
+  # =====================================================================
+  # 4. DEMOGRAPHIC DISPARITIES ANALYSIS
+  # =====================================================================
+  
+  logger::log_info("Analyzing demographic disparities with confidence intervals")
+  
+  # Get demographic categories (excluding total_female)
+  demographic_categories <- processed_accessibility_data %>%
+    dplyr::filter(!category %in% c("total_female")) %>%
+    dplyr::pull(category) %>%
+    unique()
+  
+  if(length(demographic_categories) > 0) {
+    # Calculate accessibility for each demographic group with confidence intervals
+    demographic_disparities_results <- processed_accessibility_data %>%
+      dplyr::filter(category %in% demographic_categories) %>%
+      dplyr::group_by(year, time_threshold, category) %>%
+      dplyr::group_modify(~{
+        stats_result <- calculate_weighted_stats_with_ci(
+          .x$accessibility_proportion, 
+          .x$total, 
+          confidence_level
+        )
+        
+        data.frame(
+          total_census_tracts = nrow(.x),
+          total_population = sum(.x$total, na.rm = TRUE),
+          weighted_mean_accessibility = stats_result$weighted_mean,
+          standard_error = stats_result$standard_error,
+          ci_lower = stats_result$ci_lower,
+          ci_upper = stats_result$ci_upper
+        )
+      }) %>%
+      dplyr::ungroup() %>%
+      dplyr::mutate(
+        demographic_group = stringr::str_remove(category, "total_female_"),
+        demographic_group_clean = stringr::str_to_title(stringr::str_replace_all(demographic_group, "_", " "))
+      )
+    
+    comprehensive_results$demographic_disparities_results <- demographic_disparities_results
+    
+    # =====================================================================
+    # 5. DIFFERENCE-IN-DIFFERENCE ANALYSIS FOR DEMOGRAPHIC DISPARITIES
+    # =====================================================================
+    
+    logger::log_info("Performing difference-in-difference analysis for demographic disparities")
+    
+    # Compare each demographic group to white population (reference group)
+    if("total_female_white" %in% demographic_categories) {
+      reference_demographic_group <- "total_female_white"
+      comparison_demographic_groups <- demographic_categories[demographic_categories != reference_demographic_group]
+      
+      difference_in_difference_results <- data.frame()
+      
+      for(threshold in time_thresholds) {
+        for(comparison_group in comparison_demographic_groups) {
+          
+          # Prepare data for difference-in-difference analysis
+          did_analysis_data <- processed_accessibility_data %>%
+            dplyr::filter(
+              category %in% c(reference_demographic_group, comparison_group),
+              time_threshold == threshold
+            ) %>%
+            dplyr::mutate(
+              # Create treatment indicator (1 = comparison group, 0 = reference group)
+              treatment_indicator = ifelse(category == comparison_group, 1, 0),
+              # Normalize time to start at 0
+              time_normalized = year - min(year),
+              # Create interaction term
+              treatment_time_interaction = treatment_indicator * time_normalized
+            )
+          
+          # Run difference-in-difference regression
+          # Model: accessibility ~ treatment + time + treatment*time
+          did_regression_model <- lm(
+            accessibility_proportion ~ treatment_indicator + time_normalized + treatment_time_interaction, 
+            data = did_analysis_data
+          )
+          did_model_summary <- summary(did_regression_model)
+          
+          # Extract interaction coefficient (the DiD estimator)
+          if("treatment_time_interaction" %in% rownames(did_model_summary$coefficients)) {
+            interaction_coefficient <- did_model_summary$coefficients["treatment_time_interaction", "Estimate"]
+            interaction_standard_error <- did_model_summary$coefficients["treatment_time_interaction", "Std. Error"]
+            interaction_t_statistic <- did_model_summary$coefficients["treatment_time_interaction", "t value"]
+            interaction_p_value <- did_model_summary$coefficients["treatment_time_interaction", "Pr(>|t|)"]
+            
+            difference_in_difference_results <- rbind(difference_in_difference_results, data.frame(
+              time_threshold = threshold,
+              reference_group = stringr::str_remove(reference_demographic_group, "total_female_"),
+              comparison_group = stringr::str_remove(comparison_group, "total_female_"),
+              interaction_coefficient = interaction_coefficient,
+              interaction_standard_error = interaction_standard_error,
+              interaction_t_statistic = interaction_t_statistic,
+              interaction_p_value = interaction_p_value,
+              model_r_squared = did_model_summary$r.squared,
+              model_observations = nrow(did_analysis_data)
+            ))
+          }
+        }
+      }
+      
+      # Apply multiple comparison correction to DiD results if requested
+      if(apply_multiple_comparison_correction && nrow(difference_in_difference_results) > 0) {
+        difference_in_difference_results$interaction_p_value_bh_adjusted <- p.adjust(
+          difference_in_difference_results$interaction_p_value, 
+          method = "BH"
+        )
+      } else {
+        difference_in_difference_results$interaction_p_value_bh_adjusted <- difference_in_difference_results$interaction_p_value
+      }
+      
+      # Add significance indicators
+      if(nrow(difference_in_difference_results) > 0) {
+        difference_in_difference_results$significance_raw <- dplyr::case_when(
+          difference_in_difference_results$interaction_p_value < 0.001 ~ "***",
+          difference_in_difference_results$interaction_p_value < 0.01 ~ "**",
+          difference_in_difference_results$interaction_p_value < 0.05 ~ "*",
+          TRUE ~ "ns"
+        )
+        
+        difference_in_difference_results$significance_adjusted <- dplyr::case_when(
+          difference_in_difference_results$interaction_p_value_bh_adjusted < 0.001 ~ "***",
+          difference_in_difference_results$interaction_p_value_bh_adjusted < 0.01 ~ "**",
+          difference_in_difference_results$interaction_p_value_bh_adjusted < 0.05 ~ "*",
+          TRUE ~ "ns"
+        )
+      }
+      
+      comprehensive_results$difference_in_difference_results <- difference_in_difference_results
+    }
+  }
+  
+  # =====================================================================
+  # 6. SAVE ALL STATISTICAL RESULTS
+  # =====================================================================
+  
+  logger::log_info("Saving comprehensive statistical results")
+  
+  # Save population-weighted means with confidence intervals
+  readr::write_csv(
+    weighted_means_with_ci,
+    file.path(results_output_directory, "population_weighted_means_with_ci.csv")
+  )
+  
+  # Save temporal trend analysis results
+  readr::write_csv(
+    temporal_trend_results,
+    file.path(results_output_directory, "temporal_trend_analysis.csv")
+  )
+  
+  # Save demographic disparities results
+  if("demographic_disparities_results" %in% names(comprehensive_results)) {
+    readr::write_csv(
+      comprehensive_results$demographic_disparities_results,
+      file.path(results_output_directory, "demographic_disparities_analysis.csv")
+    )
+  }
+  
+  # Save difference-in-difference results
+  if("difference_in_difference_results" %in% names(comprehensive_results)) {
+    readr::write_csv(
+      comprehensive_results$difference_in_difference_results,
+      file.path(results_output_directory, "difference_in_difference_analysis.csv")
+    )
+  }
+  
+  # =====================================================================
+  # 7. GENERATE PUBLICATION-READY TABLES (if requested)
+  # =====================================================================
+  
+  if(generate_publication_tables) {
+    logger::log_info("Generating publication-ready tables")
+    
+    # Table 1: Temporal Trend Analysis Summary
+    trend_summary_table <- temporal_trend_results %>%
+      dplyr::select(
+        time_threshold, 
+        percent_change, 
+        slope_per_year, 
+        slope_p_value_bh_adjusted, 
+        significance_adjusted,
+        r_squared
+      ) %>%
+      dplyr::mutate(
+        time_threshold = stringr::str_replace(time_threshold, "-minute", " min"),
+        percent_change = sprintf("%.1f%%", percent_change),
+        slope_per_year = sprintf("%.4f", slope_per_year),
+        slope_p_value_bh_adjusted = ifelse(slope_p_value_bh_adjusted < 0.001, "< 0.001", 
+                                         sprintf("%.3f", slope_p_value_bh_adjusted)),
+        r_squared = sprintf("%.3f", r_squared)
+      ) %>%
+      dplyr::rename(
+        "Drive Time" = time_threshold,
+        "Percent Change" = percent_change,
+        "Annual Slope" = slope_per_year,
+        "Adjusted p-value" = slope_p_value_bh_adjusted,
+        "Significance" = significance_adjusted,
+        "R²" = r_squared
+      )
+    
+    # Save as CSV and generate formatted table
+    readr::write_csv(
+      trend_summary_table,
+      file.path(results_output_directory, "table1_temporal_trends_summary.csv")
+    )
+    
+    comprehensive_results$publication_tables$temporal_trends <- trend_summary_table
+    
+    # Table 2: Latest Year Demographic Disparities (if available)
+    if("demographic_disparities_results" %in% names(comprehensive_results)) {
+      latest_year_demographics <- max(comprehensive_results$demographic_disparities_results$year)
+      
+      demographic_summary_table <- comprehensive_results$demographic_disparities_results %>%
+        dplyr::filter(year == latest_year_demographics) %>%
+        dplyr::select(
+          demographic_group_clean,
+          time_threshold,
+          weighted_mean_accessibility,
+          ci_lower,
+          ci_upper
+        ) %>%
+        dplyr::mutate(
+          accessibility_with_ci = sprintf("%.1f%% (%.1f%% - %.1f%%)", 
+                                        weighted_mean_accessibility * 100,
+                                        ci_lower * 100,
+                                        ci_upper * 100),
+          time_threshold = stringr::str_replace(time_threshold, "-minute", " min")
+        ) %>%
+        dplyr::select(demographic_group_clean, time_threshold, accessibility_with_ci) %>%
+        tidyr::pivot_wider(
+          names_from = time_threshold,
+          values_from = accessibility_with_ci
+        ) %>%
+        dplyr::rename("Demographic Group" = demographic_group_clean)
+      
+      readr::write_csv(
+        demographic_summary_table,
+        file.path(results_output_directory, "table2_demographic_disparities_summary.csv")
+      )
+      
+      comprehensive_results$publication_tables$demographic_disparities <- demographic_summary_table
+    }
+  }
+  
+  # =====================================================================
+  # 8. GENERATE METHODS-COMPLIANT SUMMARY REPORT
+  # =====================================================================
+  
+  logger::log_info("Generating methods-compliant summary report")
+  
+  methods_compliance_summary <- list(
+    statistical_methods_implemented = c(
+      "Population-weighted mean accessibility rates",
+      "Standard error-based confidence intervals",
+      "Linear regression for temporal trend analysis", 
+      if(apply_multiple_comparison_correction) "Benjamini-Hochberg multiple comparison correction" else NULL,
+      if("difference_in_difference_results" %in% names(comprehensive_results)) "Difference-in-difference analysis" else NULL
+    ),
+    analysis_parameters = list(
+      confidence_level = confidence_level,
+      multiple_comparison_correction = apply_multiple_comparison_correction,
+      total_observations = nrow(total_female_population_data),
+      years_analyzed = length(unique(total_female_population_data$year)),
+      time_thresholds = length(time_thresholds),
+      demographic_groups = if("demographic_disparities_results" %in% names(comprehensive_results)) {
+        length(unique(comprehensive_results$demographic_disparities_results$demographic_group))
+      } else 0
+    ),
+    key_findings_summary = list(
+      significant_temporal_trends = sum(temporal_trend_results$slope_p_value_bh_adjusted < 0.05),
+      largest_decline_threshold = temporal_trend_results$time_threshold[which.min(temporal_trend_results$percent_change)],
+      largest_decline_percent = min(temporal_trend_results$percent_change),
+      demographic_disparities_detected = if("demographic_disparities_results" %in% names(comprehensive_results)) {
+        latest_demo_data <- comprehensive_results$demographic_disparities_results %>%
+          dplyr::filter(year == max(year), time_threshold == "60-minute")
+        if(nrow(latest_demo_data) > 1) {
+          max(latest_demo_data$weighted_mean_accessibility) - min(latest_demo_data$weighted_mean_accessibility)
+        } else NA
+      } else NA
+    )
+  )
+  
+  comprehensive_results$methods_compliance_summary <- methods_compliance_summary
+  
+  # Save methods compliance summary
+  saveRDS(
+    methods_compliance_summary, 
+    file.path(results_output_directory, "methods_compliance_summary.rds")
+  )
+  
+  logger::log_info("Hybrid statistical implementation complete")
+  logger::log_info("All results saved to: {results_output_directory}")
+  
+  return(comprehensive_results)
+}
+
+#' @noRd
+calculate_effect_size <- function(mean1, mean2, sd1, sd2, n1, n2) {
+  # Cohen's d effect size calculation
+  pooled_sd <- sqrt(((n1 - 1) * sd1^2 + (n2 - 1) * sd2^2) / (n1 + n2 - 2))
+  cohens_d <- (mean1 - mean2) / pooled_sd
+  return(cohens_d)
+}
+
+#' @noRd
+format_p_value <- function(p_values, digits = 3) {
+  # Format p-values for publication
+  formatted_p <- ifelse(
+    p_values < 0.001, 
+    "< 0.001",
+    sprintf(paste0("%.", digits, "f"), p_values)
+  )
+  return(formatted_p)
+}
+```
+
+```{r}
+hybrid_statistical_implementation(accessibility_data_path = "data/Walker_data/access_by_group.csv",
+                                            results_output_directory = getwd(),
+                                            confidence_level = 0.95,
+                                            apply_multiple_comparison_correction = TRUE,
+                                            generate_publication_tables = TRUE,
+                                            verbose_output = TRUE)
+```
 

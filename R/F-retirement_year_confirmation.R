@@ -1,3 +1,36 @@
+#' -----------------------------------------------------------------------------
+#' Physician Retirement Year Confirmation Script
+#' -----------------------------------------------------------------------------
+#' 
+#' This script combines and analyzes physician retirement data from multiple sources:
+#' 
+#' 1. NPPES Deactivation Records - When provider NPIs are marked as deactivated.  This is most likely to be correct IF #' a physician is 
+#' 2. Medicare Part D Prescribing - Last year of prescription records.  This is good for people who prescribe to #' #' #' patients over 65 years old.  So if may work for GO, Urgyn, and general OBGYNs.  Not great for REI or MFM or young #' OBGYNs only doing OB.  
+#' 
+#' 3. Hospital Affiliations - End dates of hospital privileges/employment?  
+#' 4. NIPS Dataset - Custom processed National Provider Identifier data
+#' 
+#' The purpose is to determine the most accurate retirement year for each physician
+#' by triangulating data from these independent sources. The script allows for 
+#' different methodologies (earliest, latest, or mode) to resolve conflicts when
+#' sources disagree.
+#' 
+#' Workflow:
+#' 1. Loads data from each source
+#' 2. Extracts retirement year information
+#' 3. Standardizes data format across sources
+#' 4. Combines sources with appropriate resolution strategy
+#' 5. Outputs a standardized dataset with consistent column names
+#' 
+#' Output format:
+#' - calculated_retirement_npi: Provider identifier
+#' - calculated_retirement_year_of_retirement: Determined retirement year
+#' - calculated_retirement_data_source: Source of the retirement date
+#'
+#' Author: Tyler Muffly, MD
+#' Last updated: April 2025
+#' -----------------------------------------------------------------------------
+
 # ------------------------------------------------------------------------------
 # Script: physician_retirement_analysis.R
 #
