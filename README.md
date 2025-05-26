@@ -5,7 +5,7 @@ author:
   - name: "Tyler Muffly, MD"
     affiliation: "Department of Obstetrics and Gynecology"
     email: "tyler.muffly@dhha.org"
-date: "2025-05-25"
+date: "2025-05-26"
 description: |
   This project analyzes nationwide access to gynecologic oncologists and other 
   OBGYN subspecialists using drive time isochrones, demographic data, and 
@@ -127,6 +127,74 @@ populations within each drive time threshold. The project examines changes in
 accessibility over time and retirement patterns among specialists.
 
 ## What Are Isochrones?
+
+**Isochrone Definition for Census Tracts:**
+
+$$I_t(O) = \{T_i \in \mathcal{T} : d(O, c(T_i)) \leq t\}$$
+
+**Multi-Time Isochrone System:**
+
+$$\mathcal{I} = \bigcup_{t \in \{30, 60, 120, 180\}} I_t(O) \text{ where } I_t(O) = \{T_i : d(O, c(T_i)) \leq t\}$$
+
+**Travel Time Function with Network Constraints:**
+$$d(O, c(T_i)) = \min_{p \in P(O, c(T_i))} \sum_{e \in p} \frac{l_e}{v_e}$$
+
+**Complete Isochrone Boundary System:**
+
+$$\begin{align}
+I_{30}(O) &= \{T_i \in \mathcal{T} : d(O, c(T_i)) \leq 30\} \\
+I_{60}(O) &= \{T_i \in \mathcal{T} : d(O, c(T_i)) \leq 60\} \setminus I_{30}(O) \\
+I_{120}(O) &= \{T_i \in \mathcal{T} : d(O, c(T_i)) \leq 120\} \setminus I_{60}(O) \\
+I_{180}(O) &= \{T_i \in \mathcal{T} : d(O, c(T_i)) \leq 180\} \setminus I_{120}(O)
+\end{align}$$
+
+Where: - $I_t(O)$ = isochrone for time $t$ from origin $O$ - $\mathcal{T}$ = set
+of all census tracts - $T_i$ = individual census tract $i$ - $c(T_i)$ = centroid
+of census tract $T_i$ - $d(O, c(T_i))$ = shortest travel time from origin to
+tract centroid - $P(O, c(T_i))$ = set of all possible paths from $O$ to
+$c(T_i)$ - $l_e$ = length of road segment $e$ - $v_e$ = speed on road segment
+$e$
+
+This equation system captures how census tracts are assigned to different drive
+time zones, creating nested isochrone boundaries at 30, 60, 120, and 180-minute
+intervals.
+
+Here's the additional equation for counting accessible population by demographic
+groups:
+
+**Accessible Population by Demographics:**
+
+$$A_t^{demo}(O) = \sum_{T_i \in I_t(O)} W_i^{demo}$$
+
+**Total Accessible Women Population by Race/Ethnicity:** $$\begin{align}
+A_t^{Total}(O) &= A_t^{White}(O) + A_t^{Black}(O) + A_t^{Asian}(O) \\
+&\quad + A_t^{HIPI}(O) + A_t^{Hispanic}(O) + A_t^{Other}(O)
+\end{align}$$
+
+**Complete Accessibility Matrix:** $$\mathbf{A}(O) = \begin{bmatrix}
+A_{30}^{White}(O) & A_{60}^{White}(O) & A_{120}^{White}(O) & A_{180}^{White}(O) \\
+A_{30}^{Black}(O) & A_{60}^{Black}(O) & A_{120}^{Black}(O) & A_{180}^{Black}(O) \\
+A_{30}^{Asian}(O) & A_{60}^{Asian}(O) & A_{120}^{Asian}(O) & A_{180}^{Asian}(O) \\
+A_{30}^{HIPI}(O) & A_{60}^{HIPI}(O) & A_{120}^{HIPI}(O) & A_{180}^{HIPI}(O) \\
+A_{30}^{Hispanic}(O) & A_{60}^{Hispanic}(O) & A_{120}^{Hispanic}(O) & A_{180}^{Hispanic}(O) \\
+A_{30}^{Other}(O) & A_{60}^{Other}(O) & A_{120}^{Other}(O) & A_{180}^{Other}(O) \\
+\end{bmatrix}$$
+
+**Conditional Population Inclusion:** $$W_i^{demo} = \begin{cases} 
+Pop_{women}^{demo}(T_i) & \text{if } d(O, c(T_i)) \leq t \\
+0 & \text{if } d(O, c(T_i)) > t
+\end{cases}$$
+
+Where: - $A_t^{demo}(O)$ = accessible women population of demographic group
+within time $t$ from gynecologic oncologist at origin $O$ - $W_i^{demo}$ = women
+population of specific demographic in census tract $T_i$ -
+$Pop_{women}^{demo}(T_i)$ = total women population of demographic group in tract
+$T_i$ - $demo \in \{White, Black, Asian, HIPI, Hispanic, Other\}$ - HIPI =
+Hawaiian and Pacific Islander
+
+This framework quantifies healthcare accessibility disparities by measuring how
+many women of each racial/ethnic group can reach gynecologic oncology services
+within different drive time thresholds.
 
 ## Interactive Isochrone Map
 
@@ -552,6 +620,10 @@ order:
 -   Some categories like `total_female_asian` show significant increases in
     longer-time thresholds
 
+$$
+    R^2 = 1 - \frac{SS_{res}}{SS_{tot}} = 1 - \frac{\sum_i (y_i - \hat{y}_i)^2}{\sum_i (y_i - \bar{y})^2}
+$$
+
 ``` r
 > isochrone_results$trend_analysis
                  category        time_threshold         slope    r_squared     p_value start_year end_year start_value
@@ -564,10 +636,26 @@ year5   total_female_aian  access_60min_cleaned  1.109027e+04 1.747050e-01 0.229
 ```
 
 
+``` r
+library(knitr)
+knitr::include_graphics("figures/mean_access_by_group.png")
+```
+
+<img src="figures/mean_access_by_group.png" width="85%" style="display: block; margin: auto;" />
 
 
+``` r
+knitr::include_graphics("figures/access_over_time.png")
+```
+
+<img src="figures/access_over_time.png" width="85%" style="display: block; margin: auto;" />
 
 
+``` r
+knitr::include_graphics("figures/access_distribution.png")
+```
+
+<img src="figures/access_distribution.png" width="85%" style="display: block; margin: auto;" />
 
 22. `GO_access_analysis_code.Rmd`
 
