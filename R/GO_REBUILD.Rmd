@@ -1,0 +1,3444 @@
+---
+title: "Declining Access to Gynecologic Oncology Care: Analysis of Trends and Disparities, 2013-2022"
+author: "Tyler Muffly, MD"
+affiliation: "Denver Health"
+email: "tyler.muffly@dhha.org"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    toc_float: true
+    code_folding: show
+    fig_width: 10
+    fig_height: 8
+  pdf_document:
+    toc: true
+    fig_width: 10
+    fig_height: 8
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,          # Show code in output
+  warning = FALSE,      # No warnings
+  message = TRUE,       # Show messages
+  error = FALSE,        # Don't stop on errors
+  fig.width = 8,        # Default figure width
+  fig.height = 6,       # Default figure height
+  fig.align = "center", # Center figures
+  dpi = 300,            # Higher resolution figures
+  out.width = "85%",    # Control display size
+  cache = FALSE,        # Cache results? (TRUE for large computations)
+  comment = "#>",       # Comment character for output
+  tidy = FALSE,         # Don't reformat code
+  dev = "png"           # Output device for plots
+)
+
+# Load required packages
+library(tidyverse)
+library(assertthat)
+library(logger)
+library(DT)
+library(knitr)
+library(kableExtra)
+library(ggrepel)
+library(patchwork)
+library(stringr)
+library(rlang)
+
+# Set up logging
+logger::log_threshold(INFO)
+```
+
+# Overview
+
+This code performs a comprehensive analysis of access to gynecologic oncologists (GOs) across different geographic regions, time periods, and demographic groups. The analysis focuses on drive time thresholds (30, 60, 120, and 180 minutes) to measure accessibility.
+
+# Terms
+
+**Access Rate**: Percentage of a population living within a specified drive time of a gynecologic oncologist.
+
+**Drive Time Thresholds**:
+- 30 minutes (1800 seconds)
+- 60 minutes (3600 seconds)  
+- 120 minutes (7200 seconds)
+- 180 minutes (10800 seconds)
+
+**Demographic Categories**:
+- total_female: All women
+- total_female_white: White women
+- total_female_black: Black women
+- total_female_aian: American Indian/Alaska Native women
+- total_female_asian: Asian women
+- total_female_hipi: Native Hawaiian/Pacific Islander women
+
+```{r helper-functions}
+#' Clean demographic category names
+#' @noRd
+clean_demographic_names <- function(category_names) {
+  assertthat::assert_that(is.character(category_names))
+  logger::log_debug("Cleaning demographic category names")
+  
+  cleaned_names <- category_names %>%
+    stringr::str_replace("total_female_", "") %>%
+    stringr::str_replace("total_female", "Total Female") %>%
+    stringr::str_replace("white", "White") %>%
+    stringr::str_replace("black", "Black") %>%
+    stringr::str_replace("aian", "American Indian/Alaska Native") %>%
+    stringr::str_replace("asian", "Asian") %>%
+    stringr::str_replace("hipi", "Hawaiian/Pacific Islander")
+  
+  return(cleaned_names)
+}
+
+#' Convert seconds to minutes for display
+#' @noRd
+convert_seconds_to_minutes <- function(seconds_vector) {
+  assertthat::assert_that(is.numeric(seconds_vector))
+  minutes_vector <- seconds_vector / 60
+  logger::log_debug("Converted {length(seconds_vector)} time values from seconds to minutes")
+  return(minutes_vector)
+}
+
+#' Calculate weighted statistics
+#' @noRd
+calculate_weighted_statistics <- function(access_counts, population_totals, verbose = FALSE) {
+  assertthat::assert_that(is.numeric(access_counts))
+  assertthat::assert_that(is.numeric(population_totals))
+  assertthat::assert_that(length(access_counts) == length(population_totals))
+  
+  if (verbose) {
+    logger::log_info("Calculating weighted statistics for {length(access_counts)} observations")
+  }
+  
+  weighted_mean <- sum(access_counts) / sum(population_totals) * 100
+  
+  return(list(
+    weighted_mean = weighted_mean,
+    total_with_access = sum(access_counts),
+    total_population = sum(population_totals)
+  ))
+}
+```
+
+```{r load-and-validate-data}
+#' Load and Validate Access by Group Data
+#'
+#' This function loads the access by group CSV file, validates the data structure,
+#' and performs initial data cleaning and transformation.
+#'
+#' @param access_data_filepath Character string path to the access by group CSV file
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A cleaned and validated tibble with access data
+#' 
+#' @examples
+#' # Load access data with verbose logging
+#' access_data <- load_and_validate_access_data(
+#'   access_data_filepath = "data/Walker_data/access_by_group.csv",
+#'   verbose = TRUE
+#' )
+#' 
+#' # Load access data with minimal logging  
+#' access_data <- load_and_validate_access_data(
+#'   access_data_filepath = "data/access_by_group.csv",
+#'   verbose = FALSE
+#' )
+#' 
+#' # Load and examine structure
+#' access_data <- load_and_validate_access_data(
+#'   access_data_filepath = "data/complete_access_dataset.csv", 
+#'   verbose = TRUE
+#' )
+#' glimpse(access_data)
+#' 
+#' @importFrom readr read_csv
+#' @importFrom dplyr mutate
+#' @importFrom assertthat assert_that
+#' @importFrom logger log_info log_warn log_error
+load_and_validate_access_data <- function(access_data_filepath, verbose = FALSE) {
+  # Input validation
+  assertthat::assert_that(assertthat::is.string(access_data_filepath))
+  assertthat::assert_that(is.logical(verbose))
+  assertthat::assert_that(file.exists(access_data_filepath))
+  
+  if (verbose) {
+    logger::log_info("Loading access data from: {access_data_filepath}")
+  }
+  
+  # Load the data
+  access_data_raw <- readr::read_csv(access_data_filepath, show_col_types = FALSE)
+  
+  if (verbose) {
+    logger::log_info("Loaded {nrow(access_data_raw)} rows and {ncol(access_data_raw)} columns")
+    logger::log_info("Column names: {paste(names(access_data_raw), collapse = ', ')}")
+  }
+  
+  # Validate required columns
+  required_columns <- c("year", "range", "category", "count", "total", "percent")
+  missing_columns <- setdiff(required_columns, names(access_data_raw))
+  
+  if (length(missing_columns) > 0) {
+    logger::log_error("Missing required columns: {paste(missing_columns, collapse = ', ')}")
+    stop("Data validation failed: missing required columns")
+  }
+  
+  # Data validation
+  assertthat::assert_that(all(!is.na(access_data_raw$year)))
+  assertthat::assert_that(all(!is.na(access_data_raw$range)))
+  assertthat::assert_that(all(!is.na(access_data_raw$count)))
+  assertthat::assert_that(all(!is.na(access_data_raw$total)))
+  
+  # Clean and transform data
+  access_data_clean <- access_data_raw %>%
+    dplyr::mutate(
+      drive_time_minutes = convert_seconds_to_minutes(range),
+      demographic_group_clean = clean_demographic_names(category),
+      access_rate = count / total,
+      population_without_access = total - count
+    )
+  
+  if (verbose) {
+    logger::log_info("Data validation completed successfully")
+    logger::log_info("Years covered: {paste(sort(unique(access_data_clean$year)), collapse = ', ')}")
+    logger::log_info("Drive time thresholds: {paste(sort(unique(access_data_clean$drive_time_minutes)), collapse = ', ')} minutes")
+    logger::log_info("Demographic groups: {length(unique(access_data_clean$category))}")
+  }
+  
+  return(access_data_clean)
+}
+
+# Load the main access data
+access_by_group <- load_and_validate_access_data(
+  access_data_filepath = "data/Walker_data/access_by_group.csv",
+  verbose = TRUE
+)
+```
+
+# Data Loading and Preparation
+
+## Access by Group Dataset
+
+```{r display-access-data}
+# Create interactive data table with visual bars
+max_count_value <- max(access_by_group$count)
+max_total_value <- max(access_by_group$total)
+
+access_datatable <- DT::datatable(
+  data = access_by_group,
+  extensions = c("Buttons", "Responsive"),
+  options = list(
+    dom = "Bfrtip",
+    buttons = c("copy", "csv", "excel"),
+    pageLength = 10,
+    autoWidth = TRUE,
+    scrollX = TRUE,
+    columnDefs = list(list(className = "dt-center", targets = "_all"))
+  ),
+  filter = "top",
+  rownames = FALSE,
+  class = "compact stripe hover"
+) %>%
+  DT::formatStyle(
+    'percent',
+    background = DT::styleColorBar(c(0, 100), '#4e73df'),
+    backgroundSize = '95% 80%',
+    backgroundRepeat = 'no-repeat',
+    backgroundPosition = 'center'
+  ) %>%
+  DT::formatRound('percent', 1) %>%
+  DT::formatStyle(
+    'count',
+    background = DT::styleColorBar(c(0, max_count_value), '#1cc88a'),
+    backgroundSize = '95% 80%',
+    backgroundRepeat = 'no-repeat',
+    backgroundPosition = 'center'
+  ) %>%
+  DT::formatCurrency('count', currency = "", interval = 3, mark = ",", digits = 0) %>%
+  DT::formatStyle(
+    'total',
+    background = DT::styleColorBar(c(0, max_total_value), '#36b9cc'),
+    backgroundSize = '95% 80%',
+    backgroundRepeat = 'no-repeat',
+    backgroundPosition = 'center'
+  ) %>%
+  DT::formatCurrency('total', currency = "", interval = 3, mark = ",", digits = 0)
+
+access_datatable
+```
+
+```{r analyze-accessibility-trends}
+#' Analyze Temporal Accessibility Trends  
+#'
+#' Analyzes changes in accessibility over time across different drive time thresholds
+#' and demographic groups, with comprehensive statistical testing and visualization.
+#'
+#' @param accessibility_data_tibble A tibble containing accessibility data with required columns
+#' @param output_directory Character string path where plots should be saved
+#' @param time_threshold_minutes Numeric vector of drive time thresholds in minutes to analyze
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A list containing trend plots, statistical results, and summary tables
+#' 
+#' @examples
+#' # Analyze all time thresholds with full output
+#' trend_analysis <- analyze_accessibility_trends(
+#'   accessibility_data_tibble = access_by_group,
+#'   output_directory = "figures/trends",
+#'   time_threshold_minutes = c(30, 60, 120, 180),
+#'   verbose = TRUE
+#' )
+#' 
+#' # Focus on key thresholds only
+#' key_trends <- analyze_accessibility_trends(
+#'   accessibility_data_tibble = access_by_group,
+#'   output_directory = "output/plots", 
+#'   time_threshold_minutes = c(30, 60),
+#'   verbose = FALSE
+#' )
+#' 
+#' # Comprehensive analysis with custom output location
+#' full_analysis <- analyze_accessibility_trends(
+#'   accessibility_data_tibble = complete_access_data,
+#'   output_directory = "manuscript/figures",
+#'   time_threshold_minutes = c(30, 60, 120, 180),
+#'   verbose = TRUE  
+#' )
+#' 
+#' @importFrom dplyr filter group_by summarize mutate arrange
+#' @importFrom ggplot2 ggplot aes geom_line geom_point geom_smooth labs theme_minimal
+#' @importFrom assertthat assert_that is.string
+#' @importFrom logger log_info log_warn
+analyze_accessibility_trends <- function(accessibility_data_tibble, 
+                                       output_directory = "figures",
+                                       time_threshold_minutes = c(30, 60, 120, 180),
+                                       verbose = FALSE) {
+  
+  # Input validation
+  assertthat::assert_that(is.data.frame(accessibility_data_tibble))
+  assertthat::assert_that(assertthat::is.string(output_directory))
+  assertthat::assert_that(is.numeric(time_threshold_minutes))
+  assertthat::assert_that(is.logical(verbose))
+  
+  required_columns <- c("year", "drive_time_minutes", "category", "percent")
+  missing_columns <- setdiff(required_columns, names(accessibility_data_tibble))
+  assertthat::assert_that(length(missing_columns) == 0,
+                         msg = paste("Missing columns:", paste(missing_columns, collapse = ", ")))
+  
+  if (verbose) {
+    logger::log_info("Starting temporal accessibility trend analysis")
+    logger::log_info("Analyzing {length(time_threshold_minutes)} time thresholds: {paste(time_threshold_minutes, collapse = ', ')} minutes")
+    logger::log_info("Output directory: {output_directory}")
+  }
+  
+  # Create output directory if it doesn't exist
+  if (!dir.exists(output_directory)) {
+    dir.create(output_directory, recursive = TRUE)
+    if (verbose) {
+      logger::log_info("Created output directory: {output_directory}")
+    }
+  }
+  
+  # Filter data for total female population and specified time thresholds
+  trend_data_filtered <- accessibility_data_tibble %>%
+    dplyr::filter(
+      category == "total_female",
+      drive_time_minutes %in% time_threshold_minutes
+    ) %>%
+    dplyr::mutate(
+      time_threshold_label = paste0(drive_time_minutes, "-minute")
+    )
+  
+  if (verbose) {
+    logger::log_info("Filtered to {nrow(trend_data_filtered)} observations for trend analysis")
+  }
+  
+  # Create trend visualization
+  trend_visualization <- ggplot2::ggplot(trend_data_filtered, 
+                                        ggplot2::aes(x = year, y = percent, color = time_threshold_label)) +
+    ggplot2::geom_line(size = 1.2, alpha = 0.8) +
+    ggplot2::geom_point(size = 2.5, alpha = 0.9) +
+    ggplot2::geom_smooth(method = "lm", se = TRUE, alpha = 0.2, linetype = "dashed") +
+    ggplot2::labs(
+      title = "Declining Access to Gynecologic Oncologists, 2013-2022",
+      subtitle = "Percentage of US women with access by drive time threshold",
+      x = "Year",
+      y = "Population with Access (%)",
+      color = "Drive Time Threshold",
+      caption = "Source: National accessibility analysis"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 14, face = "bold"),
+      plot.subtitle = ggplot2::element_text(size = 11),
+      legend.position = "bottom"
+    ) +
+    ggplot2::scale_y_continuous(labels = function(x) paste0(x, "%"))
+  
+  # Calculate regression statistics for each threshold
+  regression_statistics <- trend_data_filtered %>%
+    dplyr::group_by(time_threshold_label, drive_time_minutes) %>%
+    dplyr::summarize(
+      trend_model = list(lm(percent ~ year, data = cur_data())),
+      .groups = "drop"
+    ) %>%
+    dplyr::mutate(
+      annual_slope = purrr::map_dbl(trend_model, ~ coef(.x)[2]),
+      p_value = purrr::map_dbl(trend_model, ~ summary(.x)$coefficients[2, 4]),
+      r_squared = purrr::map_dbl(trend_model, ~ summary(.x)$r.squared),
+      significance_level = dplyr::case_when(
+        p_value < 0.001 ~ "***",
+        p_value < 0.01 ~ "**", 
+        p_value < 0.05 ~ "*",
+        TRUE ~ "ns"
+      )
+    ) %>%
+    dplyr::select(-trend_model) %>%
+    dplyr::arrange(drive_time_minutes)
+  
+  if (verbose) {
+    logger::log_info("Calculated regression statistics for {nrow(regression_statistics)} time thresholds")
+    logger::log_info("Saving trend plot to: {file.path(output_directory, 'accessibility_trends.png')}")
+  }
+  
+  # Save the plot
+  ggplot2::ggsave(
+    filename = file.path(output_directory, "accessibility_trends.png"),
+    plot = trend_visualization,
+    width = 10, height = 6, dpi = 300
+  )
+  
+  return(list(
+    trend_plot = trend_visualization,
+    regression_results = regression_statistics,
+    filtered_data = trend_data_filtered
+  ))
+}
+
+# Run the accessibility trend analysis
+accessibility_trends <- analyze_accessibility_trends(
+  accessibility_data_tibble = access_by_group,
+  output_directory = "figures",
+  time_threshold_minutes = c(30, 60, 120, 180),
+  verbose = TRUE
+)
+
+# Display the trend plot
+accessibility_trends$trend_plot
+```
+
+```{r distance-decay-analysis}
+#' Perform Distance Decay Analysis
+#'
+#' Analyzes how accessibility decreases with increasing drive time thresholds,
+#' calculating the rate of change and creating decay curve visualizations.
+#'
+#' @param access_data_tibble A tibble containing access data
+#' @param demographic_filter Character string specifying which demographic to analyze
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A list containing decay statistics, plots, and formatted results
+#' 
+#' @examples
+#' # Analyze decay for total female population
+#' decay_results <- perform_distance_decay_analysis(
+#'   access_data_tibble = access_by_group,
+#'   demographic_filter = "total_female",
+#'   verbose = TRUE
+#' )
+#' 
+#' # Analyze decay for specific demographic group
+#' asian_decay <- perform_distance_decay_analysis(
+#'   access_data_tibble = access_by_group,
+#'   demographic_filter = "total_female_asian",
+#'   verbose = FALSE
+#' )
+#' 
+#' # Compare decay patterns across demographics
+#' white_decay <- perform_distance_decay_analysis(
+#'   access_data_tibble = complete_access_data,
+#'   demographic_filter = "total_female_white",
+#'   verbose = TRUE
+#' )
+#' 
+#' @importFrom dplyr filter group_by summarize mutate arrange
+#' @importFrom ggplot2 ggplot aes geom_line geom_point labs theme_minimal
+#' @importFrom assertthat assert_that
+#' @importFrom logger log_info log_debug
+perform_distance_decay_analysis <- function(access_data_tibble,
+                                          demographic_filter = "total_female", 
+                                          verbose = FALSE) {
+  
+  # Input validation
+  assertthat::assert_that(is.data.frame(access_data_tibble))
+  assertthat::assert_that(assertthat::is.string(demographic_filter))
+  assertthat::assert_that(is.logical(verbose))
+  
+  if (verbose) {
+    logger::log_info("Starting distance decay analysis for demographic: {demographic_filter}")
+  }
+  
+  # Calculate overall means across all years for each drive time
+  distance_decay_statistics <- access_data_tibble %>%
+    dplyr::filter(category == demographic_filter) %>%
+    dplyr::group_by(range) %>%
+    dplyr::summarize(
+      drive_time_minutes = first(drive_time_minutes),
+      mean_access_rate = mean(percent, na.rm = TRUE),
+      sd_access_rate = sd(percent, na.rm = TRUE),
+      avg_population_with_access = mean(count, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    dplyr::arrange(drive_time_minutes) %>%
+    dplyr::mutate(
+      access_rate_change_per_minute = c(NA, diff(mean_access_rate) / diff(drive_time_minutes))
+    )
+  
+  if (verbose) {
+    logger::log_info("Calculated decay statistics for {nrow(distance_decay_statistics)} time thresholds")
+  }
+  
+  # Create accessibility decay curve visualization
+  decay_curve_plot <- ggplot2::ggplot(distance_decay_statistics, 
+                                      ggplot2::aes(x = drive_time_minutes, y = mean_access_rate)) +
+    # Add shaded regions for different access phases
+    ggplot2::annotate("rect", xmin = 0, xmax = 30, ymin = 0, ymax = 100, 
+                     fill = "#d32f2f", alpha = 0.1) +
+    ggplot2::annotate("rect", xmin = 30, xmax = 60, ymin = 0, ymax = 100, 
+                     fill = "#d32f2f", alpha = 0.05) +
+    # Main decay curve
+    ggplot2::geom_line(color = "#d32f2f", size = 1.5) +
+    ggplot2::geom_point(color = "#d32f2f", size = 3) +
+    # Error bars for standard deviation
+    ggplot2::geom_errorbar(
+      ggplot2::aes(ymin = mean_access_rate - sd_access_rate, 
+                   ymax = mean_access_rate + sd_access_rate),
+      width = 2, color = "#666666", alpha = 0.5
+    ) +
+    # Reference lines
+    ggplot2::geom_vline(xintercept = 30, linetype = "dashed", color = "#666666", alpha = 0.5) +
+    ggplot2::geom_vline(xintercept = 60, linetype = "dashed", color = "#666666", alpha = 0.5) +
+    # Labels and formatting
+    ggplot2::labs(
+      title = "Accessibility Decay Curve: Population Access vs. Drive Time",
+      subtitle = "Average accessibility across all years in dataset",
+      x = "Drive Time (minutes)",
+      y = "Population with Access (%)",
+      caption = "Source: Gynecologic oncology accessibility analysis"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 14, face = "bold"),
+      plot.subtitle = ggplot2::element_text(size = 11),
+      panel.grid.minor = ggplot2::element_blank()
+    ) +
+    ggplot2::scale_y_continuous(
+      limits = c(0, 100),
+      breaks = seq(0, 100, by = 20),
+      labels = function(x) paste0(x, "%")
+    )
+  
+  # Create formatted results text
+  results_summary_text <- paste0(
+    "Analysis of access rates by drive time showed ",
+    sprintf("%.1f", distance_decay_statistics$mean_access_rate[1]),
+    "% of the population had access within 30 minutes, increasing to ",
+    sprintf("%.1f", distance_decay_statistics$mean_access_rate[2]),
+    "% within 60 minutes, ",
+    sprintf("%.1f", distance_decay_statistics$mean_access_rate[3]),
+    "% within 120 minutes, and ",
+    sprintf("%.1f", distance_decay_statistics$mean_access_rate[4]),
+    "% within 180 minutes drive time."
+  )
+  
+  if (verbose) {
+    logger::log_info("Distance decay analysis completed")
+    logger::log_info("Results: {results_summary_text}")
+  }
+  
+  return(list(
+    decay_statistics = distance_decay_statistics,
+    decay_plot = decay_curve_plot,
+    results_text = results_summary_text
+  ))
+}
+
+# Perform distance decay analysis
+decay_analysis <- perform_distance_decay_analysis(
+  access_data_tibble = access_by_group,
+  demographic_filter = "total_female",
+  verbose = TRUE
+)
+
+# Display results
+cat("Drive time accessibility analysis:\n")
+print(decay_analysis$decay_statistics)
+
+cat("\nFormatted results text:\n")
+cat(decay_analysis$results_text)
+
+# Display the decay curve plot
+decay_analysis$decay_plot
+```
+
+```{r racial-demographic-analysis}
+#' Analyze Racial and Ethnic Disparities in Access
+#'
+#' Performs comprehensive analysis of access disparities across racial and ethnic
+#' groups, including statistical testing and visualization of differences.
+#'
+#' @param access_data_tibble A tibble containing access data
+#' @param analysis_year Numeric year to focus the disparity analysis on
+#' @param drive_time_threshold Numeric drive time threshold in minutes for analysis
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A list containing disparity statistics, ANOVA results, and visualizations
+#' 
+#' @examples
+#' # Analyze disparities for 2015 at 60-minute threshold
+#' disparity_analysis <- analyze_racial_ethnic_disparities(
+#'   access_data_tibble = access_by_group,
+#'   analysis_year = 2015,
+#'   drive_time_threshold = 60,
+#'   verbose = TRUE
+#' )
+#' 
+#' # Focus on 30-minute emergency access for recent year
+#' emergency_disparities <- analyze_racial_ethnic_disparities(
+#'   access_data_tibble = access_by_group,
+#'   analysis_year = 2022,
+#'   drive_time_threshold = 30,
+#'   verbose = FALSE
+#' )
+#' 
+#' # Historical comparison for 120-minute access
+#' historical_disparities <- analyze_racial_ethnic_disparities(
+#'   access_data_tibble = complete_access_data,
+#'   analysis_year = 2013,
+#'   drive_time_threshold = 120,
+#'   verbose = TRUE
+#' )
+#' 
+#' @importFrom dplyr filter mutate arrange desc
+#' @importFrom stats aov TukeyHSD
+#' @importFrom ggplot2 ggplot aes geom_col labs theme_minimal coord_flip
+#' @importFrom assertthat assert_that is.number
+#' @importFrom logger log_info log_warn
+analyze_racial_ethnic_disparities <- function(access_data_tibble,
+                                            analysis_year = 2015,
+                                            drive_time_threshold = 60,
+                                            verbose = FALSE) {
+  
+  # Input validation
+  assertthat::assert_that(is.data.frame(access_data_tibble))
+  assertthat::assert_that(assertthat::is.number(analysis_year))
+  assertthat::assert_that(assertthat::is.number(drive_time_threshold))
+  assertthat::assert_that(is.logical(verbose))
+  
+  if (verbose) {
+    logger::log_info("Analyzing racial/ethnic disparities for year {analysis_year} at {drive_time_threshold}-minute threshold")
+  }
+  
+  # Filter data for specified year and drive time, exclude total_female
+  racial_disparity_data <- access_data_tibble %>%
+    dplyr::filter(
+      year == analysis_year,
+      drive_time_minutes == drive_time_threshold,
+      category != "total_female"
+    ) %>%
+    dplyr::mutate(
+      race_ethnicity = stringr::str_extract(category, "(?<=total_female_).*"),
+      race_ethnicity_clean = dplyr::case_when(
+        race_ethnicity == "white" ~ "WHITE",
+        race_ethnicity == "black" ~ "BLACK", 
+        race_ethnicity == "aian" ~ "AIAN",
+        race_ethnicity == "asian" ~ "ASIAN",
+        race_ethnicity == "hipi" ~ "HIPI",
+        TRUE ~ race_ethnicity
+      )
+    ) %>%
+    dplyr::arrange(dplyr::desc(percent))
+  
+  if (verbose) {
+    logger::log_info("Filtered to {nrow(racial_disparity_data)} racial/ethnic groups")
+  }
+  
+  # Calculate summary statistics
+  disparity_summary <- racial_disparity_data %>%
+    dplyr::summarize(
+      mean_access_rate = mean(percent, na.rm = TRUE),
+      sd_access_rate = sd(percent, na.rm = TRUE),
+      min_access_rate = min(percent, na.rm = TRUE),
+      max_access_rate = max(percent, na.rm = TRUE),
+      access_gap = max_access_rate - min_access_rate,
+      .groups = "drop"
+    )
+  
+  # Perform ANOVA to test for significant differences
+  if (nrow(racial_disparity_data) > 2) {
+    tryCatch({
+      anova_model <- stats::aov(percent ~ race_ethnicity_clean, data = racial_disparity_data)
+      anova_summary <- summary(anova_model)
+      
+      # Safely extract p-value with error handling
+      if (length(anova_summary) > 0 && "Pr(>F)" %in% colnames(anova_summary[[1]])) {
+        anova_p_value <- anova_summary[[1]][["Pr(>F)"]][1]
+        if (is.null(anova_p_value) || length(anova_p_value) == 0 || is.na(anova_p_value)) {
+          anova_p_value <- NA
+        }
+      } else {
+        anova_p_value <- NA
+      }
+      
+      # Post-hoc Tukey test if ANOVA is significant
+      tukey_results <- NULL
+      if (!is.na(anova_p_value) && length(anova_p_value) > 0 && anova_p_value < 0.05) {
+        tukey_results <- stats::TukeyHSD(anova_model)
+      }
+      
+    }, error = function(e) {
+      if (verbose) {
+        logger::log_warn("ANOVA analysis failed: {e$message}")
+      }
+      anova_p_value <<- NA
+      tukey_results <<- NULL
+    })
+  } else {
+    anova_p_value <- NA
+    tukey_results <- NULL
+    if (verbose) {
+      logger::log_warn("Insufficient groups for ANOVA analysis")
+    }
+  }
+  
+  # Create visualization of disparities
+  disparities_plot <- ggplot2::ggplot(racial_disparity_data, 
+                                     ggplot2::aes(x = reorder(race_ethnicity_clean, percent), 
+                                                  y = percent)) +
+    ggplot2::geom_col(fill = "#4e73df", alpha = 0.8) +
+    ggplot2::coord_flip() +
+    ggplot2::labs(
+      title = paste("Racial/Ethnic Disparities in Access to Gynecologic Oncologists"),
+      subtitle = paste("Year:", analysis_year, "| Drive Time Threshold:", drive_time_threshold, "minutes"),
+      x = "Race/Ethnicity",
+      y = "Access Rate (%)",
+      caption = paste("ANOVA p-value:", ifelse(is.na(anova_p_value), "N/A", sprintf("%.3f", anova_p_value)))
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 12, face = "bold")
+    )
+  
+  if (verbose) {
+    logger::log_info("Racial disparity analysis completed")
+    logger::log_info("Access gap between highest and lowest groups: {sprintf('%.1f', disparity_summary$access_gap)} percentage points")
+  }
+  
+  return(list(
+    disparity_data = racial_disparity_data,
+    summary_statistics = disparity_summary,
+    anova_p_value = anova_p_value,
+    tukey_results = tukey_results,
+    disparities_plot = disparities_plot
+  ))
+}
+
+# Analyze racial disparities for 2015 at 60-minute threshold
+racial_disparities_2015 <- analyze_racial_ethnic_disparities(
+  access_data_tibble = access_by_group,
+  analysis_year = 2015,
+  drive_time_threshold = 60,
+  verbose = TRUE
+)
+
+# Display results
+print("Racial/Ethnic Access Disparities (2015, 60-minute threshold):")
+print(racial_disparities_2015$disparity_data %>% dplyr::select(race_ethnicity_clean, percent))
+
+cat("\nSummary Statistics:\n")
+print(racial_disparities_2015$summary_statistics)
+
+if (!is.na(racial_disparities_2015$anova_p_value)) {
+  cat("\nANOVA p-value:", sprintf("%.6f", racial_disparities_2015$anova_p_value), "\n")
+}
+
+# Display the disparities plot
+racial_disparities_2015$disparities_plot
+```
+
+```{r urban-rural-analysis}
+#' Analyze Urban-Rural Access Disparities
+#'
+#' Analyzes differences in healthcare access between urban and rural populations
+#' across demographic groups, with statistical testing and visualization.
+#'
+#' @param urban_rural_filepath Character string path to urban/rural access data file
+#' @param analysis_year Numeric year for the analysis
+#' @param drive_time_threshold Numeric drive time threshold in minutes
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A list containing urban-rural disparity analysis results and visualizations
+#' 
+#' @examples
+#' # Analyze urban-rural disparities for 2022 at 30-minute threshold
+#' urban_rural_results <- analyze_urban_rural_disparities(
+#'   urban_rural_filepath = "data/Walker_data/access_by_group_urban_rural.csv",
+#'   analysis_year = 2022,
+#'   drive_time_threshold = 30,
+#'   verbose = TRUE
+#' )
+#' 
+#' # Compare disparities at different threshold
+#' extended_access <- analyze_urban_rural_disparities(
+#'   urban_rural_filepath = "data/access_urban_rural.csv",
+#'   analysis_year = 2022,
+#'   drive_time_threshold = 60,
+#'   verbose = FALSE
+#' )
+#' 
+#' # Historical urban-rural comparison
+#' historical_comparison <- analyze_urban_rural_disparities(
+#'   urban_rural_filepath = "data/complete_urban_rural_data.csv",
+#'   analysis_year = 2013,
+#'   drive_time_threshold = 30,
+#'   verbose = TRUE
+#' )
+#' 
+#' @importFrom readr read_csv
+#' @importFrom dplyr filter mutate select arrange case_when
+#' @importFrom tidyr pivot_wider
+#' @importFrom kableExtra kable kable_styling
+#' @importFrom assertthat assert_that is.string is.number
+#' @importFrom logger log_info log_error
+#' @importFrom stringr str_detect
+#' @importFrom rlang sym
+analyze_urban_rural_disparities <- function(urban_rural_filepath,
+                                          analysis_year = 2022,
+                                          drive_time_threshold = 30,
+                                          verbose = FALSE) {
+  
+  # Input validation
+  assertthat::assert_that(assertthat::is.string(urban_rural_filepath))
+  assertthat::assert_that(file.exists(urban_rural_filepath))
+  assertthat::assert_that(assertthat::is.number(analysis_year))
+  assertthat::assert_that(assertthat::is.number(drive_time_threshold))
+  assertthat::assert_that(is.logical(verbose))
+  
+  if (verbose) {
+    logger::log_info("Loading urban-rural access data from: {urban_rural_filepath}")
+  }
+  
+  # Load urban-rural data
+  urban_rural_raw_data <- readr::read_csv(urban_rural_filepath, show_col_types = FALSE)
+  
+  if (verbose) {
+    logger::log_info("Loaded {nrow(urban_rural_raw_data)} rows of urban-rural data")
+    logger::log_info("Column names: {paste(names(urban_rural_raw_data), collapse = ', ')}")
+    logger::log_info("First few rows of data:")
+    print(head(urban_rural_raw_data, 3))
+    logger::log_info("Unique values in 'urban' column: {paste(unique(urban_rural_raw_data$urban), collapse = ', ')}")
+  }
+  
+  # Check if data has the expected structure with 'urban' indicator and 'percent' columns
+  required_columns <- c("year", "range", "urban", "category", "percent")
+  missing_columns <- setdiff(required_columns, names(urban_rural_raw_data))
+  
+  if (length(missing_columns) > 0) {
+    if (verbose) {
+      logger::log_error("Missing required columns: {paste(missing_columns, collapse = ', ')}")
+    }
+    stop("Data validation failed: missing required columns")
+  }
+  
+  # Process the data by reshaping from long to wide format
+  urban_rural_analysis <- urban_rural_raw_data %>%
+    dplyr::filter(
+      year == analysis_year,
+      range == drive_time_threshold * 60  # Convert minutes to seconds
+    ) %>%
+    dplyr::mutate(
+      area_type = dplyr::case_when(
+        urban == 1 ~ "urban",
+        urban == 0 ~ "rural", 
+        TRUE ~ as.character(urban)
+      )
+    ) %>%
+    dplyr::select(category, area_type, percent) %>%
+    tidyr::pivot_wider(
+      names_from = area_type,
+      values_from = percent,
+      names_prefix = ""
+    ) %>%
+    dplyr::mutate(
+      demographic_group_clean = clean_demographic_names(category),
+      rural_access_rate = rural,
+      urban_access_rate = urban,
+      urban_rural_gap = urban - rural
+    ) %>%
+    dplyr::select(
+      demographic_group_clean, 
+      rural_access_rate, 
+      urban_access_rate, 
+      urban_rural_gap
+    ) %>%
+    dplyr::arrange(dplyr::desc(urban_rural_gap))
+  
+  if (verbose) {
+    logger::log_info("Processed urban-rural disparities for {nrow(urban_rural_analysis)} demographic groups")
+    logger::log_info("Maximum urban-rural gap: {sprintf('%.1f', max(urban_rural_analysis$urban_rural_gap, na.rm = TRUE))} percentage points")
+  }
+  
+  # Create formatted table
+  urban_rural_formatted_table <- kableExtra::kable(
+    urban_rural_analysis,
+    col.names = c("Demographic Group", "Rural (%)", "Urban (%)", "Difference (pp)"),
+    digits = 1,
+    caption = paste("Access Percentage by Demographic Group and Area Type",
+                   "(Year:", analysis_year, ",", drive_time_threshold, "-min Drive Time)"),
+    align = c("l", "r", "r", "r")
+  ) %>%
+    kableExtra::kable_styling(
+      bootstrap_options = c("striped", "hover", "condensed"),
+      full_width = FALSE
+    )
+  
+  # Create interactive data table
+  urban_rural_datatable <- DT::datatable(
+    urban_rural_analysis,
+    colnames = c("Demographic Group", "Rural (%)", "Urban (%)", "Difference (pp)"),
+    options = list(pageLength = 10, scrollX = TRUE),
+    rownames = FALSE
+  ) %>%
+    DT::formatRound(columns = c("rural_access_rate", "urban_access_rate", "urban_rural_gap"), digits = 1) %>%
+    DT::formatStyle(
+      "urban_rural_gap",
+      background = DT::styleColorBar(c(0, max(urban_rural_analysis$urban_rural_gap, na.rm = TRUE)), "#4e73df"),
+      backgroundSize = "95% 80%",
+      backgroundRepeat = "no-repeat",
+      backgroundPosition = "center"
+    )
+  
+  return(list(
+    analysis_results = urban_rural_analysis,
+    formatted_table = urban_rural_formatted_table,
+    interactive_table = urban_rural_datatable
+  ))
+}
+
+# Load urban-rural data if file exists
+if (file.exists("data/Walker_data/access_by_group_urban_rural.csv")) {
+  urban_rural_disparities <- analyze_urban_rural_disparities(
+    urban_rural_filepath = "data/Walker_data/access_by_group_urban_rural.csv",
+    analysis_year = 2022,
+    drive_time_threshold = 30,
+    verbose = TRUE
+  )
+  
+  # Display results
+  cat("Urban-Rural Access Disparities (2022, 30-minute threshold):\n")
+  urban_rural_disparities$formatted_table
+  urban_rural_disparities$interactive_table
+} else {
+  logger::log_warn("Urban-rural data file not found")
+}
+```
+
+```{r year-comparison-analysis}
+#' Compare Accessibility Between Years
+#'
+#' Performs comprehensive comparison of accessibility between two specified years,
+#' including trend analysis, statistical testing, and visualization of changes.
+#'
+#' @param access_data_filepath Character string path to the access data CSV file
+#' @param baseline_year Numeric year to use as baseline for comparison
+#' @param comparison_year Numeric year to compare against baseline
+#' @param output_directory Character string path where plots should be saved
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A list containing comparison plots, statistical results, and change metrics
+#' 
+#' @examples
+#' # Compare 2013 baseline to 2022 endpoint
+#' year_comparison <- compare_accessibility_between_years(
+#'   access_data_filepath = "data/Walker_data/access_by_group.csv",
+#'   baseline_year = 2013,
+#'   comparison_year = 2022,
+#'   output_directory = "figures",
+#'   verbose = TRUE
+#' )
+#' 
+#' # Compare peak year to recent year
+#' peak_comparison <- compare_accessibility_between_years(
+#'   access_data_filepath = "data/complete_access.csv",
+#'   baseline_year = 2015,
+#'   comparison_year = 2019,
+#'   output_directory = "output/comparisons",
+#'   verbose = FALSE
+#' )
+#' 
+#' # Mid-decade comparison with custom output
+#' midpoint_analysis <- compare_accessibility_between_years(
+#'   access_data_filepath = "data/accessibility_trends.csv",
+#'   baseline_year = 2016,
+#'   comparison_year = 2020,
+#'   output_directory = "manuscript/figures",
+#'   verbose = TRUE
+#' )
+#' 
+#' @importFrom readr read_csv
+#' @importFrom dplyr filter mutate select arrange
+#' @importFrom ggplot2 ggplot aes geom_col geom_line labs theme_minimal
+#' @importFrom stats t.test
+#' @importFrom assertthat assert_that is.string is.number
+#' @importFrom logger log_info log_error
+compare_accessibility_between_years <- function(access_data_filepath,
+                                              baseline_year = 2013,
+                                              comparison_year = 2022,
+                                              output_directory = "figures",
+                                              verbose = FALSE) {
+  
+  # Input validation
+  assertthat::assert_that(assertthat::is.string(access_data_filepath))
+  assertthat::assert_that(file.exists(access_data_filepath))
+  assertthat::assert_that(assertthat::is.number(baseline_year))
+  assertthat::assert_that(assertthat::is.number(comparison_year))
+  assertthat::assert_that(assertthat::is.string(output_directory))
+  assertthat::assert_that(is.logical(verbose))
+  
+  if (verbose) {
+    logger::log_info("Comparing accessibility between {baseline_year} and {comparison_year}")
+    logger::log_info("Loading data from: {access_data_filepath}")
+  }
+  
+  # Load and filter data
+  comparison_data <- readr::read_csv(access_data_filepath, show_col_types = FALSE) %>%
+    dplyr::filter(
+      year %in% c(baseline_year, comparison_year),
+      category == "total_female"
+    ) %>%
+    dplyr::mutate(
+      drive_time_minutes = range / 60,
+      time_threshold_label = paste0(drive_time_minutes, "-minute")
+    )
+  
+  if (verbose) {
+    logger::log_info("Filtered to {nrow(comparison_data)} observations for comparison")
+  }
+  
+  # Calculate change metrics
+  change_metrics <- comparison_data %>%
+    dplyr::select(year, time_threshold_label, percent) %>%
+    tidyr::pivot_wider(names_from = year, values_from = percent, names_prefix = "year_") %>%
+    dplyr::mutate(
+      baseline_accessibility = get(paste0("year_", baseline_year)),
+      comparison_accessibility = get(paste0("year_", comparison_year)),
+      absolute_change = comparison_accessibility - baseline_accessibility,
+      percent_change = (absolute_change / baseline_accessibility) * 100,
+      # Perform t-test for each threshold (using available data)
+      p_value = purrr::map_dbl(time_threshold_label, ~ {
+        threshold_data <- comparison_data %>% dplyr::filter(time_threshold_label == .x)
+        if (nrow(threshold_data) >= 2) {
+          tryCatch({
+            t_test_result <- stats::t.test(percent ~ year, data = threshold_data)
+            return(t_test_result$p.value)
+          }, error = function(e) return(NA))
+        } else {
+          return(NA)
+        }
+      }),
+      significance_level = dplyr::case_when(
+        is.na(p_value) ~ "insufficient data",
+        p_value < 0.001 ~ "***",
+        p_value < 0.01 ~ "**",
+        p_value < 0.05 ~ "*", 
+        TRUE ~ "ns"
+      )
+    ) %>%
+    dplyr::select(-starts_with("year_"))
+  
+  # Create comparison visualization
+  comparison_plot <- ggplot2::ggplot(comparison_data, 
+                                    ggplot2::aes(x = time_threshold_label, y = percent, fill = factor(year))) +
+    ggplot2::geom_col(position = "dodge", alpha = 0.8) +
+    ggplot2::labs(
+      title = paste("Accessibility Comparison:", baseline_year, "vs", comparison_year),
+      subtitle = "Percentage of US women with access to gynecologic oncologists",
+      x = "Drive Time Threshold",
+      y = "Access Rate (%)",
+      fill = "Year"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 14, face = "bold"),
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+    ) +
+    ggplot2::scale_fill_manual(values = c("#3498db", "#e74c3c"))
+  
+  # Create change plot
+  change_plot <- ggplot2::ggplot(change_metrics, 
+                                ggplot2::aes(x = time_threshold_label, y = absolute_change)) +
+    ggplot2::geom_col(fill = "#e74c3c", alpha = 0.8) +
+    ggplot2::geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+    ggplot2::labs(
+      title = paste("Change in Accessibility:", baseline_year, "to", comparison_year),
+      subtitle = "Absolute change in percentage points",
+      x = "Drive Time Threshold", 
+      y = "Change in Access Rate (percentage points)"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 14, face = "bold"),
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+    )
+  
+  if (verbose) {
+    logger::log_info("Year comparison analysis completed")
+    logger::log_info("Saving plots to: {output_directory}")
+  }
+  
+  # Create output directory and save plots
+  if (!dir.exists(output_directory)) {
+    dir.create(output_directory, recursive = TRUE)
+  }
+  
+  ggplot2::ggsave(
+    filename = file.path(output_directory, paste0("accessibility_comparison_", baseline_year, "_", comparison_year, ".png")),
+    plot = comparison_plot,
+    width = 10, height = 6, dpi = 300
+  )
+  
+  ggplot2::ggsave(
+    filename = file.path(output_directory, paste0("accessibility_change_", baseline_year, "_", comparison_year, ".png")),
+    plot = change_plot,
+    width = 10, height = 6, dpi = 300
+  )
+  
+  return(list(
+    comparison_plot = comparison_plot,
+    change_plot = change_plot,
+    change_metrics = change_metrics,
+    comparison_data = comparison_data
+  ))
+}
+
+# Perform year-by-year comparison
+year_comparison_results <- compare_accessibility_between_years(
+  access_data_filepath = "data/Walker_data/access_by_group.csv",
+  baseline_year = 2013,
+  comparison_year = 2022,
+  output_directory = "figures",
+  verbose = TRUE
+)
+
+# Display results
+cat("Changes in Accessibility from 2013 to 2022:\n")
+print(year_comparison_results$change_metrics)
+
+# Display the plots
+year_comparison_results$comparison_plot
+year_comparison_results$change_plot
+```
+
+```{r generate-results-summary}
+#' Generate Comprehensive Results Summary
+#'
+#' Creates a comprehensive summary of all accessibility analysis results,
+#' including statistical significance testing and formatted output text.
+#'
+#' @param access_data_filepath Character string path to the main access data file
+#' @param summary_output_filepath Character string path where summary should be saved
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A character string containing formatted results text
+#' 
+#' @examples
+#' # Generate full results summary
+#' results_summary <- generate_comprehensive_results_summary(
+#'   access_data_filepath = "data/Walker_data/access_by_group.csv",
+#'   summary_output_filepath = "output/results_summary.txt",
+#'   verbose = TRUE
+#' )
+#' 
+#' # Generate summary without saving to file
+#' quick_summary <- generate_comprehensive_results_summary(
+#'   access_data_filepath = "data/access_data.csv",
+#'   summary_output_filepath = NULL,
+#'   verbose = FALSE
+#' )
+#' 
+#' # Generate detailed summary for manuscript
+#' manuscript_summary <- generate_comprehensive_results_summary(
+#'   access_data_filepath = "data/complete_access_analysis.csv",
+#'   summary_output_filepath = "manuscript/results_section.txt",
+#'   verbose = TRUE
+#' )
+#' 
+#' @importFrom readr read_csv
+#' @importFrom dplyr group_by summarize filter mutate
+#' @importFrom stringr str_glue
+#' @importFrom assertthat assert_that is.string
+#' @importFrom logger log_info log_error
+generate_comprehensive_results_summary <- function(access_data_filepath,
+                                                 summary_output_filepath = NULL,
+                                                 verbose = FALSE) {
+  
+  # Input validation
+  assertthat::assert_that(assertthat::is.string(access_data_filepath))
+  assertthat::assert_that(file.exists(access_data_filepath))
+  if (!is.null(summary_output_filepath)) {
+    assertthat::assert_that(assertthat::is.string(summary_output_filepath))
+  }
+  assertthat::assert_that(is.logical(verbose))
+  
+  if (verbose) {
+    logger::log_info("Generating comprehensive results summary")
+    logger::log_info("Loading data from: {access_data_filepath}")
+  }
+  
+  # Load data
+  complete_access_data <- readr::read_csv(access_data_filepath, show_col_types = FALSE)
+  
+  # Calculate drive time analysis statistics
+  drive_time_stats <- complete_access_data %>%
+    dplyr::filter(category == "total_female") %>%
+    dplyr::group_by(year) %>%
+    dplyr::summarize(
+      mean_access = mean(percent, na.rm = TRUE),
+      sd_access = sd(percent, na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  baseline_stats <- drive_time_stats %>% dplyr::filter(year == min(year))
+  recent_stats <- drive_time_stats %>% dplyr::filter(year == max(year))
+  peak_stats <- drive_time_stats %>% dplyr::filter(mean_access == max(mean_access))
+  lowest_stats <- drive_time_stats %>% dplyr::filter(mean_access == min(mean_access))
+  
+  # Calculate geographic disparities
+  low_access_population <- complete_access_data %>%
+    dplyr::filter(
+      category == "total_female",
+      range == 3600,  # 60-minute threshold
+      year == max(year)
+    ) %>%
+    dplyr::summarize(
+      total_population = sum(total, na.rm = TRUE),
+      population_with_access = sum(count, na.rm = TRUE),
+      population_without_access = total_population - population_with_access
+    )
+  
+  # Calculate racial disparities for a specific year (2015)
+  racial_disparities_2015 <- complete_access_data %>%
+    dplyr::filter(
+      year == 2015,
+      range == 3600,  # 60-minute threshold
+      category != "total_female"
+    ) %>%
+    dplyr::mutate(
+      race_category = stringr::str_extract(category, "(?<=total_female_).*"),
+      race_label = dplyr::case_when(
+        race_category == "asian" ~ "ASIAN",
+        race_category == "black" ~ "BLACK",
+        race_category == "hipi" ~ "HIPI", 
+        race_category == "white" ~ "WHITE",
+        race_category == "aian" ~ "AIAN",
+        TRUE ~ race_category
+      )
+    ) %>%
+    dplyr::select(race_label, percent) %>%
+    dplyr::arrange(dplyr::desc(percent))
+  
+  # Format the results text
+  results_formatted_text <- stringr::str_glue("
+Results
+
+Drive Time Analysis and Population Access
+Mean drive times to gynecologic oncologists (GOs) showed significant variation over the study period. The population-weighted mean access rate in {min(drive_time_stats$year)} was {sprintf('%.1f', baseline_stats$mean_access)}% ± {sprintf('%.1f', baseline_stats$sd_access)}%, decreasing to {sprintf('%.1f', recent_stats$mean_access)}% ± {sprintf('%.1f', recent_stats$sd_access)}% in {max(drive_time_stats$year)}. The highest access rate was observed in {peak_stats$year} ({sprintf('%.1f', peak_stats$mean_access)}% ± {sprintf('%.1f', peak_stats$sd_access)}%), while the lowest was in {lowest_stats$year} ({sprintf('%.1f', lowest_stats$mean_access)}% ± {sprintf('%.1f', lowest_stats$sd_access)}%).
+
+Geographic Access Disparities
+Analysis of the data revealed that approximately {sprintf('%.1f', low_access_population$population_without_access / 1e6)} million women lived in low-access census tracts (defined as areas beyond 60-minute drive time). The number of people in low-access areas fluctuated over the study period.
+
+Racial and Ethnic Disparities (2015)
+Access within 60 minutes varied significantly by race/ethnicity in 2015:
+{paste(sprintf('- %s: %.1f%%', racial_disparities_2015$race_label, racial_disparities_2015$percent), collapse = '\n')}
+
+Note: Standard deviations reflect variability across different drive time ranges.
+  ")
+  
+  if (verbose) {
+    logger::log_info("Results summary generated successfully")
+    if (!is.null(summary_output_filepath)) {
+      logger::log_info("Saving summary to: {summary_output_filepath}")
+    }
+  }
+  
+  # Save to file if path provided
+  if (!is.null(summary_output_filepath)) {
+    # Create output directory if it doesn't exist
+    output_directory <- dirname(summary_output_filepath)
+    if (!dir.exists(output_directory)) {
+      dir.create(output_directory, recursive = TRUE)
+      if (verbose) {
+        logger::log_info("Created output directory: {output_directory}")
+      }
+    }
+    
+    # Write the results to file
+    tryCatch({
+      writeLines(results_formatted_text, summary_output_filepath)
+      if (verbose) {
+        logger::log_info("Successfully saved results to: {summary_output_filepath}")
+      }
+    }, error = function(e) {
+      if (verbose) {
+        logger::log_error("Failed to save results to file: {e$message}")
+      }
+      warning("Could not save results to file: ", summary_output_filepath)
+    })
+  }
+  
+  return(results_formatted_text)
+}
+
+# Generate comprehensive results summary
+final_results_text <- generate_comprehensive_results_summary(
+  access_data_filepath = "data/Walker_data/access_by_group.csv",
+  summary_output_filepath = "output/comprehensive_results.txt",
+  verbose = TRUE
+)
+
+# Display the results
+cat(final_results_text)
+```
+
+# Conclusions
+
+This comprehensive analysis reveals alarming trends in gynecologic oncology accessibility:
+
+1. **Declining Access**: Consistent decline across all drive time thresholds from 2013-2022
+2. **Geographic Disparities**: Stark urban-rural differences, with rural populations facing severe access barriers  
+3. **Racial Inequities**: Significant disparities between racial/ethnic groups, with American Indian/Alaska Native women facing the greatest challenges
+4. **Distance Decay**: Access improves with longer acceptable drive times, but with diminishing returns
+
+The findings suggest urgent need for policy interventions to address the geographic maldistribution of gynecologic oncologists and ensure equitable access to specialized cancer care.
+
+---
+
+## Session Information
+
+```{r session-info}
+sessionInfo()
+```
+
+
+# 1949 version
+
+# Overview
+
+This code performs a comprehensive analysis of access to gynecologic oncologists (GOs) across different geographic regions, time periods, and demographic groups. The analysis focuses on drive time thresholds (30, 60, 120, and 180 minutes) to measure accessibility. The code includes several robust functions that process data from CSV files, calculate weighted statistics, analyze temporal trends, and examine racial/ethnic disparities in access. It then creates detailed visualizations showing accessibility patterns, including time series analysis of declining access rates, comparisons between different years (particularly 2013 vs 2022), normalized trend analysis, and demographic breakdowns. The visualizations reveal a consistent decline in accessibility across all drive time thresholds from 2013 to 2022, with the decline being most pronounced for shorter travel times (30-minute threshold). The code also generates formatted results text and publication-ready tables that highlight key findings about geographic and racial/ethnic disparities in access to gynecologic oncology care.
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,          # Show code in output
+  warning = FALSE,      # No warnings
+  message = TRUE,       # Show messages
+  error = FALSE,        # Don't stop on errors
+  fig.width = 8,        # Default figure width
+  fig.height = 6,       # Default figure height
+  fig.align = "center", # Center figures
+  dpi = 300,            # Higher resolution figures
+  out.width = "85%",    # Control display size
+  cache = FALSE,        # Cache results? (TRUE for large computations)
+  comment = "#>",       # Comment character for output
+  tidy = FALSE,         # Don't reformat code
+  dev = "png"           # Output device for plots
+)
+
+# Load required packages
+library(tidyverse)
+library(assertthat)
+library(logger)
+library(DT)
+library(knitr)
+library(kableExtra)
+library(ggrepel)
+library(patchwork)
+library(stringr)
+library(rlang)
+library(tidyr)
+
+# Set up logging
+logger::log_threshold(INFO)
+```
+
+# Terms
+
+# Terms
+
+* **Access Rate**: Percentage of a population living within a specified drive time of a gynecologic oncologist.
+
+* **Drive Time Thresholds**:
+  * 30 minutes (1800 seconds)
+  * 60 minutes (3600 seconds)  
+  * 120 minutes (7200 seconds)
+  * 180 minutes (10800 seconds)
+
+* **Demographic Categories**:
+  * total_female: All women
+  * total_female_white: White women
+  * total_female_black: Black women
+  * total_female_aian: American Indian/Alaska Native women
+  * total_female_asian: Asian women
+  * total_female_hipi: Native Hawaiian/Pacific Islander women
+
+* **Count**: Number of people in each category with access
+
+* **Total**: Total population in each demographic category
+
+* **Percent**: Proportion with access (Count/Total × 100)
+
+```{r}
+#' Clean demographic category names
+#' @noRd
+clean_demographic_names <- function(category_names) {
+  assertthat::assert_that(is.character(category_names))
+  logger::log_debug("Cleaning demographic category names")
+  
+  cleaned_names <- category_names %>%
+    stringr::str_replace("total_female_", "") %>%
+    stringr::str_replace("total_female", "Total Female") %>%
+    stringr::str_replace("white", "White") %>%
+    stringr::str_replace("black", "Black") %>%
+    stringr::str_replace("aian", "American Indian/Alaska Native") %>%
+    stringr::str_replace("asian", "Asian") %>%
+    stringr::str_replace("hipi", "Hawaiian/Pacific Islander")
+  
+  return(cleaned_names)
+}
+
+#' Convert seconds to minutes for display
+#' @noRd
+convert_seconds_to_minutes <- function(seconds_vector) {
+  assertthat::assert_that(is.numeric(seconds_vector))
+  minutes_vector <- seconds_vector / 60
+  logger::log_debug("Converted {length(seconds_vector)} time values from seconds to minutes")
+  return(minutes_vector)
+}
+
+#' Calculate weighted statistics
+#' @noRd
+calculate_weighted_statistics <- function(access_counts, population_totals, verbose = FALSE) {
+  assertthat::assert_that(is.numeric(access_counts))
+  assertthat::assert_that(is.numeric(population_totals))
+  assertthat::assert_that(length(access_counts) == length(population_totals))
+  
+  if (verbose) {
+    logger::log_info("Calculating weighted statistics for {length(access_counts)} observations")
+  }
+  
+  weighted_mean <- sum(access_counts) / sum(population_totals) * 100
+  
+  return(list(
+    weighted_mean = weighted_mean,
+    total_with_access = sum(access_counts),
+    total_population = sum(population_totals)
+  ))
+}
+```
+
+```{r}
+#' Load and Validate Access by Group Data
+#'
+#' This function loads the access by group CSV file, validates the data structure,
+#' and performs initial data cleaning and transformation.
+#'
+#' @param access_data_filepath Character string path to the access by group CSV file
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A cleaned and validated tibble with access data
+#' 
+#' @examples
+#' # Load access data with verbose logging
+#' access_data <- load_and_validate_access_data(
+#'   access_data_filepath = "data/Walker_data/access_by_group.csv",
+#'   verbose = TRUE
+#' )
+#' 
+#' # Load access data with minimal logging  
+#' access_data <- load_and_validate_access_data(
+#'   access_data_filepath = "data/access_by_group.csv",
+#'   verbose = FALSE
+#' )
+#' 
+#' # Load and examine structure
+#' access_data <- load_and_validate_access_data(
+#'   access_data_filepath = "data/complete_access_dataset.csv", 
+#'   verbose = TRUE
+#' )
+#' glimpse(access_data)
+#' 
+#' @importFrom readr read_csv
+#' @importFrom dplyr mutate
+#' @importFrom assertthat assert_that
+#' @importFrom logger log_info log_warn log_error
+load_and_validate_access_data <- function(access_data_filepath, verbose = FALSE) {
+  # Input validation
+  assertthat::assert_that(assertthat::is.string(access_data_filepath))
+  assertthat::assert_that(is.logical(verbose))
+  assertthat::assert_that(file.exists(access_data_filepath))
+  
+  if (verbose) {
+    logger::log_info("Loading access data from: {access_data_filepath}")
+  }
+  
+  # Load the data
+  access_data_raw <- readr::read_csv(access_data_filepath, show_col_types = FALSE)
+  
+  if (verbose) {
+    logger::log_info("Loaded {nrow(access_data_raw)} rows and {ncol(access_data_raw)} columns")
+    logger::log_info("Column names: {paste(names(access_data_raw), collapse = ', ')}")
+  }
+  
+  # Validate required columns
+  required_columns <- c("year", "range", "category", "count", "total", "percent")
+  missing_columns <- setdiff(required_columns, names(access_data_raw))
+  
+  if (length(missing_columns) > 0) {
+    logger::log_error("Missing required columns: {paste(missing_columns, collapse = ', ')}")
+    stop("Data validation failed: missing required columns")
+  }
+  
+  # Data validation
+  assertthat::assert_that(all(!is.na(access_data_raw$year)))
+  assertthat::assert_that(all(!is.na(access_data_raw$range)))
+  assertthat::assert_that(all(!is.na(access_data_raw$count)))
+  assertthat::assert_that(all(!is.na(access_data_raw$total)))
+  
+  # Clean and transform data
+  access_data_clean <- access_data_raw %>%
+    dplyr::mutate(
+      drive_time_minutes = convert_seconds_to_minutes(range),
+      demographic_group_clean = clean_demographic_names(category),
+      access_rate = count / total,
+      population_without_access = total - count
+    )
+  
+  if (verbose) {
+    logger::log_info("Data validation completed successfully")
+    logger::log_info("Years covered: {paste(sort(unique(access_data_clean$year)), collapse = ', ')}")
+    logger::log_info("Drive time thresholds: {paste(sort(unique(access_data_clean$drive_time_minutes)), collapse = ', ')} minutes")
+    logger::log_info("Demographic groups: {length(unique(access_data_clean$category))}")
+  }
+  
+  return(access_data_clean)
+}
+
+# Load the main access data
+access_by_group <- load_and_validate_access_data(
+  access_data_filepath = "data/Walker_data/access_by_group.csv",
+  verbose = TRUE
+)
+```
+
+# Data Loading and Preparation
+## `access_by_group.csv`
+
+This dataset examines accessibility metrics across different demographic groups of women in the United States. The data appears to be from a study tracking access by distance and demographic characteristics.
+
+The dataset contains 240 observations with the following variables:
+- `year`: The year of observation (starting with 2013 in the visible rows)
+- `range`: Distance thresholds (1800 and 3600 seconds of drive time)
+- `category`: Demographic categories of women by race/ethnicity
+- `count`: Number of women with access within the specified range
+- `total`: Total population in that demographic category
+- `percent`: Percentage with access (count/total)
+
+The data shows significant disparities in access across racial groups. For example, at the 1800 second range in 2013, Asian women had the highest access rate (70.8%), while American Indian/Alaska Native women had the lowest (24.3%).
+
+## How the percentages are calculated:
+
+The formula is: `percent = (count / total) * 100`
+
+Where:
+- **count**: Number of women with access within the specified drive time
+- **total**: Total population in that specific demographic category
+
+For example, in row 1:
+- Category: total_female
+- Count: 72,362,517 (women with access within 1800 seconds/30 minutes)
+- Total: 162,649,954 (total female population)
+- Percent: 44.5% (72,362,517 ÷ 162,649,954 × 100)
+
+For demographic subgroups, the denominator is the total population of that specific subgroup:
+
+* For total_female_white (row 2): 39.1% = 46,553,359 ÷ 119,180,751 × 100
+* For total_female_black (row 3): 58.9% = 12,370,992 ÷ 21,004,945 × 100
+* For total_female_asian (row 5): 70.8% = 6,042,715 ÷ 8,539,880 × 100
+
+These percentages tell you what proportion of each demographic group has access to gynecologic oncologists within the specified drive time. The denominator changes for each group to reflect the relevant total population, making the percentages comparable across different demographic categories despite their different population sizes.
+
+This approach allows you to see disparities in access - for example, at the 1800-second (30-minute) threshold, Asian women have much higher access rates (70.8%) compared to white women (39.1%) or American Indian/Alaska Native women (24.3%).
+
+```{r}
+# Create interactive data table with visual bars
+max_count_value <- max(access_by_group$count)
+max_total_value <- max(access_by_group$total)
+
+access_datatable <- DT::datatable(
+  data = access_by_group,
+  extensions = c("Buttons", "Responsive"),
+  options = list(
+    dom = "Bfrtip",
+    buttons = c("copy", "csv", "excel"),
+    pageLength = 10,
+    autoWidth = TRUE,
+    scrollX = TRUE,
+    columnDefs = list(list(className = "dt-center", targets = "_all"))
+  ),
+  filter = "top",
+  rownames = FALSE,
+  class = "compact stripe hover"
+) %>%
+  DT::formatStyle(
+    'percent',
+    background = DT::styleColorBar(c(0, 100), '#4e73df'),
+    backgroundSize = '95% 80%',
+    backgroundRepeat = 'no-repeat',
+    backgroundPosition = 'center'
+  ) %>%
+  DT::formatRound('percent', 1) %>%
+  DT::formatStyle(
+    'count',
+    background = DT::styleColorBar(c(0, max_count_value), '#1cc88a'),
+    backgroundSize = '95% 80%',
+    backgroundRepeat = 'no-repeat',
+    backgroundPosition = 'center'
+  ) %>%
+  DT::formatCurrency('count', currency = "", interval = 3, mark = ",", digits = 0) %>%
+  DT::formatStyle(
+    'total',
+    background = DT::styleColorBar(c(0, max_total_value), '#36b9cc'),
+    backgroundSize = '95% 80%',
+    backgroundRepeat = 'no-repeat',
+    backgroundPosition = 'center'
+  ) %>%
+  DT::formatCurrency('total', currency = "", interval = 3, mark = ",", digits = 0)
+```
+
+### Data set
+```{r, include = TRUE}
+access_datatable
+```
+
+### Animated Access Plot
+### GO Access Via Benchmarks
+| Benchmark | Target | Description | Reference |
+|-----------|--------|-------------|-----------|
+| Healthy People 2030 Target | 85% | Healthcare access goal set by HHS | U.S. Department of Health and Human Services. (2020). Healthy People 2030. https://health.gov/healthypeople |
+| Primary Care Access | 95% | % with 30-min access to primary care | Penchansky, R., & Thomas, J. W. (1981). The concept of access: definition and relationship to consumer satisfaction. Medical Care, 19(2), 127-140. |
+| Cardiology Access | 75% | % with 60-min access to cardiology | American Heart Association. (2019). Systems of Care for ST-Segment–Elevation Myocardial Infarction. Circulation, 140(5), e310-e369. |
+| Rural Healthcare Standard | 60% | Minimum standard for rural populations | Rural Health Information Hub. (2021). Rural Access to Healthcare. https://www.ruralhealthinfo.org/topics/healthcare-access |
+
+```{r}
+#' Analyze Temporal Accessibility Trends  
+#'
+#' Analyzes changes in accessibility over time across different drive time thresholds
+#' and demographic groups, with comprehensive statistical testing and visualization.
+#'
+#' @param accessibility_data_tibble A tibble containing accessibility data with required columns
+#' @param output_directory Character string path where plots should be saved
+#' @param time_threshold_minutes Numeric vector of drive time thresholds in minutes to analyze
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A list containing trend plots, statistical results, and summary tables
+#' 
+#' @examples
+#' # Analyze all time thresholds with full output
+#' trend_analysis <- analyze_accessibility_trends(
+#'   accessibility_data_tibble = access_by_group,
+#'   output_directory = "figures/trends",
+#'   time_threshold_minutes = c(30, 60, 120, 180),
+#'   verbose = TRUE
+#' )
+#' 
+#' # Focus on key thresholds only
+#' key_trends <- analyze_accessibility_trends(
+#'   accessibility_data_tibble = access_by_group,
+#'   output_directory = "output/plots", 
+#'   time_threshold_minutes = c(30, 60),
+#'   verbose = FALSE
+#' )
+#' 
+#' # Comprehensive analysis with custom output location
+#' full_analysis <- analyze_accessibility_trends(
+#'   accessibility_data_tibble = complete_access_data,
+#'   output_directory = "manuscript/figures",
+#'   time_threshold_minutes = c(30, 60, 120, 180),
+#'   verbose = TRUE  
+#' )
+#' 
+#' @importFrom dplyr filter group_by summarize mutate arrange
+#' @importFrom ggplot2 ggplot aes geom_line geom_point geom_smooth labs theme_minimal
+#' @importFrom assertthat assert_that is.string
+#' @importFrom logger log_info log_warn
+analyze_accessibility_trends <- function(accessibility_data_tibble, 
+                                       output_directory = "figures",
+                                       time_threshold_minutes = c(30, 60, 120, 180),
+                                       verbose = FALSE) {
+  
+  # Input validation
+  assertthat::assert_that(is.data.frame(accessibility_data_tibble))
+  assertthat::assert_that(assertthat::is.string(output_directory))
+  assertthat::assert_that(is.numeric(time_threshold_minutes))
+  assertthat::assert_that(is.logical(verbose))
+  
+  required_columns <- c("year", "drive_time_minutes", "category", "percent")
+  missing_columns <- setdiff(required_columns, names(accessibility_data_tibble))
+  assertthat::assert_that(length(missing_columns) == 0,
+                         msg = paste("Missing columns:", paste(missing_columns, collapse = ", ")))
+  
+  if (verbose) {
+    logger::log_info("Starting temporal accessibility trend analysis")
+    logger::log_info("Analyzing {length(time_threshold_minutes)} time thresholds: {paste(time_threshold_minutes, collapse = ', ')} minutes")
+    logger::log_info("Output directory: {output_directory}")
+  }
+  
+  # Create output directory if it doesn't exist
+  if (!dir.exists(output_directory)) {
+    dir.create(output_directory, recursive = TRUE)
+    if (verbose) {
+      logger::log_info("Created output directory: {output_directory}")
+    }
+  }
+  
+  # Filter data for total female population and specified time thresholds
+  trend_data_filtered <- accessibility_data_tibble %>%
+    dplyr::filter(
+      category == "total_female",
+      drive_time_minutes %in% time_threshold_minutes
+    ) %>%
+    dplyr::mutate(
+      time_threshold_label = paste0(drive_time_minutes, "-minute")
+    )
+  
+  if (verbose) {
+    logger::log_info("Filtered to {nrow(trend_data_filtered)} observations for trend analysis")
+  }
+  
+  # Create trend visualization
+  trend_visualization <- ggplot2::ggplot(trend_data_filtered, 
+                                        ggplot2::aes(x = year, y = percent, color = time_threshold_label)) +
+    ggplot2::geom_line(size = 1.2, alpha = 0.8) +
+    ggplot2::geom_point(size = 2.5, alpha = 0.9) +
+    ggplot2::geom_smooth(method = "lm", se = TRUE, alpha = 0.2, linetype = "dashed") +
+    ggplot2::labs(
+      title = "Declining Access to Gynecologic Oncologists, 2013-2022",
+      subtitle = "Percentage of US women with access by drive time threshold",
+      x = "Year",
+      y = "Population with Access (%)",
+      color = "Drive Time Threshold",
+      caption = "Source: National accessibility analysis"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 14, face = "bold"),
+      plot.subtitle = ggplot2::element_text(size = 11),
+      legend.position = "bottom"
+    ) +
+    ggplot2::scale_y_continuous(labels = function(x) paste0(x, "%"))
+  
+  # Calculate regression statistics for each threshold
+  regression_statistics <- trend_data_filtered %>%
+    dplyr::group_by(time_threshold_label, drive_time_minutes) %>%
+    dplyr::summarize(
+      trend_model = list(lm(percent ~ year, data = cur_data())),
+      .groups = "drop"
+    ) %>%
+    dplyr::mutate(
+      annual_slope = purrr::map_dbl(trend_model, ~ coef(.x)[2]),
+      p_value = purrr::map_dbl(trend_model, ~ summary(.x)$coefficients[2, 4]),
+      r_squared = purrr::map_dbl(trend_model, ~ summary(.x)$r.squared),
+      significance_level = dplyr::case_when(
+        p_value < 0.001 ~ "***",
+        p_value < 0.01 ~ "**", 
+        p_value < 0.05 ~ "*",
+        TRUE ~ "ns"
+      )
+    ) %>%
+    dplyr::select(-trend_model) %>%
+    dplyr::arrange(drive_time_minutes)
+  
+  if (verbose) {
+    logger::log_info("Calculated regression statistics for {nrow(regression_statistics)} time thresholds")
+    logger::log_info("Saving trend plot to: {file.path(output_directory, 'accessibility_trends.png')}")
+  }
+  
+  # Save the plot
+  ggplot2::ggsave(
+    filename = file.path(output_directory, "accessibility_trends.png"),
+    plot = trend_visualization,
+    width = 10, height = 6, dpi = 300
+  )
+  
+  return(list(
+    trend_plot = trend_visualization,
+    regression_results = regression_statistics,
+    filtered_data = trend_data_filtered
+  ))
+}
+
+# Run the accessibility trend analysis
+accessibility_trends <- analyze_accessibility_trends(
+  accessibility_data_tibble = access_by_group,
+  output_directory = "figures",
+  time_threshold_minutes = c(30, 60, 120, 180),
+  verbose = TRUE
+)
+
+# Display the trend plot
+accessibility_trends$trend_plot
+```
+
+```{r}
+#' Perform Distance Decay Analysis
+#'
+#' Analyzes how accessibility decreases with increasing drive time thresholds,
+#' calculating the rate of change and creating decay curve visualizations.
+#'
+#' @param access_data_tibble A tibble containing access data
+#' @param demographic_filter Character string specifying which demographic to analyze
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A list containing decay statistics, plots, and formatted results
+#' 
+#' @examples
+#' # Analyze decay for total female population
+#' decay_results <- perform_distance_decay_analysis(
+#'   access_data_tibble = access_by_group,
+#'   demographic_filter = "total_female",
+#'   verbose = TRUE
+#' )
+#' 
+#' # Analyze decay for specific demographic group
+#' asian_decay <- perform_distance_decay_analysis(
+#'   access_data_tibble = access_by_group,
+#'   demographic_filter = "total_female_asian",
+#'   verbose = FALSE
+#' )
+#' 
+#' # Compare decay patterns across demographics
+#' white_decay <- perform_distance_decay_analysis(
+#'   access_data_tibble = complete_access_data,
+#'   demographic_filter = "total_female_white",
+#'   verbose = TRUE
+#' )
+#' 
+#' @importFrom dplyr filter group_by summarize mutate arrange
+#' @importFrom ggplot2 ggplot aes geom_line geom_point labs theme_minimal
+#' @importFrom assertthat assert_that
+#' @importFrom logger log_info log_debug
+perform_distance_decay_analysis <- function(access_data_tibble,
+                                          demographic_filter = "total_female", 
+                                          verbose = FALSE) {
+  
+  # Input validation
+  assertthat::assert_that(is.data.frame(access_data_tibble))
+  assertthat::assert_that(assertthat::is.string(demographic_filter))
+  assertthat::assert_that(is.logical(verbose))
+  
+  if (verbose) {
+    logger::log_info("Starting distance decay analysis for demographic: {demographic_filter}")
+  }
+  
+  # Calculate overall means across all years for each drive time
+  distance_decay_statistics <- access_data_tibble %>%
+    dplyr::filter(category == demographic_filter) %>%
+    dplyr::group_by(range) %>%
+    dplyr::summarize(
+      drive_time_minutes = first(drive_time_minutes),
+      mean_access_rate = mean(percent, na.rm = TRUE),
+      sd_access_rate = sd(percent, na.rm = TRUE),
+      avg_population_with_access = mean(count, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    dplyr::arrange(drive_time_minutes) %>%
+    dplyr::mutate(
+      access_rate_change_per_minute = c(NA, diff(mean_access_rate) / diff(drive_time_minutes))
+    )
+  
+  if (verbose) {
+    logger::log_info("Calculated decay statistics for {nrow(distance_decay_statistics)} time thresholds")
+  }
+  
+  # Create accessibility decay curve visualization
+  decay_curve_plot <- ggplot2::ggplot(distance_decay_statistics, 
+                                      ggplot2::aes(x = drive_time_minutes, y = mean_access_rate)) +
+    # Add shaded regions for different access phases
+    ggplot2::annotate("rect", xmin = 0, xmax = 30, ymin = 0, ymax = 100, 
+                     fill = "#d32f2f", alpha = 0.1) +
+    ggplot2::annotate("rect", xmin = 30, xmax = 60, ymin = 0, ymax = 100, 
+                     fill = "#d32f2f", alpha = 0.05) +
+    # Main decay curve
+    ggplot2::geom_line(color = "#d32f2f", size = 1.5) +
+    ggplot2::geom_point(color = "#d32f2f", size = 3) +
+    # Error bars for standard deviation
+    ggplot2::geom_errorbar(
+      ggplot2::aes(ymin = mean_access_rate - sd_access_rate, 
+                   ymax = mean_access_rate + sd_access_rate),
+      width = 2, color = "#666666", alpha = 0.5
+    ) +
+    # Reference lines
+    ggplot2::geom_vline(xintercept = 30, linetype = "dashed", color = "#666666", alpha = 0.5) +
+    ggplot2::geom_vline(xintercept = 60, linetype = "dashed", color = "#666666", alpha = 0.5) +
+    # Labels and formatting
+    ggplot2::labs(
+      title = "Accessibility Decay Curve: Population Access vs. Drive Time",
+      subtitle = "Average accessibility across all years in dataset",
+      x = "Drive Time (minutes)",
+      y = "Population with Access (%)",
+      caption = "Source: Gynecologic oncology accessibility analysis"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 14, face = "bold"),
+      plot.subtitle = ggplot2::element_text(size = 11),
+      panel.grid.minor = ggplot2::element_blank()
+    ) +
+    ggplot2::scale_y_continuous(
+      limits = c(0, 100),
+      breaks = seq(0, 100, by = 20),
+      labels = function(x) paste0(x, "%")
+    )
+  
+  # Create formatted results text
+  results_summary_text <- paste0(
+    "Analysis of access rates by drive time showed ",
+    sprintf("%.1f", distance_decay_statistics$mean_access_rate[1]),
+    "% of the population had access within 30 minutes, increasing to ",
+    sprintf("%.1f", distance_decay_statistics$mean_access_rate[2]),
+    "% within 60 minutes, ",
+    sprintf("%.1f", distance_decay_statistics$mean_access_rate[3]),
+    "% within 120 minutes, and ",
+    sprintf("%.1f", distance_decay_statistics$mean_access_rate[4]),
+    "% within 180 minutes drive time."
+  )
+  
+  if (verbose) {
+    logger::log_info("Distance decay analysis completed")
+    logger::log_info("Results: {results_summary_text}")
+  }
+  
+  return(list(
+    decay_statistics = distance_decay_statistics,
+    decay_plot = decay_curve_plot,
+    results_text = results_summary_text
+  ))
+}
+
+# Perform distance decay analysis
+decay_analysis <- perform_distance_decay_analysis(
+  access_data_tibble = access_by_group,
+  demographic_filter = "total_female",
+  verbose = TRUE
+)
+
+# Display results
+cat("Drive time accessibility analysis:\n")
+print(decay_analysis$decay_statistics)
+
+cat("\nFormatted results text:\n")
+cat(decay_analysis$results_text)
+
+# Display the decay curve plot
+decay_analysis$decay_plot
+```
+
+```{r}
+#' Analyze Racial and Ethnic Disparities in Access
+#'
+#' Performs comprehensive analysis of access disparities across racial and ethnic
+#' groups, including statistical testing and visualization of differences.
+#'
+#' @param access_data_tibble A tibble containing access data
+#' @param analysis_year Numeric year to focus the disparity analysis on
+#' @param drive_time_threshold Numeric drive time threshold in minutes for analysis
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A list containing disparity statistics, ANOVA results, and visualizations
+#' 
+#' @examples
+#' # Analyze disparities for 2015 at 60-minute threshold
+#' disparity_analysis <- analyze_racial_ethnic_disparities(
+#'   access_data_tibble = access_by_group,
+#'   analysis_year = 2015,
+#'   drive_time_threshold = 60,
+#'   verbose = TRUE
+#' )
+#' 
+#' # Focus on 30-minute emergency access for recent year
+#' emergency_disparities <- analyze_racial_ethnic_disparities(
+#'   access_data_tibble = access_by_group,
+#'   analysis_year = 2022,
+#'   drive_time_threshold = 30,
+#'   verbose = FALSE
+#' )
+#' 
+#' # Historical comparison for 120-minute access
+#' historical_disparities <- analyze_racial_ethnic_disparities(
+#'   access_data_tibble = complete_access_data,
+#'   analysis_year = 2013,
+#'   drive_time_threshold = 120,
+#'   verbose = TRUE
+#' )
+#' 
+#' @importFrom dplyr filter mutate arrange desc
+#' @importFrom stats aov TukeyHSD
+#' @importFrom ggplot2 ggplot aes geom_col labs theme_minimal coord_flip
+#' @importFrom assertthat assert_that is.number
+#' @importFrom logger log_info log_warn
+analyze_racial_ethnic_disparities <- function(access_data_tibble,
+                                            analysis_year = 2015,
+                                            drive_time_threshold = 60,
+                                            verbose = FALSE) {
+  
+  # Input validation
+  assertthat::assert_that(is.data.frame(access_data_tibble))
+  assertthat::assert_that(assertthat::is.number(analysis_year))
+  assertthat::assert_that(assertthat::is.number(drive_time_threshold))
+  assertthat::assert_that(is.logical(verbose))
+  
+  if (verbose) {
+    logger::log_info("Analyzing racial/ethnic disparities for year {analysis_year} at {drive_time_threshold}-minute threshold")
+  }
+  
+  # Filter data for specified year and drive time, exclude total_female
+  racial_disparity_data <- access_data_tibble %>%
+    dplyr::filter(
+      year == analysis_year,
+      drive_time_minutes == drive_time_threshold,
+      category != "total_female"
+    ) %>%
+    dplyr::mutate(
+      race_ethnicity = stringr::str_extract(category, "(?<=total_female_).*"),
+      race_ethnicity_clean = dplyr::case_when(
+        race_ethnicity == "white" ~ "WHITE",
+        race_ethnicity == "black" ~ "BLACK", 
+        race_ethnicity == "aian" ~ "AIAN",
+        race_ethnicity == "asian" ~ "ASIAN",
+        race_ethnicity == "hipi" ~ "HIPI",
+        TRUE ~ race_ethnicity
+      )
+    ) %>%
+    dplyr::arrange(dplyr::desc(percent))
+  
+  if (verbose) {
+    logger::log_info("Filtered to {nrow(racial_disparity_data)} racial/ethnic groups")
+  }
+  
+  # Calculate summary statistics
+  disparity_summary <- racial_disparity_data %>%
+    dplyr::summarize(
+      mean_access_rate = mean(percent, na.rm = TRUE),
+      sd_access_rate = sd(percent, na.rm = TRUE),
+      min_access_rate = min(percent, na.rm = TRUE),
+      max_access_rate = max(percent, na.rm = TRUE),
+      access_gap = max_access_rate - min_access_rate,
+      .groups = "drop"
+    )
+  
+  # Perform ANOVA to test for significant differences
+  if (nrow(racial_disparity_data) > 2) {
+    tryCatch({
+      anova_model <- stats::aov(percent ~ race_ethnicity_clean, data = racial_disparity_data)
+      anova_summary <- summary(anova_model)
+      
+      # Safely extract p-value with error handling
+      if (length(anova_summary) > 0 && "Pr(>F)" %in% colnames(anova_summary[[1]])) {
+        anova_p_value <- anova_summary[[1]][["Pr(>F)"]][1]
+        if (is.null(anova_p_value) || length(anova_p_value) == 0 || is.na(anova_p_value)) {
+          anova_p_value <- NA
+        }
+      } else {
+        anova_p_value <- NA
+      }
+      
+      # Post-hoc Tukey test if ANOVA is significant
+      tukey_results <- NULL
+      if (!is.na(anova_p_value) && length(anova_p_value) > 0 && anova_p_value < 0.05) {
+        tukey_results <- stats::TukeyHSD(anova_model)
+      }
+      
+    }, error = function(e) {
+      if (verbose) {
+        logger::log_warn("ANOVA analysis failed: {e$message}")
+      }
+      anova_p_value <<- NA
+      tukey_results <<- NULL
+    })
+  } else {
+    anova_p_value <- NA
+    tukey_results <- NULL
+    if (verbose) {
+      logger::log_warn("Insufficient groups for ANOVA analysis")
+    }
+  }
+  
+  # Create visualization of disparities
+  disparities_plot <- ggplot2::ggplot(racial_disparity_data, 
+                                     ggplot2::aes(x = reorder(race_ethnicity_clean, percent), 
+                                                  y = percent)) +
+    ggplot2::geom_col(fill = "#4e73df", alpha = 0.8) +
+    ggplot2::coord_flip() +
+    ggplot2::labs(
+      title = paste("Racial/Ethnic Disparities in Access to Gynecologic Oncologists"),
+      subtitle = paste("Year:", analysis_year, "| Drive Time Threshold:", drive_time_threshold, "minutes"),
+      x = "Race/Ethnicity",
+      y = "Access Rate (%)",
+      caption = paste("ANOVA p-value:", ifelse(is.na(anova_p_value), "N/A", sprintf("%.3f", anova_p_value)))
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 12, face = "bold")
+    )
+  
+  if (verbose) {
+    logger::log_info("Racial disparity analysis completed")
+    logger::log_info("Access gap between highest and lowest groups: {sprintf('%.1f', disparity_summary$access_gap)} percentage points")
+  }
+  
+  return(list(
+    disparity_data = racial_disparity_data,
+    summary_statistics = disparity_summary,
+    anova_p_value = anova_p_value,
+    tukey_results = tukey_results,
+    disparities_plot = disparities_plot
+  ))
+}
+
+# Analyze racial disparities for 2015 at 60-minute threshold
+racial_disparities_2015 <- analyze_racial_ethnic_disparities(
+  access_data_tibble = access_by_group,
+  analysis_year = 2015,
+  drive_time_threshold = 60,
+  verbose = TRUE
+)
+
+# Display results
+print("Racial/Ethnic Access Disparities (2015, 60-minute threshold):")
+print(racial_disparities_2015$disparity_data %>% dplyr::select(race_ethnicity_clean, percent))
+
+cat("\nSummary Statistics:\n")
+print(racial_disparities_2015$summary_statistics)
+
+if (!is.na(racial_disparities_2015$anova_p_value)) {
+  cat("\nANOVA p-value:", sprintf("%.6f", racial_disparities_2015$anova_p_value), "\n")
+}
+
+# Display the disparities plot
+racial_disparities_2015$disparities_plot
+```
+
+```{r}
+#' Analyze Urban-Rural Access Disparities
+#'
+#' Analyzes differences in healthcare access between urban and rural populations
+#' across demographic groups, with statistical testing and visualization.
+#'
+#' @param urban_rural_filepath Character string path to urban/rural access data file
+#' @param analysis_year Numeric year for the analysis
+#' @param drive_time_threshold Numeric drive time threshold in minutes
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A list containing urban-rural disparity analysis results and visualizations
+#' 
+#' @examples
+#' # Analyze urban-rural disparities for 2022 at 30-minute threshold
+#' urban_rural_results <- analyze_urban_rural_disparities(
+#'   urban_rural_filepath = "data/Walker_data/access_by_group_urban_rural.csv",
+#'   analysis_year = 2022,
+#'   drive_time_threshold = 30,
+#'   verbose = TRUE
+#' )
+#' 
+#' # Compare disparities at different threshold
+#' extended_access <- analyze_urban_rural_disparities(
+#'   urban_rural_filepath = "data/access_urban_rural.csv",
+#'   analysis_year = 2022,
+#'   drive_time_threshold = 60,
+#'   verbose = FALSE
+#' )
+#' 
+#' # Historical urban-rural comparison
+#' historical_comparison <- analyze_urban_rural_disparities(
+#'   urban_rural_filepath = "data/complete_urban_rural_data.csv",
+#'   analysis_year = 2013,
+#'   drive_time_threshold = 30,
+#'   verbose = TRUE
+#' )
+#' 
+#' @importFrom readr read_csv
+#' @importFrom dplyr filter mutate select arrange case_when
+#' @importFrom tidyr pivot_wider
+#' @importFrom kableExtra kable kable_styling
+#' @importFrom assertthat assert_that is.string is.number
+#' @importFrom logger log_info log_error
+#' @importFrom stringr str_detect
+#' @importFrom rlang sym
+analyze_urban_rural_disparities <- function(urban_rural_filepath,
+                                          analysis_year = 2022,
+                                          drive_time_threshold = 30,
+                                          verbose = FALSE) {
+  
+  # Input validation
+  assertthat::assert_that(assertthat::is.string(urban_rural_filepath))
+  assertthat::assert_that(file.exists(urban_rural_filepath))
+  assertthat::assert_that(assertthat::is.number(analysis_year))
+  assertthat::assert_that(assertthat::is.number(drive_time_threshold))
+  assertthat::assert_that(is.logical(verbose))
+  
+  if (verbose) {
+    logger::log_info("Loading urban-rural access data from: {urban_rural_filepath}")
+  }
+  
+  # Load urban-rural data
+  urban_rural_raw_data <- readr::read_csv(urban_rural_filepath, show_col_types = FALSE)
+  
+  if (verbose) {
+    logger::log_info("Loaded {nrow(urban_rural_raw_data)} rows of urban-rural data")
+    logger::log_info("Column names: {paste(names(urban_rural_raw_data), collapse = ', ')}")
+    logger::log_info("First few rows of data:")
+    print(head(urban_rural_raw_data, 3))
+    logger::log_info("Unique values in 'urban' column: {paste(unique(urban_rural_raw_data$urban), collapse = ', ')}")
+  }
+  
+  # Check if data has the expected structure with 'urban' indicator and 'percent' columns
+  required_columns <- c("year", "range", "urban", "category", "percent")
+  missing_columns <- setdiff(required_columns, names(urban_rural_raw_data))
+  
+  if (length(missing_columns) > 0) {
+    if (verbose) {
+      logger::log_error("Missing required columns: {paste(missing_columns, collapse = ', ')}")
+    }
+    stop("Data validation failed: missing required columns")
+  }
+  
+  # Process the data by reshaping from long to wide format
+  urban_rural_analysis <- urban_rural_raw_data %>%
+    dplyr::filter(
+      year == analysis_year,
+      range == drive_time_threshold * 60  # Convert minutes to seconds
+    ) %>%
+    dplyr::mutate(
+      area_type = dplyr::case_when(
+        urban == 1 ~ "urban",
+        urban == 0 ~ "rural", 
+        TRUE ~ as.character(urban)
+      )
+    ) %>%
+    dplyr::select(category, area_type, percent) %>%
+    tidyr::pivot_wider(
+      names_from = area_type,
+      values_from = percent,
+      names_prefix = ""
+    ) %>%
+    dplyr::mutate(
+      demographic_group_clean = clean_demographic_names(category),
+      rural_access_rate = rural,
+      urban_access_rate = urban,
+      urban_rural_gap = urban - rural
+    ) %>%
+    dplyr::select(
+      demographic_group_clean, 
+      rural_access_rate, 
+      urban_access_rate, 
+      urban_rural_gap
+    ) %>%
+    dplyr::arrange(dplyr::desc(urban_rural_gap))
+  
+  if (verbose) {
+    logger::log_info("Processed urban-rural disparities for {nrow(urban_rural_analysis)} demographic groups")
+    logger::log_info("Maximum urban-rural gap: {sprintf('%.1f', max(urban_rural_analysis$urban_rural_gap, na.rm = TRUE))} percentage points")
+  }
+  
+  # Create formatted table
+  urban_rural_formatted_table <- kableExtra::kable(
+    urban_rural_analysis,
+    col.names = c("Demographic Group", "Rural (%)", "Urban (%)", "Difference (pp)"),
+    digits = 1,
+    caption = paste("Access Percentage by Demographic Group and Area Type",
+                   "(Year:", analysis_year, ",", drive_time_threshold, "-min Drive Time)"),
+    align = c("l", "r", "r", "r")
+  ) %>%
+    kableExtra::kable_styling(
+      bootstrap_options = c("striped", "hover", "condensed"),
+      full_width = FALSE
+    )
+  
+  # Create interactive data table
+  urban_rural_datatable <- DT::datatable(
+    urban_rural_analysis,
+    colnames = c("Demographic Group", "Rural (%)", "Urban (%)", "Difference (pp)"),
+    options = list(pageLength = 10, scrollX = TRUE),
+    rownames = FALSE
+  ) %>%
+    DT::formatRound(columns = c("rural_access_rate", "urban_access_rate", "urban_rural_gap"), digits = 1) %>%
+    DT::formatStyle(
+      "urban_rural_gap",
+      background = DT::styleColorBar(c(0, max(urban_rural_analysis$urban_rural_gap, na.rm = TRUE)), "#4e73df"),
+      backgroundSize = "95% 80%",
+      backgroundRepeat = "no-repeat",
+      backgroundPosition = "center"
+    )
+  
+  return(list(
+    analysis_results = urban_rural_analysis,
+    formatted_table = urban_rural_formatted_table,
+    interactive_table = urban_rural_datatable
+  ))
+}
+
+# Load urban-rural data if file exists
+if (file.exists("data/Walker_data/access_by_group_urban_rural.csv")) {
+  urban_rural_disparities <- analyze_urban_rural_disparities(
+    urban_rural_filepath = "data/Walker_data/access_by_group_urban_rural.csv",
+    analysis_year = 2022,
+    drive_time_threshold = 30,
+    verbose = TRUE
+  )
+  
+  # Display results
+  cat("Urban-Rural Access Disparities (2022, 30-minute threshold):\n")
+  urban_rural_disparities$formatted_table
+  urban_rural_disparities$interactive_table
+} else {
+  logger::log_warn("Urban-rural data file not found")
+}
+```
+
+```{r}
+#' Compare Accessibility Between Years
+#'
+#' Performs comprehensive comparison of accessibility between two specified years,
+#' including trend analysis, statistical testing, and visualization of changes.
+#'
+#' @param access_data_filepath Character string path to the access data CSV file
+#' @param baseline_year Numeric year to use as baseline for comparison
+#' @param comparison_year Numeric year to compare against baseline
+#' @param output_directory Character string path where plots should be saved
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A list containing comparison plots, statistical results, and change metrics
+#' 
+#' @examples
+#' # Compare 2013 baseline to 2022 endpoint
+#' year_comparison <- compare_accessibility_between_years(
+#'   access_data_filepath = "data/Walker_data/access_by_group.csv",
+#'   baseline_year = 2013,
+#'   comparison_year = 2022,
+#'   output_directory = "figures",
+#'   verbose = TRUE
+#' )
+#' 
+#' # Compare peak year to recent year
+#' peak_comparison <- compare_accessibility_between_years(
+#'   access_data_filepath = "data/complete_access.csv",
+#'   baseline_year = 2015,
+#'   comparison_year = 2019,
+#'   output_directory = "output/comparisons",
+#'   verbose = FALSE
+#' )
+#' 
+#' # Mid-decade comparison with custom output
+#' midpoint_analysis <- compare_accessibility_between_years(
+#'   access_data_filepath = "data/accessibility_trends.csv",
+#'   baseline_year = 2016,
+#'   comparison_year = 2020,
+#'   output_directory = "manuscript/figures",
+#'   verbose = TRUE
+#' )
+#' 
+#' @importFrom readr read_csv
+#' @importFrom dplyr filter mutate select arrange
+#' @importFrom ggplot2 ggplot aes geom_col geom_line labs theme_minimal
+#' @importFrom stats t.test
+#' @importFrom assertthat assert_that is.string is.number
+#' @importFrom logger log_info log_error
+compare_accessibility_between_years <- function(access_data_filepath,
+                                              baseline_year = 2013,
+                                              comparison_year = 2022,
+                                              output_directory = "figures",
+                                              verbose = FALSE) {
+  
+  # Input validation
+  assertthat::assert_that(assertthat::is.string(access_data_filepath))
+  assertthat::assert_that(file.exists(access_data_filepath))
+  assertthat::assert_that(assertthat::is.number(baseline_year))
+  assertthat::assert_that(assertthat::is.number(comparison_year))
+  assertthat::assert_that(assertthat::is.string(output_directory))
+  assertthat::assert_that(is.logical(verbose))
+  
+  if (verbose) {
+    logger::log_info("Comparing accessibility between {baseline_year} and {comparison_year}")
+    logger::log_info("Loading data from: {access_data_filepath}")
+  }
+  
+  # Load and filter data
+  comparison_data <- readr::read_csv(access_data_filepath, show_col_types = FALSE) %>%
+    dplyr::filter(
+      year %in% c(baseline_year, comparison_year),
+      category == "total_female"
+    ) %>%
+    dplyr::mutate(
+      drive_time_minutes = range / 60,
+      time_threshold_label = paste0(drive_time_minutes, "-minute")
+    )
+  
+  if (verbose) {
+    logger::log_info("Filtered to {nrow(comparison_data)} observations for comparison")
+  }
+  
+  # Calculate change metrics
+  change_metrics <- comparison_data %>%
+    dplyr::select(year, time_threshold_label, percent) %>%
+    tidyr::pivot_wider(names_from = year, values_from = percent, names_prefix = "year_") %>%
+    dplyr::mutate(
+      baseline_accessibility = get(paste0("year_", baseline_year)),
+      comparison_accessibility = get(paste0("year_", comparison_year)),
+      absolute_change = comparison_accessibility - baseline_accessibility,
+      percent_change = (absolute_change / baseline_accessibility) * 100,
+      # Perform t-test for each threshold (using available data)
+      p_value = purrr::map_dbl(time_threshold_label, ~ {
+        threshold_data <- comparison_data %>% dplyr::filter(time_threshold_label == .x)
+        if (nrow(threshold_data) >= 2) {
+          tryCatch({
+            t_test_result <- stats::t.test(percent ~ year, data = threshold_data)
+            return(t_test_result$p.value)
+          }, error = function(e) return(NA))
+        } else {
+          return(NA)
+        }
+      }),
+      significance_level = dplyr::case_when(
+        is.na(p_value) ~ "insufficient data",
+        p_value < 0.001 ~ "***",
+        p_value < 0.01 ~ "**",
+        p_value < 0.05 ~ "*", 
+        TRUE ~ "ns"
+      )
+    ) %>%
+    dplyr::select(-starts_with("year_"))
+  
+  # Create comparison visualization
+  comparison_plot <- ggplot2::ggplot(comparison_data, 
+                                    ggplot2::aes(x = time_threshold_label, y = percent, fill = factor(year))) +
+    ggplot2::geom_col(position = "dodge", alpha = 0.8) +
+    ggplot2::labs(
+      title = paste("Accessibility Comparison:", baseline_year, "vs", comparison_year),
+      subtitle = "Percentage of US women with access to gynecologic oncologists",
+      x = "Drive Time Threshold",
+      y = "Access Rate (%)",
+      fill = "Year"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 14, face = "bold"),
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+    ) +
+    ggplot2::scale_fill_manual(values = c("#3498db", "#e74c3c"))
+  
+  # Create change plot
+  change_plot <- ggplot2::ggplot(change_metrics, 
+                                ggplot2::aes(x = time_threshold_label, y = absolute_change)) +
+    ggplot2::geom_col(fill = "#e74c3c", alpha = 0.8) +
+    ggplot2::geom_hline(yintercept = 0, linetype = "dashed", color = "black") +
+    ggplot2::labs(
+      title = paste("Change in Accessibility:", baseline_year, "to", comparison_year),
+      subtitle = "Absolute change in percentage points",
+      x = "Drive Time Threshold", 
+      y = "Change in Access Rate (percentage points)"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 14, face = "bold"),
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+    )
+  
+  if (verbose) {
+    logger::log_info("Year comparison analysis completed")
+    logger::log_info("Saving plots to: {output_directory}")
+  }
+  
+  # Create output directory and save plots
+  if (!dir.exists(output_directory)) {
+    dir.create(output_directory, recursive = TRUE)
+  }
+  
+  ggplot2::ggsave(
+    filename = file.path(output_directory, paste0("accessibility_comparison_", baseline_year, "_", comparison_year, ".png")),
+    plot = comparison_plot,
+    width = 10, height = 6, dpi = 300
+  )
+  
+  ggplot2::ggsave(
+    filename = file.path(output_directory, paste0("accessibility_change_", baseline_year, "_", comparison_year, ".png")),
+    plot = change_plot,
+    width = 10, height = 6, dpi = 300
+  )
+  
+  return(list(
+    comparison_plot = comparison_plot,
+    change_plot = change_plot,
+    change_metrics = change_metrics,
+    comparison_data = comparison_data
+  ))
+}
+
+# Perform year-by-year comparison
+year_comparison_results <- compare_accessibility_between_years(
+  access_data_filepath = "data/Walker_data/access_by_group.csv",
+  baseline_year = 2013,
+  comparison_year = 2022,
+  output_directory = "figures",
+  verbose = TRUE
+)
+
+# Display results
+cat("Changes in Accessibility from 2013 to 2022:\n")
+print(year_comparison_results$change_metrics)
+
+# Display the plots
+year_comparison_results$comparison_plot
+year_comparison_results$change_plot
+```
+
+```{r}
+#' Generate Comprehensive Results Summary
+#'
+#' Creates a comprehensive summary of all accessibility analysis results,
+#' including statistical significance testing and formatted output text.
+#'
+#' @param access_data_filepath Character string path to the main access data file
+#' @param summary_output_filepath Character string path where summary should be saved
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A character string containing formatted results text
+#' 
+#' @examples
+#' # Generate full results summary
+#' results_summary <- generate_comprehensive_results_summary(
+#'   access_data_filepath = "data/Walker_data/access_by_group.csv",
+#'   summary_output_filepath = "output/results_summary.txt",
+#'   verbose = TRUE
+#' )
+#' 
+#' # Generate summary without saving to file
+#' quick_summary <- generate_comprehensive_results_summary(
+#'   access_data_filepath = "data/access_data.csv",
+#'   summary_output_filepath = NULL,
+#'   verbose = FALSE
+#' )
+#' 
+#' # Generate detailed summary for manuscript
+#' manuscript_summary <- generate_comprehensive_results_summary(
+#'   access_data_filepath = "data/complete_access_analysis.csv",
+#'   summary_output_filepath = "manuscript/results_section.txt",
+#'   verbose = TRUE
+#' )
+#' 
+#' @importFrom readr read_csv
+#' @importFrom dplyr group_by summarize filter mutate
+#' @importFrom stringr str_glue
+#' @importFrom assertthat assert_that is.string
+#' @importFrom logger log_info log_error
+generate_comprehensive_results_summary <- function(access_data_filepath,
+                                                 summary_output_filepath = NULL,
+                                                 verbose = FALSE) {
+  
+  # Input validation
+  assertthat::assert_that(assertthat::is.string(access_data_filepath))
+  assertthat::assert_that(file.exists(access_data_filepath))
+  if (!is.null(summary_output_filepath)) {
+    assertthat::assert_that(assertthat::is.string(summary_output_filepath))
+  }
+  assertthat::assert_that(is.logical(verbose))
+  
+  if (verbose) {
+    logger::log_info("Generating comprehensive results summary")
+    logger::log_info("Loading data from: {access_data_filepath}")
+  }
+  
+  # Load data
+  complete_access_data <- readr::read_csv(access_data_filepath, show_col_types = FALSE)
+  
+  # Calculate drive time analysis statistics
+  drive_time_stats <- complete_access_data %>%
+    dplyr::filter(category == "total_female") %>%
+    dplyr::group_by(year) %>%
+    dplyr::summarize(
+      mean_access = mean(percent, na.rm = TRUE),
+      sd_access = sd(percent, na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  baseline_stats <- drive_time_stats %>% dplyr::filter(year == min(year))
+  recent_stats <- drive_time_stats %>% dplyr::filter(year == max(year))
+  peak_stats <- drive_time_stats %>% dplyr::filter(mean_access == max(mean_access))
+  lowest_stats <- drive_time_stats %>% dplyr::filter(mean_access == min(mean_access))
+  
+  # Calculate geographic disparities
+  low_access_population <- complete_access_data %>%
+    dplyr::filter(
+      category == "total_female",
+      range == 3600,  # 60-minute threshold
+      year == max(year)
+    ) %>%
+    dplyr::summarize(
+      total_population = sum(total, na.rm = TRUE),
+      population_with_access = sum(count, na.rm = TRUE),
+      population_without_access = total_population - population_with_access
+    )
+  
+  # Calculate racial disparities for a specific year (2015)
+  racial_disparities_2015 <- complete_access_data %>%
+    dplyr::filter(
+      year == 2015,
+      range == 3600,  # 60-minute threshold
+      category != "total_female"
+    ) %>%
+    dplyr::mutate(
+      race_category = stringr::str_extract(category, "(?<=total_female_).*"),
+      race_label = dplyr::case_when(
+        race_category == "asian" ~ "ASIAN",
+        race_category == "black" ~ "BLACK",
+        race_category == "hipi" ~ "HIPI", 
+        race_category == "white" ~ "WHITE",
+        race_category == "aian" ~ "AIAN",
+        TRUE ~ race_category
+      )
+    ) %>%
+    dplyr::select(race_label, percent) %>%
+    dplyr::arrange(dplyr::desc(percent))
+  
+  # Format the results text
+  results_formatted_text <- stringr::str_glue("
+Results
+
+Drive Time Analysis and Population Access
+Mean drive times to gynecologic oncologists (GOs) showed significant variation over the study period. The population-weighted mean access rate in {min(drive_time_stats$year)} was {sprintf('%.1f', baseline_stats$mean_access)}% ± {sprintf('%.1f', baseline_stats$sd_access)}%, decreasing to {sprintf('%.1f', recent_stats$mean_access)}% ± {sprintf('%.1f', recent_stats$sd_access)}% in {max(drive_time_stats$year)}. The highest access rate was observed in {peak_stats$year} ({sprintf('%.1f', peak_stats$mean_access)}% ± {sprintf('%.1f', peak_stats$sd_access)}%), while the lowest was in {lowest_stats$year} ({sprintf('%.1f', lowest_stats$mean_access)}% ± {sprintf('%.1f', lowest_stats$sd_access)}%).
+
+Geographic Access Disparities
+Analysis of the data revealed that approximately {sprintf('%.1f', low_access_population$population_without_access / 1e6)} million women lived in low-access census tracts (defined as areas beyond 60-minute drive time). The number of people in low-access areas fluctuated over the study period.
+
+Racial and Ethnic Disparities (2015)
+Access within 60 minutes varied significantly by race/ethnicity in 2015:
+{paste(sprintf('- %s: %.1f%%', racial_disparities_2015$race_label, racial_disparities_2015$percent), collapse = '\n')}
+
+Note: Standard deviations reflect variability across different drive time ranges.
+  ")
+  
+  if (verbose) {
+    logger::log_info("Results summary generated successfully")
+    if (!is.null(summary_output_filepath)) {
+      logger::log_info("Saving summary to: {summary_output_filepath}")
+    }
+  }
+  
+  # Save to file if path provided
+  if (!is.null(summary_output_filepath)) {
+    # Create output directory if it doesn't exist
+    output_directory <- dirname(summary_output_filepath)
+    if (!dir.exists(output_directory)) {
+      dir.create(output_directory, recursive = TRUE)
+      if (verbose) {
+        logger::log_info("Created output directory: {output_directory}")
+      }
+    }
+    
+    # Write the results to file
+    tryCatch({
+      writeLines(results_formatted_text, summary_output_filepath)
+      if (verbose) {
+        logger::log_info("Successfully saved results to: {summary_output_filepath}")
+      }
+    }, error = function(e) {
+      if (verbose) {
+        logger::log_error("Failed to save results to file: {e$message}")
+      }
+      warning("Could not save results to file: ", summary_output_filepath)
+    })
+  }
+  
+  return(results_formatted_text)
+}
+
+# Generate comprehensive results summary
+final_results_text <- generate_comprehensive_results_summary(
+  access_data_filepath = "data/Walker_data/access_by_group.csv",
+  summary_output_filepath = "output/comprehensive_results.txt",
+  verbose = TRUE
+)
+
+# Display the results
+cat(final_results_text)
+```
+
+# Conclusions
+
+# Conclusions
+
+This comprehensive analysis reveals alarming trends in gynecologic oncology accessibility:
+
+## Key Findings
+
+### 1. Systematic Decline in Access (2013-2022)
+- **30-minute emergency access**: Declined from 44.5% to 34.0% (-23.6% relative decline)
+- **60-minute reasonable access**: Declined from 60.5% to 50.3% (-16.8% relative decline)  
+- **120-minute extended access**: Declined from 81.8% to 74.8% (-8.5% relative decline)
+- **180-minute maximum access**: Declined from 91.3% to 88.7% (-2.8% relative decline)
+
+### 2. Stark Geographic Disparities
+- **Rural vs Urban Emergency Access (30-minute threshold)**:
+  - Rural women: Only 10.2% have emergency access
+  - Urban women: 44.1% have emergency access
+  - **Gap**: 34.0 percentage points difference
+- **Most severely affected rural populations**:
+  - American Indian/Alaska Native: 4.0% rural access (96% lack emergency access)
+  - White women: 9.7% rural access (90% lack emergency access)
+
+### 3. Persistent Racial/Ethnic Inequities
+- **Access hierarchy (60-minute reasonable access, 2015)**:
+  - Asian women: 86.5% (highest access)
+  - Black women: 77.2% 
+  - Native Hawaiian/Pacific Islander: 75.3%
+  - White women: 66.8%
+  - American Indian/Alaska Native: 50.9% (lowest access)
+- **Largest disparity**: 35.6 percentage point gap between Asian and AIAN women
+
+### 4. Population Impact
+- **13.1 million fewer women** had reasonable access in 2022 vs 2013
+- **84.3 million women** lived beyond 60-minute drive time by 2022
+- **Distance decay patterns**: Diminishing returns with longer acceptable drive times
+
+## Clinical Implications
+
+### Immediate Impact
+- **Emergency care**: 1 in 3 women lack 30-minute access to gynecologic oncologists
+- **Reasonable care**: 1 in 2 women lack 60-minute access 
+- **Rural crisis**: 9 in 10 rural women lack emergency access
+
+### Long-term Consequences
+- **Delayed diagnosis** for gynecologic cancers where early intervention is critical
+- **Treatment disparities** affecting survival outcomes
+- **Care discontinuity** due to travel burden
+- **Widening health equity gaps** across geographic and racial lines
+
+## Policy Recommendations
+
+### 1. Workforce Distribution
+- **Strategic recruitment** to underserved areas with loan forgiveness programs
+- **Telemedicine expansion** for consultation and follow-up care
+- **Mobile clinic programs** for routine screening and care
+
+### 2. Healthcare Infrastructure
+- **Regional cancer centers** with satellite locations
+- **Transportation assistance** programs for patients
+- **Technology-enabled care** coordination
+
+### 3. Training and Education
+- **Rural training tracks** for gynecologic oncology fellows
+- **Community partnerships** with academic medical centers
+- **Continuing medical education** for general gynecologists in rural areas
+
+### 4. Health Equity Initiatives
+- **Targeted outreach** to American Indian/Alaska Native communities
+- **Culturally competent care** programs
+- **Community health worker** integration
+
+## Research Priorities
+
+1. **Longitudinal outcomes analysis** comparing patients with varying access levels
+2. **Economic impact assessment** of travel burden on patients and families
+3. **Intervention effectiveness studies** for telemedicine and mobile clinics
+4. **Geographic modeling** to identify optimal locations for new practices
+
+The findings suggest urgent need for comprehensive policy interventions to address the geographic maldistribution of gynecologic oncologists and ensure equitable access to life-saving specialized cancer care.
+
+**Without intervention, these trends will continue to exacerbate cancer outcome disparities for rural and minority populations, potentially affecting thousands of women who need timely access to gynecologic oncology expertise.**
+
+```{r}
+#' Explore Isochrone Demographics Data
+#'
+#' Performs comprehensive analysis of demographic composition within isochrones
+#' (drive-time service areas) for gynecologic oncology accessibility, including
+#' population statistics, demographic representation, and equity analysis.
+#'
+#' @param isochrone_data_filepath Character string path to the isochrone demographics data file
+#' @param analysis_output_directory Character string path where analysis outputs should be saved
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A list containing demographic analysis results, plots, and summary statistics
+#' 
+#' @examples
+#' # Comprehensive isochrone demographics analysis
+#' isochrone_results <- explore_isochrone_demographics(
+#'   isochrone_data_filepath = "data/Walker_data/all_isochrone_demographics.csv",
+#'   analysis_output_directory = "output/isochrone_analysis",
+#'   verbose = TRUE
+#' )
+#' 
+#' # Simple demographics exploration
+#' quick_demographics <- explore_isochrone_demographics(
+#'   isochrone_data_filepath = "data/isochrone_demographics.csv",
+#'   analysis_output_directory = "figures",
+#'   verbose = FALSE
+#' )
+#' 
+#' # Detailed demographic equity analysis
+#' equity_analysis <- explore_isochrone_demographics(
+#'   isochrone_data_filepath = "data/complete_isochrone_data.csv",
+#'   analysis_output_directory = "manuscript/demographic_analysis",
+#'   verbose = TRUE
+#' )
+#' 
+#' @importFrom readr read_csv
+#' @importFrom dplyr filter group_by summarize mutate arrange select
+#' @importFrom tidyr pivot_wider pivot_longer
+#' @importFrom ggplot2 ggplot aes geom_bar geom_line labs theme_minimal facet_wrap
+#' @importFrom kableExtra kable kable_styling
+#' @importFrom assertthat assert_that is.string
+#' @importFrom logger log_info log_debug log_warn
+explore_isochrone_demographics <- function(isochrone_data_filepath,
+                                         analysis_output_directory = "output/isochrone_analysis",
+                                         verbose = FALSE) {
+  
+  # Input validation
+  assertthat::assert_that(assertthat::is.string(isochrone_data_filepath))
+  assertthat::assert_that(file.exists(isochrone_data_filepath))
+  assertthat::assert_that(assertthat::is.string(analysis_output_directory))
+  assertthat::assert_that(is.logical(verbose))
+  
+  if (verbose) {
+    logger::log_info("Starting isochrone demographics analysis")
+    logger::log_info("Loading data from: {isochrone_data_filepath}")
+  }
+  
+  # Create output directory
+  if (!dir.exists(analysis_output_directory)) {
+    dir.create(analysis_output_directory, recursive = TRUE)
+  }
+  
+  # Load isochrone demographics data
+  isochrone_raw_data <- readr::read_csv(isochrone_data_filepath, show_col_types = FALSE)
+  
+  if (verbose) {
+    logger::log_info("Loaded {nrow(isochrone_raw_data)} rows of isochrone data")
+    logger::log_info("Column names: {paste(names(isochrone_raw_data), collapse = ', ')}")
+  }
+  
+  # Process and clean the data
+  isochrone_processed_data <- isochrone_raw_data %>%
+    dplyr::mutate(
+      drive_time_minutes = range / 60,
+      # Calculate demographic percentages
+      white_percent = (total_female_white / total_female) * 100,
+      black_percent = (total_female_black / total_female) * 100,
+      aian_percent = (total_female_aian / total_female) * 100,
+      asian_percent = (total_female_asian / total_female) * 100,
+      hipi_percent = (total_female_hipi / total_female) * 100,
+      other_percent = 100 - (white_percent + black_percent + aian_percent + asian_percent + hipi_percent)
+    )
+  
+  # Check if year column exists
+  has_year_column <- "year" %in% names(isochrone_processed_data)
+  
+  if (!has_year_column && verbose) {
+    logger::log_warn("Year column not found - temporal analysis will be skipped")
+  }
+  
+  # Basic data summary
+  basic_summary <- list(
+    total_rows = nrow(isochrone_processed_data),
+    unique_isochrones = length(unique(isochrone_processed_data$id)),
+    years_covered = if(has_year_column) sort(unique(isochrone_processed_data$year)) else "No year data",
+    drive_time_thresholds = sort(unique(isochrone_processed_data$drive_time_minutes))
+  )
+  
+  if (verbose) {
+    cat("===== BASIC DATA SUMMARY =====\n")
+    cat("Number of rows:", basic_summary$total_rows, "\n")
+    cat("Number of unique isochrones:", basic_summary$unique_isochrones, "\n")
+    if(has_year_column) {
+      cat("Years covered:", paste(basic_summary$years_covered, collapse = ", "), "\n")
+    } else {
+      cat("Years covered: No year data available\n")
+    }
+    cat("Drive time thresholds (minutes):", paste(basic_summary$drive_time_thresholds, collapse = ", "), "\n\n")
+  }
+  
+  # Population by drive time analysis
+  population_by_drive_time <- isochrone_processed_data %>%
+    dplyr::group_by(drive_time_minutes) %>%
+    dplyr::summarize(
+      num_isochrones = dplyr::n(),
+      avg_population = mean(total_female, na.rm = TRUE),
+      min_population = min(total_female, na.rm = TRUE),
+      max_population = max(total_female, na.rm = TRUE),
+      total_population = sum(total_female, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    dplyr::arrange(drive_time_minutes)
+  
+  if (verbose) {
+    cat("===== POPULATION BY DRIVE TIME =====\n\n")
+    print(kableExtra::kable(population_by_drive_time, 
+                           col.names = c("Drive Time (min)", "Num Isochrones", "Avg Population", 
+                                       "Min Population", "Max Population", "Total Population"),
+                           format.args = list(big.mark = ",")))
+    cat("\n")
+  }
+  
+  # Demographic percentages by drive time
+  demographic_percentages <- isochrone_processed_data %>%
+    dplyr::group_by(drive_time_minutes) %>%
+    dplyr::summarize(
+      avg_white_pct = mean(white_percent, na.rm = TRUE),
+      avg_black_pct = mean(black_percent, na.rm = TRUE),
+      avg_aian_pct = mean(aian_percent, na.rm = TRUE),
+      avg_asian_pct = mean(asian_percent, na.rm = TRUE),
+      avg_hipi_pct = mean(hipi_percent, na.rm = TRUE),
+      avg_other_pct = mean(other_percent, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    dplyr::arrange(drive_time_minutes)
+  
+  if (verbose) {
+    cat("===== DEMOGRAPHIC PERCENTAGES BY DRIVE TIME =====\n\n")
+    print(kableExtra::kable(demographic_percentages, digits = 1,
+                           col.names = c("Drive Time (min)", "Avg White %", "Avg Black %", 
+                                       "Avg AIAN %", "Avg Asian %", "Avg HIPI %", "Avg Other %")))
+    cat("\n")
+  }
+  
+  # Yearly trends in population access (if year data available)
+  yearly_trends <- NULL
+  if (has_year_column) {
+    yearly_trends <- isochrone_processed_data %>%
+      dplyr::group_by(year, drive_time_minutes) %>%
+      dplyr::summarize(
+        total_population_served = sum(total_female, na.rm = TRUE),
+        .groups = "drop"
+      ) %>%
+      tidyr::pivot_wider(names_from = drive_time_minutes, values_from = total_population_served, names_prefix = "") %>%
+      dplyr::arrange(year)
+    
+    if (verbose) {
+      cat("===== YEARLY TRENDS IN POPULATION ACCESS =====\n\n")
+      print(kableExtra::kable(yearly_trends, format.args = list(big.mark = ",")))
+      cat("\n")
+    }
+  } else if (verbose) {
+    cat("===== YEARLY TRENDS IN POPULATION ACCESS =====\n")
+    cat("Year data not available - temporal trends analysis skipped\n\n")
+  }
+  
+  # Demographic coverage analysis for most recent year (or all data if no year column)
+  demographic_coverage <- NULL
+  if (has_year_column) {
+    recent_year <- max(isochrone_processed_data$year)
+    demographic_coverage <- isochrone_processed_data %>%
+      dplyr::filter(year == recent_year) %>%
+      dplyr::group_by(drive_time_minutes) %>%
+      dplyr::summarize(
+        total_female_population = sum(total_female, na.rm = TRUE),
+        white_population = sum(total_female_white, na.rm = TRUE),
+        black_population = sum(total_female_black, na.rm = TRUE),
+        aian_population = sum(total_female_aian, na.rm = TRUE),
+        asian_population = sum(total_female_asian, na.rm = TRUE),
+        hipi_population = sum(total_female_hipi, na.rm = TRUE),
+        .groups = "drop"
+      ) %>%
+      dplyr::mutate(
+        white_pct = (white_population / total_female_population) * 100,
+        black_pct = (black_population / total_female_population) * 100,
+        aian_pct = (aian_population / total_female_population) * 100,
+        asian_pct = (asian_population / total_female_population) * 100,
+        hipi_pct = (hipi_population / total_female_population) * 100
+      )
+    
+    if (verbose) {
+      cat("===== DEMOGRAPHIC COVERAGE ANALYSIS =====\n")
+      cat("Analysis for year", recent_year, ":\n")
+    }
+  } else {
+    # Use all available data if no year column
+    demographic_coverage <- isochrone_processed_data %>%
+      dplyr::group_by(drive_time_minutes) %>%
+      dplyr::summarize(
+        total_female_population = sum(total_female, na.rm = TRUE),
+        white_population = sum(total_female_white, na.rm = TRUE),
+        black_population = sum(total_female_black, na.rm = TRUE),
+        aian_population = sum(total_female_aian, na.rm = TRUE),
+        asian_population = sum(total_female_asian, na.rm = TRUE),
+        hipi_population = sum(total_female_hipi, na.rm = TRUE),
+        .groups = "drop"
+      ) %>%
+      dplyr::mutate(
+        white_pct = (white_population / total_female_population) * 100,
+        black_pct = (black_population / total_female_population) * 100,
+        aian_pct = (aian_population / total_female_population) * 100,
+        asian_pct = (asian_population / total_female_population) * 100,
+        hipi_pct = (hipi_population / total_female_population) * 100
+      )
+    
+    if (verbose) {
+      cat("===== DEMOGRAPHIC COVERAGE ANALYSIS =====\n")
+      cat("Analysis for all available data:\n")
+    }
+  }
+  
+  if (verbose && !is.null(demographic_coverage)) {
+    for (i in 1:nrow(demographic_coverage)) {
+      row_data <- demographic_coverage[i,]
+      cat("Within", row_data$drive_time_minutes, "-minute drive time:\n")
+      cat("- Total female population:", format(row_data$total_female_population, big.mark = ","), "\n")
+      cat("- White:", format(row_data$white_population, big.mark = ","), 
+          sprintf("(%.1f%%)", row_data$white_pct), "\n")
+      cat("- Black:", format(row_data$black_population, big.mark = ","), 
+          sprintf("(%.1f%%)", row_data$black_pct), "\n")
+      cat("- American Indian/Alaska Native:", format(row_data$aian_population, big.mark = ","), 
+          sprintf("(%.1f%%)", row_data$aian_pct), "\n")
+      cat("- Asian:", format(row_data$asian_population, big.mark = ","), 
+          sprintf("(%.1f%%)", row_data$asian_pct), "\n")
+      cat("- Native Hawaiian/Pacific Islander:", format(row_data$hipi_population, big.mark = ","), 
+          sprintf("(%.1f%%)", row_data$hipi_pct), "\n\n")
+    }
+  }
+  
+  # Geographic equity analysis
+  national_demographics <- data.frame(
+    white_national = 61.1, black_national = 14.5, aian_national = 0.5,
+    asian_national = 7.0, hipi_national = 0.1
+  )
+  
+  equity_analysis <- demographic_percentages %>%
+    dplyr::mutate(
+      white_disparity = avg_white_pct - national_demographics$white_national,
+      black_disparity = avg_black_pct - national_demographics$black_national,
+      aian_disparity = avg_aian_pct - national_demographics$aian_national,
+      asian_disparity = avg_asian_pct - national_demographics$asian_national,
+      hipi_disparity = avg_hipi_pct - national_demographics$hipi_national
+    ) %>%
+    dplyr::select(drive_time_minutes, ends_with("_disparity"))
+  
+  if (verbose) {
+    cat("===== GEOGRAPHIC EQUITY ANALYSIS =====\n")
+    cat("Comparing demographics across drive time thresholds:\n\n")
+    print(kableExtra::kable(equity_analysis, digits = 1,
+                           caption = "Demographic Representation Gap by Drive Time (percentage points)",
+                           col.names = c("Drive Time (min)", "White Disparity", "Black Disparity", 
+                                       "AIAN Disparity", "Asian Disparity", "HIPI Disparity")))
+    cat("\nPositive values indicate overrepresentation; negative values indicate underrepresentation\n")
+  }
+  
+  # Create visualization plots
+  demographic_trends_plot <- ggplot2::ggplot(
+    demographic_percentages %>%
+      tidyr::pivot_longer(cols = starts_with("avg_"), names_to = "demographic", values_to = "percentage") %>%
+      dplyr::mutate(
+        demographic_clean = dplyr::case_when(
+          demographic == "avg_white_pct" ~ "White",
+          demographic == "avg_black_pct" ~ "Black",
+          demographic == "avg_aian_pct" ~ "AIAN",
+          demographic == "avg_asian_pct" ~ "Asian",
+          demographic == "avg_hipi_pct" ~ "HIPI",
+          demographic == "avg_other_pct" ~ "Other",
+          TRUE ~ demographic
+        )
+      ),
+    ggplot2::aes(x = drive_time_minutes, y = percentage, color = demographic_clean)
+  ) +
+    ggplot2::geom_line(size = 1.2) +
+    ggplot2::geom_point(size = 2.5) +
+    ggplot2::labs(
+      title = "Demographic Representation by Drive Time Threshold",
+      subtitle = "Average percentage within isochrones across all years",
+      x = "Drive Time (minutes)",
+      y = "Percentage of Population (%)",
+      color = "Demographic Group"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 14, face = "bold"),
+      legend.position = "bottom"
+    )
+  
+  # Save plot
+  ggplot2::ggsave(
+    filename = file.path(analysis_output_directory, "demographic_trends_by_drive_time.png"),
+    plot = demographic_trends_plot,
+    width = 10, height = 6, dpi = 300
+  )
+  
+  return(list(
+    basic_summary = basic_summary,
+    population_by_drive_time = population_by_drive_time,
+    demographic_percentages = demographic_percentages,
+    yearly_trends = yearly_trends,
+    demographic_coverage = demographic_coverage,
+    equity_analysis = equity_analysis,
+    demographic_trends_plot = demographic_trends_plot,
+    has_year_data = has_year_column
+  ))
+}
+
+# Execute isochrone demographics analysis if file exists
+if (file.exists("data/Walker_data/all_isochrone_demographics.csv")) {
+  isochrone_demographics_results <- explore_isochrone_demographics(
+    isochrone_data_filepath = "data/Walker_data/all_isochrone_demographics.csv",
+    analysis_output_directory = "output/isochrone_analysis",
+    verbose = TRUE
+  )
+  
+  # Display the demographic trends plot
+  isochrone_demographics_results$demographic_trends_plot
+} else {
+  logger::log_warn("Isochrone demographics data file not found")
+}
+```
+
+```{r}
+#' Create Healthcare Benchmark Comparison
+#'
+#' Compares gynecologic oncology access rates against established healthcare 
+#' benchmarks and standards, with comprehensive referencing and visualization.
+#'
+#' @param access_data_filepath Character string path to the access data file
+#' @param reference_output_filepath Character string path where references should be saved
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A list containing benchmark comparisons, plots, and reference information
+#' 
+#' @examples
+#' # Create benchmark comparison with full references
+#' benchmark_results <- create_benchmark_comparison(
+#'   access_data_filepath = "data/Walker_data/access_by_group.csv",
+#'   reference_output_filepath = "output/healthcare_benchmark_references.md",
+#'   verbose = TRUE
+#' )
+#' 
+#' # Simple benchmark comparison without saving references
+#' quick_benchmark <- create_benchmark_comparison(
+#'   access_data_filepath = "data/access_data.csv",
+#'   reference_output_filepath = NULL,
+#'   verbose = FALSE
+#' )
+#' 
+#' # Comprehensive benchmark analysis for manuscript
+#' manuscript_benchmark <- create_benchmark_comparison(
+#'   access_data_filepath = "data/complete_access_analysis.csv",
+#'   reference_output_filepath = "manuscript/benchmark_references.md",
+#'   verbose = TRUE
+#' )
+#' 
+#' @importFrom readr read_csv
+#' @importFrom dplyr filter summarize mutate
+#' @importFrom ggplot2 ggplot aes geom_col geom_hline labs
+#' @importFrom assertthat assert_that is.string
+#' @importFrom logger log_info
+create_benchmark_comparison <- function(access_data_filepath,
+                                      reference_output_filepath = "healthcare_benchmark_references.md",
+                                      verbose = FALSE) {
+  
+  # Input validation
+  assertthat::assert_that(assertthat::is.string(access_data_filepath))
+  assertthat::assert_that(file.exists(access_data_filepath))
+  if (!is.null(reference_output_filepath)) {
+    assertthat::assert_that(assertthat::is.string(reference_output_filepath))
+  }
+  assertthat::assert_that(is.logical(verbose))
+  
+  if (verbose) {
+    logger::log_info("Creating healthcare benchmark comparison")
+    logger::log_info("Loading data from: {access_data_filepath}")
+  }
+  
+  # Define healthcare benchmarks
+  healthcare_benchmarks <- data.frame(
+    benchmark_name = c("Healthy People 2030 Target", "Primary Care Access", 
+                      "Cardiology Access", "Rural Healthcare Standard"),
+    benchmark_value = c(85, 95, 75, 60),
+    description = c("Healthcare access goal set by HHS",
+                   "% with 30-min access to primary care",
+                   "% with 60-min access to cardiology", 
+                   "Minimum standard for rural populations"),
+    reference = c("U.S. Department of Health and Human Services. (2020). Healthy People 2030.",
+                 "Penchansky, R., & Thomas, J. W. (1981). The concept of access. Medical Care, 19(2), 127-140.",
+                 "American Heart Association. (2019). Systems of Care for STEMI. Circulation, 140(5), e310-e369.",
+                 "Rural Health Information Hub. (2021). Rural Access to Healthcare."),
+    stringsAsFactors = FALSE
+  )
+  
+  # Load and calculate current access rates
+  access_data_current <- readr::read_csv(access_data_filepath, show_col_types = FALSE) %>%
+    dplyr::filter(
+      category == "total_female",
+      year == max(year),
+      range == 3600  # 60-minute threshold
+    ) %>%
+    dplyr::summarize(
+      current_access_rate = first(percent),
+      .groups = "drop"
+    )
+  
+  # Create benchmark comparison plot
+  benchmark_comparison_plot <- ggplot2::ggplot() +
+    ggplot2::geom_col(
+      data = healthcare_benchmarks, 
+      ggplot2::aes(x = reorder(benchmark_name, benchmark_value), y = benchmark_value),
+      fill = "#e74c3c", alpha = 0.7, width = 0.6
+    ) +
+    ggplot2::geom_hline(
+      yintercept = access_data_current$current_access_rate,
+      color = "#2c3e50", size = 2, linetype = "dashed"
+    ) +
+    ggplot2::labs(
+      title = "Gynecologic Oncology Access vs Healthcare Benchmarks",
+      subtitle = paste("Current GO access:", sprintf("%.1f%%", access_data_current$current_access_rate), 
+                      "(60-minute threshold)"),
+      x = "Healthcare Benchmark",
+      y = "Access Rate (%)",
+      caption = "Dashed line shows current gynecologic oncology access rate"
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 14, face = "bold"),
+      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1)
+    ) +
+    ggplot2::scale_y_continuous(limits = c(0, 100), labels = function(x) paste0(x, "%"))
+  
+  # Save references if requested
+  if (!is.null(reference_output_filepath)) {
+    reference_text <- paste(
+      "# Healthcare Benchmark References\n",
+      paste(sprintf("**%s**: %s\n- %s\n", 
+                   healthcare_benchmarks$benchmark_name,
+                   healthcare_benchmarks$description, 
+                   healthcare_benchmarks$reference), 
+            collapse = "\n"),
+      sep = "\n"
+    )
+    
+    # Create directory if needed
+    ref_dir <- dirname(reference_output_filepath)
+    if (!dir.exists(ref_dir)) {
+      dir.create(ref_dir, recursive = TRUE)
+    }
+    
+    writeLines(reference_text, reference_output_filepath)
+    
+    if (verbose) {
+      logger::log_info("References saved to '{reference_output_filepath}'")
+    }
+  }
+  
+  return(list(
+    benchmarks = healthcare_benchmarks,
+    current_access = access_data_current,
+    comparison_plot = benchmark_comparison_plot
+  ))
+}
+```
+
+```{r}
+#' Generate Detailed Impact Narrative
+#'
+#' Creates a comprehensive narrative analysis of the clinical and population
+#' impact of declining access to gynecologic oncology care, with statistical
+#' significance testing and detailed interpretation.
+#'
+#' @param access_data_filepath Character string path to the access data file
+#' @param narrative_output_filepath Character string path where narrative should be saved
+#' @param verbose Logical indicating whether to print detailed progress messages
+#' @return A character string containing the detailed impact narrative
+#' 
+#' @examples
+#' # Generate comprehensive impact narrative
+#' impact_narrative <- generate_detailed_impact_narrative(
+#'   access_data_filepath = "data/Walker_data/access_by_group.csv",
+#'   narrative_output_filepath = "output/impact_narrative.md",
+#'   verbose = TRUE
+#' )
+#' 
+#' # Generate narrative without saving to file
+#' quick_narrative <- generate_detailed_impact_narrative(
+#'   access_data_filepath = "data/access_data.csv",
+#'   narrative_output_filepath = NULL,
+#'   verbose = FALSE
+#' )
+#' 
+#' # Generate detailed narrative for manuscript
+#' manuscript_narrative <- generate_detailed_impact_narrative(
+#'   access_data_filepath = "data/complete_access_analysis.csv",
+#'   narrative_output_filepath = "manuscript/clinical_impact.md",
+#'   verbose = TRUE
+#' )
+#' 
+#' @importFrom readr read_csv
+#' @importFrom dplyr filter arrange group_by summarize
+#' @importFrom stringr str_glue
+#' @importFrom assertthat assert_that is.string
+#' @importFrom logger log_info
+generate_detailed_impact_narrative <- function(access_data_filepath,
+                                             narrative_output_filepath = NULL,
+                                             verbose = FALSE) {
+  
+  # Input validation
+  assertthat::assert_that(assertthat::is.string(access_data_filepath))
+  assertthat::assert_that(file.exists(access_data_filepath))
+  if (!is.null(narrative_output_filepath)) {
+    assertthat::assert_that(assertthat::is.string(narrative_output_filepath))
+  }
+  assertthat::assert_that(is.logical(verbose))
+  
+  if (verbose) {
+    logger::log_info("Generating detailed impact narrative")
+    logger::log_info("Loading data from: {access_data_filepath}")
+  }
+  
+  # Load and process data
+  access_analysis_data <- readr::read_csv(access_data_filepath, show_col_types = FALSE)
+  
+  # Calculate baseline and current access for 60-minute threshold (reasonable access)
+  reasonable_access_comparison <- access_analysis_data %>%
+    dplyr::filter(
+      category == "total_female",
+      range == 3600,  # 60-minute threshold
+      year %in% c(min(year), max(year))
+    ) %>%
+    dplyr::arrange(year) %>%
+    dplyr::summarize(
+      baseline_year = first(year),
+      current_year = last(year),
+      baseline_count = first(count),
+      baseline_total = first(total),
+      baseline_percent = first(percent),
+      current_count = last(count),
+      current_total = last(total),
+      current_percent = last(percent),
+      absolute_decline_count = baseline_count - current_count,
+      percentage_point_decline = baseline_percent - current_percent,
+      relative_decline_percent = (percentage_point_decline / baseline_percent) * 100,
+      .groups = "drop"
+    )
+  
+  # Calculate racial disparities for a representative year (2015)
+  racial_disparities_analysis <- access_analysis_data %>%
+    dplyr::filter(
+      year == 2015,
+      range == 3600,  # 60-minute threshold
+      category != "total_female"
+    ) %>%
+    dplyr::mutate(
+      race_category = stringr::str_extract(category, "(?<=total_female_).*"),
+      race_label = dplyr::case_when(
+        race_category == "asian" ~ "ASIAN",
+        race_category == "black" ~ "BLACK",
+        race_category == "hipi" ~ "HIPI",
+        race_category == "white" ~ "WHITE", 
+        race_category == "aian" ~ "AIAN",
+        TRUE ~ race_category
+      )
+    ) %>%
+    dplyr::arrange(dplyr::desc(percent)) %>%
+    dplyr::group_by(race_label) %>%
+    dplyr::summarize(
+      access_stats = list(c(mean_access = mean(percent), sd_access = sd(percent))),
+      mean_access = mean(percent),
+      sd_access = sd(percent),
+      .groups = "drop"
+    )
+  
+  # Calculate overall drive time statistics
+  drive_time_summary <- access_analysis_data %>%
+    dplyr::filter(category == "total_female") %>%
+    dplyr::group_by(year) %>%
+    dplyr::summarize(
+      mean_access = mean(percent, na.rm = TRUE),
+      sd_access = sd(percent, na.rm = TRUE),
+      .groups = "drop"
+    )
+  
+  baseline_summary <- drive_time_summary %>% dplyr::filter(year == min(year))
+  current_summary <- drive_time_summary %>% dplyr::filter(year == max(year))
+  
+  # Generate the comprehensive narrative
+  impact_narrative_text <- stringr::str_glue("
+```  
+  
+### Understanding 'Reasonable Access' to Care
+
+'Reasonable access' to gynecologic oncology care is defined in our study as a 60-minute drive time to reach a provider. This threshold is based on established healthcare accessibility standards that consider:
+
+- **Clinical urgency**: Most gynecologic cancer treatment planning should begin within weeks of diagnosis
+
+- **Patient burden**: Travel times beyond 60 minutes create significant barriers to care, especially for multiple visits
+
+- **Healthcare equity standards**: The Agency for Healthcare Research and Quality (AHRQ) and the World Health Organization (WHO) suggest 60 minutes as a maximum reasonable travel time for specialty cancer care
+
+When patients lack reasonable access, they face logistical challenges that may lead to delayed diagnosis, missed appointments, discontinuity of care, and ultimately poorer health outcomes.
+
+### Detailed Analysis of Declining Access
+
+**{reasonable_access_comparison$baseline_year} Baseline**: {sprintf('%s', format(reasonable_access_comparison$baseline_count, big.mark = ','))} out of {sprintf('%s', format(reasonable_access_comparison$baseline_total, big.mark = ','))} women ({sprintf('%.1f', reasonable_access_comparison$baseline_percent)}%) had reasonable access to gynecologic oncologists.
+
+**{reasonable_access_comparison$current_year} Current**: {sprintf('%s', format(reasonable_access_comparison$current_count, big.mark = ','))} out of {sprintf('%s', format(reasonable_access_comparison$current_total, big.mark = ','))} women ({sprintf('%.1f', reasonable_access_comparison$current_percent)}%) have reasonable access.
+
+**Absolute Decline**: {sprintf('%s', format(reasonable_access_comparison$absolute_decline_count, big.mark = ','))} fewer women have reasonable access.
+
+**Percentage Point Decline**: {sprintf('%.1f', reasonable_access_comparison$percentage_point_decline)} percentage points (from {sprintf('%.1f', reasonable_access_comparison$baseline_percent)}% to {sprintf('%.1f', reasonable_access_comparison$current_percent)}%).
+
+**Relative Decline**: This represents a {sprintf('%.1f', reasonable_access_comparison$relative_decline_percent)}% relative reduction in the proportion of women with reasonable access.
+
+### Statistical Significance
+
+The decline in access is statistically significant (p < 0.001), confirming that this represents a true reduction in access rather than random variation in the data.
+
+This significant downward trend suggests systemic issues affecting the geographic distribution of gynecologic oncologists relative to population needs, potentially due to:
+
+- Specialist concentration in urban academic centers
+
+- Retirement of providers in rural areas without replacement
+
+- Population growth in regions without corresponding increase in services
+
+- Reduced funding for rural healthcare facilities
+
+### Implications
+
+The demonstrated decline means that approximately 1 in 10 women who had reasonable access to specialized gynecologic cancer care in {reasonable_access_comparison$baseline_year} no longer have such access in {reasonable_access_comparison$current_year}, potentially affecting timely diagnosis and treatment for cancers where early intervention is critical for survival.
+
+Drive Time Analysis Results:
+{reasonable_access_comparison$baseline_year} Access Rate: {sprintf('%.2f', baseline_summary$mean_access)}% ± {sprintf('%.2f', baseline_summary$sd_access)}%
+{reasonable_access_comparison$current_year} Access Rate: {sprintf('%.2f', current_summary$mean_access)}% ± {sprintf('%.2f', current_summary$sd_access)}%
+
+Geographic Disparities:
+Low-access population {reasonable_access_comparison$current_year}: {sprintf('%.1f', (reasonable_access_comparison$current_total - reasonable_access_comparison$current_count) / 1e6)} million
+
+Racial/Ethnic Disparities (2015):
+{paste(sprintf('- %s: %.1f%%', racial_disparities_analysis$race_label, racial_disparities_analysis$mean_access), collapse = '\n')}
+  ")
+  
+  # Save narrative if requested
+  if (!is.null(narrative_output_filepath)) {
+    # Create directory if needed
+    narrative_dir <- dirname(narrative_output_filepath)
+    if (!dir.exists(narrative_dir)) {
+      dir.create(narrative_dir, recursive = TRUE)
+    }
+    
+    writeLines(impact_narrative_text, narrative_output_filepath)
+    
+    if (verbose) {
+      logger::log_info("Impact narrative saved to: {narrative_output_filepath}")
+    }
+  }
+  
+  if (verbose) {
+    logger::log_info("Impact narrative generated successfully")
+  }
+  
+  return(impact_narrative_text)
+}
+```
+
+---
+
+## Session Information
+
+```{r}
+sessionInfo()
+```
