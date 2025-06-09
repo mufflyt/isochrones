@@ -62,10 +62,7 @@ library(forcats)
 
 # Store tidycensus data on cache
 options(tigris_use_cache = TRUE)
-
-Sys.setenv(HERE_API_KEY = "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
 readRenviron("~/.Renviron")
-hereR::set_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
 
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 #####  Directory structure with here
