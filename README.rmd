@@ -637,7 +637,7 @@ order:
 5.  `03-search_and_process_npi.R` - When did physicians start practicing?
 6.  `03a-search_and_process_extra.R`
 7.  `04-geocode.R`
-8.  `05-geocode-cleaning.R`
+8.  `zz05-geocode-cleaning.R`
 9.  `retirement.R`/`retirement_adjusted.R` - When did physicians retire? (if
     physician retirement analysis is needed)
 
