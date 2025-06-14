@@ -552,7 +552,15 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25,
       # Create the file name with the current date and time
       current_datetime <- format(Sys.time(), "%Y%m%d%H%M%S")
 
-      file_name <- paste(file_path_prefix, current_datetime, "_chunk_", min(chunk_data$id), "_to_", max(chunk_data$id))
+      file_name <- paste0(
+        file_path_prefix,
+        current_datetime,
+        "_chunk_",
+        min(chunk_data$id),
+        "_to_",
+        max(chunk_data$id)
+      )
+      dir.create(file_name, recursive = TRUE, showWarnings = FALSE)
 
       # Assuming "arrival" field is originally in character format with both date and time
       # Convert it to a DateTime object
