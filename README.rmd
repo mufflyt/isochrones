@@ -597,7 +597,7 @@ ABMS - scraped.
 
 #### 3. Results and Analysis
 
--   `10-calculate-polygon-demographcs.R` - Analyzes demographic characteristics
+-   `10-calculate-polygon-demographics.R` - Analyzes demographic characteristics
 
 -   `10-make-region.R` - Creates regional maps and analyses
 
@@ -652,7 +652,7 @@ order:
 
 ### Results and Additional Analysis Phase
 
-15. `10-calculate-polygon-demographcs.R`
+15. `10-calculate-polygon-demographics.R`
 
 16. `10-make-region.R`
 
