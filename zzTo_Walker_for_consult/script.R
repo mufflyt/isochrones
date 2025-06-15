@@ -30,7 +30,10 @@ iso_datetime_yearly <- tibble(
 # 30, 60, 120, and 180-minute drive time intervals
 
 # We can do this in R with the hereR package.  I grabbed my own key for this.
-key <- "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM"
+key <- Sys.getenv("HERE_API_KEY")
+if (identical(key, "")) {
+  stop("HERE_API_KEY environment variable is not set.")
+}
 set_key(key)
 
 # Let's build the physician location table; presumably you have a separate table you can plug in

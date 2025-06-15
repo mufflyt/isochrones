@@ -18,9 +18,11 @@ create_isochrones_for_dataframe <- function(input_file, breaks = c(1800, 3600, 7
   #input_file <- "_Recent_Grads_GOBA_NPI_2022a.rds" #for testing;
   #input_file <- "data/test_short_inner_join_postmastr_clinician_data_sf.csv"
 
-  Sys.setenv(HERE_API_KEY = "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
+  if (!nzchar(Sys.getenv("HERE_API_KEY"))) {
+    stop("HERE_API_KEY environment variable is not set.")
+  }
   readRenviron("~/.Renviron")
-  hereR::set_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
+  hereR::set_key(Sys.getenv("HERE_API_KEY"))
 
   library(tidyverse)
   library(sf)

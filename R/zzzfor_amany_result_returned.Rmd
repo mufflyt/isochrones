@@ -74,9 +74,11 @@ options(tigris_use_cache = TRUE)
 
 # Initialize HERE API
 hereR::set_freemium(ans = FALSE)
-hereR::set_key("Your-API-Key-Here")
+hereR::set_key(Sys.getenv("HERE_API_KEY"))
 hereR::set_verbose(TRUE)
-Sys.setenv(HERE_API_KEY = "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
+if (!nzchar(Sys.getenv("HERE_API_KEY"))) {
+  stop("HERE_API_KEY environment variable is not set.")
+}
 
 # Add key to .Renviron. # Reload .Renviron
 Sys.setenv(CENSUS_KEY="485c6da8987af0b9829c25f899f2393b4bb1a4fb")
@@ -104,14 +106,18 @@ gyn_onc_sf <- gyn_onc %>%
 # Initialize HERE API
 hereR::set_freemium(ans = FALSE)
 hereR::set_verbose(TRUE)
-Sys.setenv(HERE_API_KEY = "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
+if (!nzchar(Sys.getenv("HERE_API_KEY"))) {
+  stop("HERE_API_KEY environment variable is not set.")
+}
 ```
 
 ```{r}
 create_isochrones <- memoise::memoise(function(location, range, posix_time = as.POSIXct("2023-10-20 08:00:00", format = "%Y-%m-%d %H:%M:%S")) {
 
-  Sys.setenv(HERE_API_KEY = "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
-  hereR::set_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
+  if (!nzchar(Sys.getenv("HERE_API_KEY"))) {
+    stop("HERE_API_KEY environment variable is not set.")
+  }
+  hereR::set_key(Sys.getenv("HERE_API_KEY"))
 
 
   cat("\033[Display setup instructions:\033[0m\n")
@@ -131,7 +137,7 @@ create_isochrones <- memoise::memoise(function(location, range, posix_time = as.
   # Initialize HERE API securely using an environment variable for the API key
   cat("Setting up the hereR access...\n")
   hereR::set_freemium(ans = FALSE)
-  hereR::set_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
+  hereR::set_key(Sys.getenv("HERE_API_KEY"))
   hereR::set_verbose(TRUE)
 
   # Initialize a list to store the isolines
