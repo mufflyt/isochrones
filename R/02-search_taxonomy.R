@@ -14,10 +14,6 @@ source("R/01-setup.R")
 ##########################################################################
 # search_by_taxonomy
 # This will allow us to get subspecialty names and NPI numbers as a starting point.  FYI the limit is 1,200 physicians.  
-
-go_search_by_taxonomy_data <- search_by_taxonomy("Gynecologic Oncology")
-fpmrs_search_by_taxonomy_data <- search_by_taxonomy("Female Pelvic Medicine and Reconstructive Surgery")
-
 # Search the NPI Registry database using npi_search.  Taxonomy description from the NUCC: https://taxonomy.nucc.org/ 
 
 go_search_by_taxonomy_data <- search_by_taxonomy("Gynecologic Oncology")
