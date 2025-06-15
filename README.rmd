@@ -847,13 +847,16 @@ single-user analysis
 -   Isoline Routing: \$5.50 per 1,000 after 2,500 free isoline routings
 
 ``` r
-# Set environment variables (add to .Renviron)
-HERE_API_KEY <- "your_here_api_key_here"
+# Set environment variables by adding `HERE_API_KEY=your_here_api_key_here`
+# to your `.Renviron` file.
+here_key <- Sys.getenv("HERE_API_KEY")
+if (!nzchar(here_key)) stop("HERE_API_KEY not set")
 
 # Verify API access
-here_status <- httr::GET("https://geocoder.ls.hereapi.com/6.2/geocode.json",
-                        query = list(apiKey = HERE_API_KEY,
-                                   searchtext = "test"))
+here_status <- httr::GET(
+  "https://geocoder.ls.hereapi.com/6.2/geocode.json",
+  query = list(apiKey = here_key, searchtext = "test")
+)
 ```
 
 ### Census API Setup
