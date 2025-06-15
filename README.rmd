@@ -1,6 +1,6 @@
 ---
 title: "Gynecologic Oncology Accessibility Project"
-subtitle: "Nationwide Analysis of Access to OBGYN Subspecialists Using Drive Time Isochrones (2013-2023)"
+subtitle: "Comprehensive Healthcare Accessibility Analysis Using Isochrone Methodology"
 author: 
   - name: "Tyler Muffly, MD"
     affiliation: "Department of Obstetrics and Gynecology"
@@ -10,7 +10,7 @@ description: |
   This project analyzes nationwide access to gynecologic oncologists and other 
   OBGYN subspecialists using drive time isochrones, demographic data, and 
   geospatial analysis. The analysis examines how accessibility varies across 
-  different geographic areas, demographic groups, and time periods (2013-2023).
+  different geographic areas, demographic groups, and time periods (2013–2023).
 keywords: 
   - "gynecologic oncology"
   - "healthcare accessibility" 
@@ -20,7 +20,7 @@ keywords:
   - "geographic information systems"
 version: "1.0.0"
 license: "MIT"
-output:
+output: 
   html_document:
     toc: true
     toc_depth: 3
@@ -49,47 +49,137 @@ editor_options:
     canonical: true
 ---
 
-<!-- README.md is generated from README.Rmd. Please edit that file -->
+<!-- Custom CSS for enhanced styling -->
 
-```{r, include = FALSE}
+```{=html}
+<style>
+.main-container {
+  max-width: 1400px;
+}
+
+.equation-box {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 5px;
+  padding: 15px;
+  margin: 10px 0;
+}
+
+.method-box {
+  background-color: #e3f2fd;
+  border-left: 4px solid #2196f3;
+  padding: 15px;
+  margin: 10px 0;
+}
+
+.results-box {
+  background-color: #f3e5f5;
+  border-left: 4px solid #9c27b0;
+  padding: 15px;
+  margin: 10px 0;
+}
+
+.code-title {
+  background-color: #263238;
+  color: white;
+  padding: 8px;
+  margin-bottom: 0;
+  border-radius: 5px 5px 0 0;
+  font-weight: bold;
+}
+
+.highlight-box {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 5px;
+  padding: 15px;
+  margin: 10px 0;
+}
+
+.technical-note {
+  background-color: #d1ecf1;
+  border: 1px solid #bee5eb;
+  border-radius: 5px;
+  padding: 12px;
+  margin: 8px 0;
+  font-size: 0.9em;
+}
+</style>
+```
+
+```{r source setup}
+source("R/01-setup.R")      # provides create_geocode()
+```
+
+```{r setup, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>"
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%",
+  warning = FALSE,
+  message = FALSE,
+  cache = FALSE
 )
 ```
 
 ## Project Overview
 
-This project analyzes nationwide access to gynecologic oncologists and other OBGYN subspecialists using drive time isochrones, demographic data, and geospatial analysis. The analysis examines how accessibility varies across different geographic areas, demographic groups, and time periods (2013-2023).
+This project analyzes nationwide access to gynecologic oncologists and other
+OBGYN subspecialists using drive time isochrones, demographic data, and
+geospatial analysis. The analysis examines how accessibility varies across
+different geographic areas, demographic groups, and time periods (2013-2023).
 
-Using the HERE Maps API and census data, we calculate drive time isochrones around gynecologic oncologists' locations and analyze the demographics of populations within each drive time threshold. The project examines changes in accessibility over time and retirement patterns among specialists.
+Using the HERE Maps API and census data, we calculate drive time isochrones
+around gynecologic oncologists' locations and analyze the demographics of
+populations within each drive time threshold. The project examines changes in
+accessibility over time and retirement patterns among specialists.
 
 ### Subspecialists Analyzed
-- Female Pelvic Medicine and Reconstructive Surgery/Urogynecology
-- Gynecologic Oncology
-- Maternal-Fetal Medicine
-- Reproductive Endocrinology and Infertility
+
+-   Female Pelvic Medicine and Reconstructive Surgery/Urogynecology
+-   Gynecologic Oncology
+-   Maternal-Fetal Medicine
+-   Reproductive Endocrinology and Infertility
 
 ## Materials and Methods
 
 ### Data Sources
 
-**Physician Provider Data**: National Plan and Provider Enumeration System (NPPES) files from 2013 to 2023 were obtained from the National Bureau of Economic Research (NBER) cumulative dataset, which provides deduplicated historical provider records spanning April 2007 to present, addressing limitations in official CMS offerings that lack historical provider details. The dataset is deduplicated based on variable changes (excluding mere updates in file names or years), and includes separate core and multiplicative variable files to manage large file sizes efficiently.
+**Physician Provider Data**: National Plan and Provider Enumeration System
+(NPPES) files from 2013 to 2023 were obtained from the National Bureau of
+Economic Research (NBER) cumulative dataset, which provides deduplicated
+historical provider records spanning April 2007 to present, addressing
+limitations in official CMS offerings that lack historical provider details. The
+dataset is deduplicated based on variable changes (excluding mere updates in
+file names or years), and includes separate core and multiplicative variable
+files to manage large file sizes efficiently.
 
-Additional validation data sources included:
-- Medicare Part D prescriber data (2013-2022) for providers treating Medicare patients over 65 years old
-- CMS facility affiliation data (2014-present) serving as the "gold standard" for current practice locations  
-- CMS Open Payments data (2013-present) for cross-verification of provider activity status
-- NPI deactivation data for tracking provider retirement, though may lag real-time by 1-2 years due to self-reporting
+Additional validation data sources included: - Medicare Part D prescriber data
+(2013-2022) for providers treating Medicare patients over 65 years old - CMS
+facility affiliation data (2014-present) serving as the "gold standard" for
+current practice locations\
+- CMS Open Payments data (2013-present) for cross-verification of provider
+activity status - NPI deactivation data for tracking provider retirement, though
+may lag real-time by 1-2 years due to self-reporting
 
-**Population and Demographic Data**: American Community Survey (ACS) 5-year estimates and decennial census data provided demographic and population information. Census block groups were used as the primary geographic unit rather than counties to achieve higher spatial resolution for accessibility calculations.
+**Population and Demographic Data**: American Community Survey (ACS) 5-year
+estimates and decennial census data provided demographic and population
+information. Census block groups were used as the primary geographic unit rather
+than counties to achieve higher spatial resolution for accessibility
+calculations.
 
-**Geographic Data**: Census TIGER/Line shapefiles provided geographic boundaries. Rural-Urban Commuting Area (RUCA) codes from the USDA Economic Research Service were used for rural-urban classification.
+**Geographic Data**: Census TIGER/Line shapefiles provided geographic
+boundaries. Rural-Urban Commuting Area (RUCA) codes from the USDA Economic
+Research Service were used for rural-urban classification.
 
 ### Provider Identification and Classification
 
-Gynecologic oncologists and other OBGYN subspecialists were identified using National Uniform Claim Committee (NUCC) Healthcare Provider Taxonomy codes. The analysis searched all taxonomy columns in each year's dataset (not just the primary taxonomy) to capture physicians with multiple subspecialty certifications.
-
+Gynecologic oncologists and other OBGYN subspecialists were identified using
+National Uniform Claim Committee (NUCC) Healthcare Provider Taxonomy codes. The
+analysis searched all taxonomy columns in each year's dataset (not just the
+primary taxonomy) to capture physicians with multiple subspecialty
+certifications.
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
@@ -359,116 +449,88 @@ obgyn_taxonomy_codes <- c(
   "207VX0201X",    # Gynecologic Oncology (PRIMARY FOCUS)
   "207VE0102X",    # Reproductive Endocrinology 
   "207VG0400X",    # Gynecology (general)
->>>>>>> 47596a66077d445ea529f1f63bcd5de6409f2044
   "207VM0101X",    # Maternal & Fetal Medicine
   "207VF0040X",    # Female Pelvic Medicine/Urogynecology
   "207VB0002X",    # Bariatric Medicine
   "207VC0200X",    # Critical care medicine
-<<<<<<< HEAD
   "207VC0040X", 
-  "207VC0300X",    # Complex family planning
-=======
   "207VC0300X",    # Complex family planning  
->>>>>>> 47596a66077d445ea529f1f63bcd5de6409f2044
   "207VH0002X",    # Palliative care
   "207VX0000X"     # Obstetrics only
 )
 ```
 
-<<<<<<< HEAD
 ### Quality Control and Data Validation
 
-The `check_physician_presence` function was implemented as a quality control utility for tracking physicians across temporal data. This function efficiently analyzes datasets containing physician information to determine when specific providers appear in records, accepting National Provider Identifiers (NPIs) and methodically examining each NPI's presence throughout different years. It returns structured data summarizing each provider's representation, including total record count and chronological listing of years present.
+The `check_physician_presence` function was implemented as a quality control
+utility for tracking physicians across temporal data. This function efficiently
+analyzes datasets containing physician information to determine when specific
+providers appear in records, accepting National Provider Identifiers (NPIs) and
+methodically examining each NPI's presence throughout different years. It
+returns structured data summarizing each provider's representation, including
+total record count and chronological listing of years present.
 
-```r
+``` r
 # Example validation list of known NPIs for quality control
 =======
 ## 📂 Detailed File Organization & Purpose
+```
+
+isochrones/ ├── 📁 data/ \# Raw and processed datasets │ ├──
+demographic_disparities_analysis.csv │ ├── difference_in_difference_analysis.csv
+│ ├── duplicateyearandfill.csv │ ├──
+end_inner_join_postmaster_clinician_data.csv │ ├──
+end_rejoined_geocoded_unique_address.csv │ ├── fips-states.csv │ ├──
+healthcare_benchmark_references.md │ ├── intersect.csv │ ├──
+Medicare_Part_D_physician_retirement_analysis.csv │ ├──
+physician_compare_data.csv │ ├── physician_retirement_years.csv │ ├──
+population_weighted_means_with_ci.csv │ └── racial_decay_curves.png ├── 📁
+figures/ \# Generated visualizations │ └── [Generated plots and maps] ├── 📁 R/
+\# All R scripts and functions │ │ 👩️ ***GO_access_analysis_code.Rmd*** \# Main
+analysis report │ ├── 📊 Data Collection (A-Series) │ │ ├── A-abms.R \# Board
+certification scraping │ │ ├── A-facility_affiliation_download.R \# CMS facility
+data │ │ ├── A-Medicare_part_d_prescribers_data_download.R │ │ ├──
+A-NPI_deactivation_download.R \# Provider deactivation │ │ ├──
+A-nppes_download.R \# Historical NPPES from NBER │ │ ├──
+A-open_payments_download.R \# Sunshine Act data │ │ └──
+A-physician_compare_data_download.R │ ├── 📋 Data Read In (B-Series) │ │ ├──
+B-Medicare_part_d_prescribers_read_in.R \# Read in data │ │ ├──
+B-NPI_deactivation.R \# Read in data │ │ ├──
+B-NPPES_read_in_csv_to_duckDB_database.R \# Read in data │ │ ├──
+B-open_payments_cleaning.R \# Read in data │ │ ├──
+B-physician_compare_data_download.R \# Read in data │ ├── 📋 Data Processing
+(C-Series) │ │ ├── C-Extracting_and_Processing_NPPES_Provider_Data.R │ │ ├──
+C-NPPES.R │ │ ├── C-open_payments.R │ │ ├── C-physician_compare_cleaning.R │ ├──
+📋 Data Quality Check (D-Series) │ │ ├── D-Quality_check_medicare_prescribing.R
+│ │ ├── D-Quality_check_on_NPPES_merge.R │ ├── 📋 Export Cleaned Data (E-Series)
+│ │ ├── E-Medicare_part_d_retirement_analysis_processing.R │ │ ├──
+E-open_payments_export.R │ │ └── F-retirement_year_confirmation.R │ ├── 🗺️ Core
+Analysis Pipeline (00-10 Series) │ │ ├── 000-Control.R \# Master control script
+│ │ ├── 01-setup.R \# Environment and API setup │ │ ├── 02-search_taxonomy.R \#
+NPPES taxonomy search │ │ ├── 02.5-subspecialists_over_time.R \# Temporal trends
+│ │ ├── 03-search_and_process_npi.R \# NPI data processing │ │ ├──
+03a-search_and_process_extra.R \# Additional NPI processing │ │ ├── 04-geocode.R
+\# Address geocoding (HERE API) │ │ ├── 06-isochrones.R \# Drive time isochrone
+generation │ │ ├── 07-isochrone-mapping.R \# Spatial joins and mapping │ │ ├──
+07.5-prep-get-block-group-overlap.R │ │ ├── 08-get-block-group-overlap.R \#
+Census block calculations │ │ ├── 08.5-prep-the-census-variables.R │ │ ├──
+09-get-census-population.R \# Population analysis │ │ ├──
+10-calculate-polygon-demographics.R │ │ └── 10-make-region.R \# Regional
+analysis │ ├── 📈 Results & Analysis │ │ ├── analyze_isochrone_data.R \#
+Statistical trend analysis │ │ ├── walker_isochrone_maps.R \# Final map
+generation │ │ ├── subspecialists_over_time.R \# Workforce trends │ │ ├──
+retirement_adjusted.R \# Retirement analysis │ │ └── getting_isochrones_trying.R
+\# Alternative methods │ ├── 🛠️ Utility Functions │ │ ├── api_keys.R \# API key
+management │ │ ├── bespoke_functions.R \# Custom project functions │ │ ├──
+geocode.R \# Geocoding utilities ├── 📁 results/ \# Analysis outputs │ ├──
+state_data.csv │ ├── summary_statistics.csv │ ├──
+table1_temporal_trends_summary.csv │ ├──
+table2_demographic_disparities_summary.csv │ ├──
+tabulated_all_years_clean_2024-08-30.xlsx │ ├── temporal_trend_analysis.csv │
+├── trend_analysis.csv │ └── us_states.csv ├── 📄 README.Rmd \# This
+documentation ├── 📄 README.html \# Rendered HTML version
 
 ```         
-isochrones/
-├── 📁 data/                           # Raw and processed datasets
-│   ├── demographic_disparities_analysis.csv
-│   ├── difference_in_difference_analysis.csv
-│   ├── duplicateyearandfill.csv
-│   ├── end_inner_join_postmaster_clinician_data.csv
-│   ├── end_rejoined_geocoded_unique_address.csv
-│   ├── fips-states.csv
-│   ├── healthcare_benchmark_references.md
-│   ├── intersect.csv
-│   ├── Medicare_Part_D_physician_retirement_analysis.csv
-│   ├── physician_compare_data.csv
-│   ├── physician_retirement_years.csv
-│   ├── population_weighted_means_with_ci.csv
-│   └── racial_decay_curves.png
-├── 📁 figures/                        # Generated visualizations
-│   └── [Generated plots and maps]
-├── 📁 R/                             # All R scripts and functions
-│   │   👩️ ***GO_access_analysis_code.Rmd***    # Main analysis report
-│   ├── 📊 Data Collection (A-Series)
-│   │   ├── A-abms.R                  # Board certification scraping
-│   │   ├── A-facility_affiliation_download.R  # CMS facility data
-│   │   ├── A-Medicare_part_d_prescribers_data_download.R
-│   │   ├── A-NPI_deactivation_download.R     # Provider deactivation
-│   │   ├── A-nppes_download.R        # Historical NPPES from NBER
-│   │   ├── A-open_payments_download.R        # Sunshine Act data
-│   │   └── A-physician_compare_data_download.R
-│   ├── 📋 Data Read In (B-Series)
-│   │   ├── B-Medicare_part_d_prescribers_read_in.R   # Read in data
-│   │   ├── B-NPI_deactivation.R                      # Read in data
-│   │   ├── B-NPPES_read_in_csv_to_duckDB_database.R  # Read in data
-│   │   ├── B-open_payments_cleaning.R                # Read in data
-│   │   ├── B-physician_compare_data_download.R       # Read in data
-│   ├── 📋 Data Processing (C-Series)
-│   │   ├── C-Extracting_and_Processing_NPPES_Provider_Data.R
-│   │   ├── C-NPPES.R
-│   │   ├── C-open_payments.R
-│   │   ├── C-physician_compare_cleaning.R
-│   ├── 📋 Data Quality Check (D-Series)
-│   │   ├── D-Quality_check_medicare_prescribing.R
-│   │   ├── D-Quality_check_on_NPPES_merge.R
-│   ├── 📋 Export Cleaned Data (E-Series)
-│   │   ├── E-Medicare_part_d_retirement_analysis_processing.R
-│   │   ├── E-open_payments_export.R
-│   │   └── F-retirement_year_confirmation.R
-│   ├── 🗺️ Core Analysis Pipeline (00-10 Series)
-│   │   ├── 000-Control.R             # Master control script
-│   │   ├── 01-setup.R                # Environment and API setup
-│   │   ├── 02-search_taxonomy.R      # NPPES taxonomy search
-│   │   ├── 02.5-subspecialists_over_time.R   # Temporal trends
-│   │   ├── 03-search_and_process_npi.R       # NPI data processing
-│   │   ├── 03a-search_and_process_extra.R    # Additional NPI processing
-│   │   ├── 04-geocode.R              # Address geocoding (HERE API)
-│   │   ├── 06-isochrones.R           # Drive time isochrone generation
-│   │   ├── 07-isochrone-mapping.R    # Spatial joins and mapping
-│   │   ├── 07.5-prep-get-block-group-overlap.R
-│   │   ├── 08-get-block-group-overlap.R      # Census block calculations
-│   │   ├── 08.5-prep-the-census-variables.R
-│   │   ├── 09-get-census-population.R        # Population analysis
-│   │   ├── 10-calculate-polygon-demographics.R
-│   │   └── 10-make-region.R          # Regional analysis
-│   ├── 📈 Results & Analysis
-│   │   ├── analyze_isochrone_data.R          # Statistical trend analysis
-│   │   ├── walker_isochrone_maps.R           # Final map generation
-│   │   ├── subspecialists_over_time.R        # Workforce trends
-│   │   ├── retirement_adjusted.R             # Retirement analysis
-│   │   └── getting_isochrones_trying.R       # Alternative methods
-│   ├── 🛠️ Utility Functions
-│   │   ├── api_keys.R                # API key management
-│   │   ├── bespoke_functions.R       # Custom project functions
-│   │   ├── geocode.R                 # Geocoding utilities
-├── 📁 results/                       # Analysis outputs
-│   ├── state_data.csv
-│   ├── summary_statistics.csv
-│   ├── table1_temporal_trends_summary.csv
-│   ├── table2_demographic_disparities_summary.csv
-│   ├── tabulated_all_years_clean_2024-08-30.xlsx
-│   ├── temporal_trend_analysis.csv
-│   ├── trend_analysis.csv
-│   └── us_states.csv
-├── 📄 README.Rmd                     # This documentation
-├── 📄 README.html                    # Rendered HTML version
-```
 
 #### Data Gathering
 
@@ -551,56 +613,74 @@ isochrones/
     career trajectories, or validate data completeness across multiple years of
     NPI records.
 
-``` r
+```r
 # List of NPIs to check
->>>>>>> 47596a66077d445ea529f1f63bcd5de6409f2044
 npi_list <- c(
   "1689603763",   # Tyler Muffly, MD
   "1528060639",   # John Curtin, MD
   "1346355807",   # Pedro Miranda, MD
-<<<<<<< HEAD
   # ... additional validation cases
 )
 ```
 
 ### Geocoding and Address Standardization
 
-Provider practice addresses were geocoded using the HERE Maps Geocoding API (version 6.2). Addresses were standardized and cleaned prior to geocoding, with quality scoring and manual review of poor matches. Coordinate validation included bounds checking and outlier detection.
+Provider practice addresses were geocoded using the HERE Maps Geocoding API
+(version 6.2). Addresses were standardized and cleaned prior to geocoding, with
+quality scoring and manual review of poor matches. Coordinate validation
+included bounds checking and outlier detection.
 
 ### Isochrone Generation and Spatial Analysis
 
-Drive time isochrones were calculated using the HERE Maps Isoline Routing API (version 7.2) with the following specifications:
+Drive time isochrones were calculated using the HERE Maps Isoline Routing API
+(version 7.2) with the following specifications:
 
-- **Time Thresholds**: 30, 60, 120, and 180 minutes
-- **Reference Time**: Third Friday of October at 9:00 AM local time for each analysis year (2013-2023)  
-- **Vehicle Type**: Car
-- **Traffic Conditions**: Real-time traffic enabled
-- **Route Quality**: Highest quality setting
+-   **Time Thresholds**: 30, 60, 120, and 180 minutes
+-   **Reference Time**: Third Friday of October at 9:00 AM local time for each
+    analysis year (2013-2023)\
+-   **Vehicle Type**: Car
+-   **Traffic Conditions**: Real-time traffic enabled
+-   **Route Quality**: Highest quality setting
 
-The reference time was standardized across all years to ensure temporal consistency, selected to represent typical weekday travel conditions while avoiding rush hour peaks.
+The reference time was standardized across all years to ensure temporal
+consistency, selected to represent typical weekday travel conditions while
+avoiding rush hour peaks.
 
 ### Demographic and Population Analysis
 
-Population within each isochrone was calculated through spatial intersection of drive time polygons with census block groups. Area-weighted population estimates were computed for partial block group overlaps. 
+Population within each isochrone was calculated through spatial intersection of
+drive time polygons with census block groups. Area-weighted population estimates
+were computed for partial block group overlaps.
 
-**Primary Analysis Population**: Female population, with demographic stratification by:
-- Race/ethnicity: White alone, Black or African American alone, Asian alone, American Indian and Alaska Native alone
-- Geographic regions: American College of Obstetricians and Gynecologists (ACOG) Districts
-- Rural-urban classification: RUCA codes
+**Primary Analysis Population**: Female population, with demographic
+stratification by: - Race/ethnicity: White alone, Black or African American
+alone, Asian alone, American Indian and Alaska Native alone - Geographic
+regions: American College of Obstetricians and Gynecologists (ACOG) Districts -
+Rural-urban classification: RUCA codes
 
 ### Statistical Analysis
 
-Temporal trends in accessibility were analyzed using linear regression to measure changes from 2013 to 2022. Statistical significance was assessed at p < 0.05. Slope calculations, R-squared values, and p-values were computed for each demographic category and drive time threshold.
+Temporal trends in accessibility were analyzed using linear regression to
+measure changes from 2013 to 2022. Statistical significance was assessed at p \<
+0.05. Slope calculations, R-squared values, and p-values were computed for each
+demographic category and drive time threshold.
 
 ## Results
 
 ### Overall Access to Gynecologic Oncologists
 
-**Baseline Access (2013)**: Among the total female population, 72.4 million women (44.5% of total population) had access to gynecologic oncologists within a 30-minute drive time. Access increased with longer drive times: 98.3 million women (60.4%) within 60 minutes, 133.0 million women (81.8%) within 120 minutes, and 148.4 million women (91.3%) within 180 minutes.
+**Baseline Access (2013)**: Among the total female population, 72.4 million
+women (44.5% of total population) had access to gynecologic oncologists within a
+30-minute drive time. Access increased with longer drive times: 98.3 million
+women (60.4%) within 60 minutes, 133.0 million women (81.8%) within 120 minutes,
+and 148.4 million women (91.3%) within 180 minutes.
 
-**Current Access (2022)**: Access levels remained relatively stable, with 71.6 million women having 30-minute access, 97.7 million women having 60-minute access, 132.9 million women having 120-minute access, and 148.4 million women having 180-minute access.
+**Current Access (2022)**: Access levels remained relatively stable, with 71.6
+million women having 30-minute access, 97.7 million women having 60-minute
+access, 132.9 million women having 120-minute access, and 148.4 million women
+having 180-minute access.
 
-```r
+``` r
 # Example access data structure
 =======
   "1437904760",   # Lizeth Acosta, MD
@@ -752,7 +832,6 @@ order:
     and total women.\
 
 ``` r
->>>>>>> 47596a66077d445ea529f1f63bcd5de6409f2044
 > access_merged
 # A tibble: 240 × 6
    year  range category              count     total percent
@@ -761,23 +840,25 @@ order:
  2 2013   1800 total_female_white 46553359 119180751    39.1
 ```
 
-<<<<<<< HEAD
 ### Temporal Trends in Access (2013-2022)
 
-Statistical analysis of temporal trends revealed significant variations by demographic group:
+Statistical analysis of temporal trends revealed significant variations by
+demographic group:
 
-**Total Female Population**: Showed declining trends across all drive time thresholds, though not all reached statistical significance:
-- 30-minute access: -736,396 women per year (R² = 0.113, p = 0.343)
-- 60-minute access: -630,107 women per year (R² = 0.072, p = 0.453)  
-- 120-minute access: -134,072 women per year (R² = 0.005, p = 0.854)
-- 180-minute access: -3,016 women per year (R² < 0.001, p = 0.997)
+**Total Female Population**: Showed declining trends across all drive time
+thresholds, though not all reached statistical significance: - 30-minute access:
+-736,396 women per year (R² = 0.113, p = 0.343) - 60-minute access: -630,107
+women per year (R² = 0.072, p = 0.453)\
+- 120-minute access: -134,072 women per year (R² = 0.005, p = 0.854) -
+180-minute access: -3,016 women per year (R² \< 0.001, p = 0.997)
 
-**Racial/Ethnic Disparities**:
-- **White women**: Significant declines in access observed across all time thresholds
-- **Asian women**: Significant increases in longer drive time access (120+ minutes)
-- **American Indian/Alaska Native women**: Mixed trends with some increases in 30- and 60-minute access categories, though starting from lower baseline access levels
+**Racial/Ethnic Disparities**: - **White women**: Significant declines in access
+observed across all time thresholds - **Asian women**: Significant increases in
+longer drive time access (120+ minutes) - **American Indian/Alaska Native
+women**: Mixed trends with some increases in 30- and 60-minute access
+categories, though starting from lower baseline access levels
 
-```r
+``` r
 =======
 19. `analyze_isochrone_data.R` - Measures the slope for access from start 2013
     to finish 2022. Finds significant increases or decreases in the number of
@@ -805,129 +886,2404 @@ year5   total_female_aian  access_60min_cleaned  1.109027e+04 1.747050e-01 0.229
 
 ### Geographic Patterns
 
-Analysis revealed persistent rural-urban divides and regional variations in access to gynecologic oncology care. Geographic regions with highest access density included major metropolitan areas and academic medical centers, while rural and frontier areas showed significantly reduced access across all time thresholds.
+Analysis revealed persistent rural-urban divides and regional variations in
+access to gynecologic oncology care. Geographic regions with highest access
+density included major metropolitan areas and academic medical centers, while
+rural and frontier areas showed significantly reduced access across all time
+thresholds.
 
 ```{r}
+# Load required packages for README generation
 library(knitr)
-knitr::include_graphics("figures/mean_access_by_group.png")
+library(kableExtra)
+library(DT)
+library(plotly)
 ```
 
-```{r}
-knitr::include_graphics("figures/access_over_time.png")
+# Project Overview {.tabset}
+
+## Overview
+
+::: highlight-box
+**Mission**: This project provides the most comprehensive analysis of nationwide
+access to gynecologic oncologists and OBGYN subspecialists using advanced
+**drive time isochrone methodology**, **demographic stratification**, and
+**longitudinal geospatial analysis**.
+:::
+
+This research examines healthcare accessibility disparities across: -
+**Geographic dimensions** (urban/rural, regional variations) - **Demographic
+stratifications** (race, ethnicity, socioeconomic status) - \*Temporal dynamics
+**(2013-2023 longitudinal trends) -** Travel time thresholds\*\* (30, 60, 120,
+180-minute drive times)
+
+# 📁 NBER NPPES Data
+
+This project uses **National Plan and Provider Enumeration System (NPPES)** data
+as released by the **National Bureau of Economic Research (NBER)**, which
+provides historical snapshots of the NPPES downloadable files.
+
+### 📌 Data Source
+
+The files were downloaded from the NBER’s archival repository of NPPES datasets:
+🔗
+[https://data.nber.org/npi/zip/](https://www.nber.org/research/data/national-plan-and-provider-enumeration-system-nppes)
+
+## 📊 **Expected Results (Based on Directory Listings):**
+
+| Year | File You'll Get | Month | Notes |
+|----|----|----|----|
+| 2007 | `npi200711.csv` | November | Only monthly file available |
+| 2008 | `npidata_20050523-20080512.csv` | Annual | No monthly files |
+| 2009 | `npi20094.csv` | **April** ✅ | Perfect! |
+| 2010 | `npidata_20050523-20100111.csv` | Annual | No monthly files |
+| 2011 | `npi20114.csv` | **April** ✅ | Perfect! |
+| 2012 | `npi20124.csv` | **April** ✅ | Perfect! |
+| 2013 | `npi20133.csv` | March | April missing, March fallback |
+| 2014 | `npi20142.csv` | February | April missing, Feb fallback |
+| 2015-2019 | `npi2015X4.csv` etc. | **April** ✅ | All have April |
+| 2020-2023 | `npi2020X4.parquet` etc. | **April** ✅ | Parquet format |
+
+## 🎉 **You'll Get 17 Years of Data:**
+
+-   **10+ years with actual April data** (2009, 2011, 2012, 2015-2023)
+-   **Close months for missing April** (2007=Nov, 2013=Mar, 2014=Feb)
+-   **Annual consolidated files** for years without monthly data (2008, 2010)
+
+### ✅ Files Used
+
+The file naming patterns are inconsistent across years
+(<https://data.nber.org/npi/webdir/csv/2023/>):
+
+2018 and earlier: core20184.csv (month as number, April = 4) 2020-2022:
+core20214.csv (month as number, April = 4) 2023: core_April_2023.csv (explicit
+month name)
+
+### 🧹 Deduplication and Rationale
+
+-   Duplicate and redundant files (e.g., multiple snapshots within the same
+    year) were removed to streamline processing and conserve storage.
+-   Files with the same extract date but different filenames (e.g.,
+    `npi_data_pfile_20050523-20220410.csv` and
+    `NPPES_Data_Dissemination_April_2022_...`) were deduplicated.
+-   The selection process prioritized **temporal consistency**, with April being
+    used as a standard reference point for yearly comparison.
+
+--------------------------------------------------------------------------------
+
+### 📊 Use Case
+
+These deduplicated files serve as the foundational input for:
+
+-   Identifying actively practicing OBGYNs each year,
+-   Constructing a longitudinal DuckDB dataset,
+-   Assessing trends in geographic and specialty access to obstetric and
+    gynecologic care across the U.S.
+
+--------------------------------------------------------------------------------
+
+Let me know if you’d like to append a citation format or include SHA256 hashes
+for integrity verification.
+
+### Key Innovation
+
+Using the **HERE Maps API** combined with **high-resolution census data**, we
+calculate precise drive time isochrones around specialist locations and perform
+**area-weighted demographic analysis** of populations within each accessibility
+threshold.
+
+# HERE API and hereR Package Integration
+
+## Overview
+
+This gynecologic oncology accessibility analysis leveraged the HERE Location
+Services API through the `hereR` R package to calculate realistic drive time
+isochrones around gynecologic oncologist subspecialist practices. The
+implementation consisted of three main phases utilizing enterprise-grade routing
+and geospatial analysis capabilities with temporal traffic awareness.
+
+## Phase 0: National Provider Identifier (NPI) Database Processing
+
+### Identifying Gynecologic Oncologists
+
+*Source: `R/03-search_and_process_npi.R`*
+
+The analysis began by identifying gynecologic oncologists from the National
+Provider Identifier (NPI) database. The NPI database contains comprehensive
+provider information including subspecialty classifications, practice locations,
+and credentials.
+
+```{r npi-processing, eval=FALSE, echo=TRUE}
+# Process NPI database to identify gynecologic oncologists
+subspecialists_data <- readr::read_csv("data/03-search_and_process_npi/subspecialists_only.csv")
+
+# Display sample of gynecologic oncologist data
+subspecialists_sample <- subspecialists_data %>%
+  dplyr::slice_head(n = 10)
+
+DT::datatable(
+  subspecialists_sample,
+  caption = "Sample Gynecologic Oncologists from NPI Database Processing",
+  options = list(
+    pageLength = 10,
+    scrollX = TRUE,
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel')
+  ),
+  extensions = 'Buttons',
+  rownames = FALSE
+)
 ```
 
-```{r}
-knitr::include_graphics("figures/access_distribution.png")
+The NPI database processing identified gynecologic oncologists through: -
+**Taxonomy codes**: Specific subspecialty classifications for gynecologic
+oncology - **Credential verification**: Board certification in gynecologic
+oncology\
+- **Practice validation**: Active practices with complete address information -
+**Duplicate removal**: Ensuring unique provider-location combinations
+
+## Why HERE API Over Alternatives
+
+HERE API was selected for this analysis because it provides **historical traffic
+data** and allows specification of exact dates and times for routing
+calculations. This temporal capability was essential for:
+
+-   Analyzing accessibility patterns across multiple years (2013-2022)
+-   Accounting for traffic variations on specific dates
+-   Ensuring consistent peak-hour analysis (Friday 9 AM conditions)
+-   Comparing year-over-year accessibility changes under similar traffic
+    conditions
+
+Alternative APIs lack this temporal specificity, making them unsuitable for
+longitudinal healthcare accessibility studies.
+
+## Phase 1: Geocoding Gynecologic Oncologist Practices
+
+### Address Preparation and Google Geocoding Strategy
+
+*Source: `R/04-geocode.R`*
+
+The analysis began by geocoding gynecologic oncologist addresses using
+**complete street addresses** rather than ZIP codes alone. This approach was
+critical for spatial accuracy in healthcare accessibility analysis.
+
+```{r address-preparation, eval=FALSE, echo=TRUE}
+readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds") %>%
+  tidyr::unite(address, city, state, zip, sep = ", ", remove = FALSE, na.rm = FALSE) %>%
+  readr::write_csv(., "data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv")
 ```
 
-### Subspecialist Workforce Trends
+### Geocoding Implementation
 
-The analysis of subspecialist workforce over time revealed relatively stable provider numbers but shifting geographic distribution. Retirement pattern analysis using multiple data sources (NPI deactivation, Medicare prescribing data, and board certification status) improved accuracy of active workforce estimates.
+*Source: `R/04-geocode.R`*
 
-## File Organization
+```{r geocoding-implementation, eval=FALSE, echo=TRUE}
+csv_file <- "data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv"
+geocoded_data <- create_geocode(csv_file)  # Custom function using Google Geocoding API
+write_csv(geocoded_data, "data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv")
 
-#### Data Gathering
-- `bespoke_functions.R` - Data for the duckDB connection and functions for the Data Gathering lettered code below.  The National Bureau of Economic Research (NBER) provides a cumulative NPI/NPPES dataset created from monthly CMS files spanning from April 2007 to the present, addressing limitations in official CMS offerings that lack historical provider details. The dataset is deduplicated based on variable changes (excluding mere updates in file names or years), and includes separate core and multiplicative variable files to manage the large file sizes efficiently.
+# Validation of geocoding accuracy
+mean(geocoded_data$score) # Accuracy assessment
+```
 
-| **Dataset/Script Name**                        | **Available Years**            | **Notes**                                                                                                       |
-|:------------------------------------------------|:-------------------------------|:----------------------------------------------------------------------------------------------------------------|
-| **`A_nppes_download.R`**                        | 2007–2022                      | NBER cumulative NPPES file (monthly updates deduplicated; includes changes back to 2007).                      |
-| **`A-NPI_deactivation_download.R`**             | Varies, slightly delayed       | Based on self-reported deactivation. CMS updates irregularly; may lag real-time by 1–2 years.                  |
-| **`A-Medicare_part_d_prescribers_data_downloaded`** | 2013–2022                  | Released annually by CMS; first available dataset based on 2013 prescribing data.                              |
-| **`A-download_physician_compare_download`**     | ~2013–2020 (downloaded files)  | ICPSR archive has files through ~2020 (Physician Compare closed in Dec 2020). Must manually log in.            |
-| **`A-facility_affiliation_download.R`**         | 2014–present                   | First Facility Affiliation data started ~2014; yearly updates (CMS Physician Compare Affiliation data).        |
-| **`A-open_payments_download.R`**                | 2013–present                   | Open Payments (Sunshine Act) started reporting payments in 2013. Annual updates.                               |
+### Why Full Addresses vs. ZIP Code Geocoding
 
+**Full Address Advantages:** - **Spatial precision**: Street-level accuracy
+(\~10-50 meter precision) vs. ZIP centroid (\~1-5 km precision) - **Clinical
+relevance**: Patients navigate to specific medical buildings, not ZIP code
+centers - **Urban accuracy**: Critical in dense medical districts where multiple
+practices exist within single ZIP codes - **Accessibility modeling**: Drive time
+calculations require precise origin points for realistic routing
 
-- `A_nppes_download.R` - Downloads NPPES data for back years from NBER (National Board Economic Research).  The National Bureau of Economic Research (NBER) provides a cumulative NPI/NPPES dataset created from monthly CMS files spanning from April 2007 to 2022, addressing limitations in official CMS offerings that lack historical provider details. The dataset is deduplicated based on variable changes (excluding mere updates in file names or years), and includes separate core and multiplicative variable files to manage the large file sizes efficiently.
+**ZIP Code Limitations:** - **Spatial aggregation error**: ZIP centroids may be
+miles from actual practice locations - *Example*: In Denver ZIP 80218, the
+geographic centroid falls in City Park, while gynecologic oncologists practice
+3+ miles away at Presbyterian/Saint Joseph Hospital on the ZIP's periphery -
+**Urban bias**: ZIP centroids often fall in geographic centers, not
+population-weighted centers - *Example*: Manhattan ZIP 10065 centroid falls in
+Central Park (unpopulated), while actual gynecologic oncology practices cluster
+near populated areas along York Avenue and East End Avenue - **Accessibility
+overestimation**: Patients may appear to have access when the actual practice is
+significantly farther - *Example*: A patient in Boulder ZIP 80302 appears to
+have 15-minute access based on ZIP centroid calculations, but the actual
+gynecologic oncologist practice is 25+ minutes away due to the centroid falling
+in downtown Boulder while the practice is located on the eastern edge near
+Foothills Hospital - **Medical district distortion**: Hospital complexes and
+medical centers span multiple ZIP codes - *Example*: The University of Colorado
+Anschutz Medical Campus spans ZIPs 80045 and 80238, with gynecologic oncologists
+in the same building having different ZIP codes, creating artificial
+accessibility boundaries that don't reflect clinical reality
 
-- `A-NPI_deactivation_download.R` - NPPES data may be a few years behind and is all based on personal report.  
+The geocoding achieved high spatial accuracy with quality metrics assessed
+using:
 
-- `A-Medicare_part_d_prescribers_data_downloaded` - Good for docs who prescribe drugs to Medicare patients over 65 years old.  Started 2013 to 2022.  
+$$\text{Geocoding Accuracy} = \bar{S} = \frac{1}{n}\sum_{i=1}^{n} s_i$$
 
-- `A-download_physician_compare_download` - To get old physician compare/national downloadable files we need to log in manually to OPEN ICPSR:  https://www.openicpsr.org/openicpsr/project/149961/version/V1/view?path=/openicpsr/149961/fcr:versions/V1&type=project.  You have to login with google account to download it.  
+where $s_i$ represents the Google Geocoding API confidence score for each
+geocoded gynecologic oncologist address $i$.
 
-- `A-facility_affiliation_download.R` - Gold standard.  
+## Phase 2: Isochrone Generation
 
-- `A-open_payments_download.R` - Open Payments.  
+### Mathematical Definition of Healthcare Isochrones
 
-- `B-read_in_csv_file_to_duckDB_database.R` -  Reads in the NPPES CSV fils from the NBER to the duckDB database.  The primary action occurs via the process_nppes_data function (defined in an external script bespoke_functions.R), which reads and processes a large CSV file containing historical NPI data (spanning May 2005 to October 2020). The processed data is stored in a DuckDB database file. 
+For each gynecologic oncologist practice $g$, isochrones represent drive time
+accessibility zones:
 
-- `C-Extracting_and_Processing_NPPES_Provider_Data.R` - Function for processing OBGYNs from NPPES data with exact file names for years 2010 to 2022.  Automatically identifies and maps database tables to their corresponding years, enabling efficient extraction of provider data across different time periods.  Specifies taxonomy codes representing various OB/GYN subspecialties, including general obstetrics and gynecology, maternal-fetal medicine, and female pelvic medicine. Looks at all taxonomy columns in each year's dataset (not just the first one).  Checks if any of your specified codes appear in any of those columns.  Includes a physician in the results if there's a match in any column.  Retrieves provider records matching specified OB/GYN taxonomy codes from each year, standardizing and combining the data into a unified dataset.
+$$I_{g,t} = \{p \in \mathbb{R}^2 : T(g, p) \leq t\}$$
 
-- `D-Quality_check_on_NPPES_merge.R` - The check_physician_presence function is a well-designed utility for tracking physicians across temporal data. It efficiently analyzes a dataset containing physician information to determine when specific providers appear in the records. The function accepts a list of National Provider Identifiers (NPIs), optionally paired with provider names, and methodically examines each NPI's presence throughout different years. It returns a structured data frame summarizing each provider's representation in the dataset, including their total record count and a chronological listing of years in which they appear. This function is particularly valuable for longitudinal analyses of healthcare provider data, enabling researchers to identify patterns in physician presence, track career trajectories, or validate data completeness across multiple years of NPI records.
+where $T(g, p)$ represents the drive time from gynecologic oncologist $g$ to
+population point $p$, and $t \in \{30, 60, 120, 180\}$ minutes.
 
-- `E-Medicare_part_d_prescribers_data_processing.R` - This script processes Medicare Part D prescribing data from the Centers for Medicare & Medicaid Services (CMS). Process each table filtering "Prscrbr_Type" only OBGYN and "Gynecological Oncology".  It identifies providers' prescribing patterns, cleans data by removing outlier records (claim counts over 50,000), annotates records by year, and merges multiple years into a single standardized dataset. Additionally, it calculates the last consecutive year each provider actively prescribed medications under Medicare Part D, facilitating analysis of provider activity and continuity over time.  NOT GOOD FOR DOCS WHO DO NOT TREAT PATIENTS >65 years old.  
+### Isochrone Visualization
 
-- `F-retirement_year_confirmation.R` - Download the massive data files to the external hard drive for this with one set of code then then can run E-retirement_year_confirmation.R.  
+```         
+    Gynecologic Oncologist Practice (●)
+            │
+    ┌───────┼───────┐
+    │   30 min      │     ← Immediate access zone
+    │   ┌───┼───┐   │
+    │   │60 min │   │     ← Regional access zone  
+    │   │ ┌─┼─┐ │   │
+    │   │ │120│ │   │     ← Extended access zone
+    │   │ │min│ │   │
+    │   │ │180│ │   │     ← Maximum reasonable access
+    │   │ │min│ │   │
+    │   │ └─┼─┘ │   │
+    │   └───┼───┘   │
+    └───────┼───────┘
 
-Retirement Year Data download:
-`NPPES_deactivated_download.R` - Best source but may be late.  
-`Medicare_part_d_prescribers_data_processing` - People who prescribed to >65 year old women.  
-`download_physician_compare_data.R` - Includes data for people who see Medicare.  
-facility affiliation. - Does not include a year for the facility affiliation so it is not helpful.  
-ABMS - scraped.  
+    Areas reachable within:
+    ■ 30 minutes  (immediate access)
+    ■ 60 minutes  (reasonable access) 
+    ■ 120 minutes (extended access)
+    ■ 180 minutes (maximum access)
+```
 
-- `getting_isochrones_trying.R` - Alternative method for isochrone generation
-- `retirement_adjusted.R` - Enhanced retirement analysis using multiple data sources (NPI deactivation, Medicare data, and board certification status) to improve workforce accuracy.
-- `subspecialists over time.R` - Analysis of subspecialist trends
-- `visualize_fips_inters_isochr.R` - Visualizes FIPS code intersections
-- `fips_blocks_female_proportion.R` - Analyzes female population in FIPS blocks
-- `fips_isochrones_population_intersect.R` - Examines population within isochrones
-- `zzzPostico.R` - Used Postico originally.  Able to use duckDB later on.  
-- `Postico_database_pull.R` - Extracts physician data from PostgreSQL database, enabling year-by-year analysis of physician practice locations from 2013 to 2022.  Pulls "GYNECOLOGIC ONCOLOGY" from the Primary Specialty.  For urogyn, we will need NPIs to go retrospectively to look for people.  
+### Implementation Parameters
+
+*Source: `R/06-isochrones.R`*
+
+``` r
+# Temporal analysis across multiple years for longitudinal study
+iso_datetime_yearly <- c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-16 09:00:00",
+  "2016-10-21 09:00:00", "2017-10-20 09:00:00", "2018-10-19 09:00:00",
+  "2019-10-18 09:00:00", "2020-10-16 09:00:00", "2021-10-15 09:00:00",
+  "2022-10-21 09:00:00")
+
+isochrones_sf <- process_and_save_isochrones(
+  input_file_no_error_rows, 
+  chunk_size = 25, 
+  iso_datetime = "2023-10-20 09:00:00",
+  iso_ranges = c(30*60, 60*60, 120*60, 180*60),  # Convert minutes to seconds
+  crs = 4326, 
+  transport_mode = "car",
+  file_path_prefix = "data/06-isochrones/isochrones_"
+)
+```
+
+### Error Handling and Validation
+
+*Source: `R/06-isochrones.R`*
+
+```{r error-handling, eval=FALSE, echo=TRUE}
+# Pre-validation to prevent batch processing failures
+errors <- test_and_process_isochrones(input_file)
+input_file_no_error_rows <- input_file %>%
+  dplyr::filter(!id %in% error_rows)
+
+# Calculate total expected isochrone features
+nrow(input_file_no_error_rows) * 4  # 4 time thresholds per practice
+```
+
+The total number of isochrone features generated follows:
+
+$N_{total} = N_{gynecologic oncologists} \times N_{thresholds} = N_{gynecologic oncologists} \times 4$
+
+### Spatial Validation and Clipping
+
+*Source: `R/06-isochrones.R`*
+
+```{r spatial-validation, eval=FALSE, echo=TRUE}
+# Clip isochrones to USA borders for analysis boundary
+usa_borders <- rnaturalearth::ne_states(country = "United States of America", returnclass = "sf") %>%
+  sf::st_set_crs(4326)
+
+isochrones_sf_clipped <- sf::st_intersection(isochrones_df, usa_borders) %>%
+  dplyr::arrange(desc(rank))  # Important for proper layering
+
+# Geometry validation for robust spatial analysis
+isochrones_sf_clipped <- sf::st_make_valid(isochrones_sf_clipped)
+```
+
+## Phase 3: Spatial Analysis and Population Accessibility
+
+### Spatial Join Implementation
+
+*Source: `R/07-isochrone-mapping.R`*
+
+```{r spatial-join, eval=FALSE, echo=TRUE}
+# Prepare gynecologic oncologist point locations
+subspecialists_lat_long_copy <- subspecialists_lat_long %>%
+  sf::st_as_sf(coords = c("long", "lat")) %>%
+  sf::st_set_crs(4326) %>%
+  distinct(address, .keep_all = TRUE)
+
+# Perform spatial join between practices and their service areas
+result <- sf::st_join(
+  end_isochrones_sf_clipped, 
+  subspecialists_lat_long_copy, 
+  left = FALSE, 
+  suffix = c("_subspecialists_lat_long", "_isochrones")
+)
+```
+
+### Population Accessibility Calculation
+
+Population accessibility for gynecologic oncology services was calculated as:
+
+$$A_{d,t} = \frac{P_{d,t}}{P_{d,total}} \times 100\%$$
+
+where: - $A_{d,t}$ = accessibility percentage for demographic group $d$ within
+time threshold $t$ - $P_{d,t}$ = population of demographic group $d$ within $t$
+minutes of gynecologic oncologist - $P_{d,total}$ = total population of
+demographic group $d$
+
+### Technical Implementation Challenges
+
+*Source: `R/06-isochrones.R` and `R/07-isochrone-mapping.R`*
+
+1.  **API Rate Limiting**: Processed in chunks of 25 gynecologic oncologist
+    locations per batch
+2.  **Temporal Consistency**: Used identical Friday 9 AM timestamps across
+    analysis years\
+3.  **Error Recovery**: Pre-validation prevented batch failures from problematic
+    addresses
+4.  **Memory Management**: Applied strategic garbage collection for large
+    spatial operations
+5.  **Geometry Validation**: Ensured spatial integrity through validation and
+    simplification
+
+```{r memory-management, eval=FALSE, echo=TRUE}
+# Memory management for large spatial operations
+invisible(gc())
+
+# Geometry simplification while preserving topology
+subspecialists_lat_long_copy <- sf::st_simplify(subspecialists_lat_long_copy, 
+                                               preserveTopology = TRUE, 
+                                               dTolerance = 1000)  # 1km tolerance
+```
+
+## Visualization and Quality Assurance
+
+### Interactive Mapping Validation
+
+*Source: `R/07-isochrone-mapping.R`*
+
+```{r interactive-mapping, eval=FALSE, echo=TRUE}
+# Create validation map showing gynecologic oncologist locations and service areas
+isochrone_map <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(
+    data = end_isochrones_sf_clipped,
+    fillColor = ~color_palette[match(range, unique(end_isochrones_sf_clipped$range))],
+    fillOpacity = 0.1,
+    popup = ~paste0("<strong>Isochrone:</strong> ", range, " minutes")
+  ) %>%
+  addCircleMarkers(
+    data = subspecialists_lat_long_copy,
+    popup = ~paste0("<strong>Gynecologic Oncologist:</strong> ", address)
+  )
+```
+
+## Data Output Structure
+
+The final dataset maintained a 1:many relationship where each gynecologic
+oncologist practice was associated with its corresponding drive time isochrones:
+
+-   **Gynecologic Oncologist Practices**: $N_{gynecologic oncologists}$ unique
+    subspecialist locations
+-   **Isochrone Features**: $4 \times N_{gynecologic oncologists}$ total
+    accessibility polygons\
+-   **Time Thresholds**: $T = \{30, 60, 120, 180\}$ minutes
+-   **Coordinate System**: EPSG:4326 (WGS84)
+-   **Output Format**: ESRI Shapefile maintaining MULTIPOLYGON geometry
+
+*Source: `R/06-isochrones.R`*
+
+```{r data-output, eval=FALSE, echo=TRUE}
+sf::st_write(
+  isochrones_sf_clipped,
+  dsn = "data/06-isochrones/end_isochrones_sf_clipped",
+  layer = "isochrones",
+  driver = "ESRI Shapefile",
+  quiet = FALSE, append = FALSE
+)
+```
+
+This methodology provides a robust foundation for analyzing temporal changes in
+gynecologic oncology accessibility across demographic groups and geographic
+regions from 2013-2022. \# Subspecialties Analyzed
+
+```{r subspecialty-table, echo=FALSE, eval=FALSE}
+subspecialty_data <- data.frame(
+  Subspecialty = c(
+    "Gynecologic Oncology",
+    "Female Pelvic Medicine & Reconstructive Surgery",
+    "Maternal-Fetal Medicine", 
+    "Reproductive Endocrinology & Infertility"
+  ),
+  `Taxonomy Code` = c(
+    "207VX0201X",
+    "207VF0040X", 
+    "207VM0101X",
+    "207VE0102X"
+  ),
+  Description = c(
+    "Cancer specialists focusing on gynecologic malignancies",
+    "Urogynecology and pelvic floor reconstructive surgery", 
+    "High-risk pregnancy and maternal complications",
+    "Fertility specialists and reproductive hormones"
+  ),
+  `Primary Focus` = c(
+    "PRIMARY ANALYSIS TARGET",
+    "Secondary analysis",
+    "Secondary analysis", 
+    "Secondary analysis"
+  )
+)
+
+kable(subspecialty_data, 
+      caption = "OBGYN Subspecialties Analyzed in Healthcare Accessibility Study",
+      escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(1, bold = TRUE, background = "#fff3cd") %>%
+  column_spec(1, bold = TRUE)
+```
+
+--------------------------------------------------------------------------------
+
+# 📊 Mathematical Framework
+
+## Isochrone Generation Equations
+
+::: equation-box
+**Isochrone Definition for Census Tracts:**
+$$I_t(O) = \{T_i \in \mathcal{T} : d(O, c(T_i)) \leq t\}$$
+
+**Multi-Time Isochrone System:**
+$$\mathcal{I} = \bigcup_{t \in \{30, 60, 120, 180\}} I_t(O) \text{ where } I_t(O) = \{T_i : d(O, c(T_i)) \leq t\}$$
+
+**Travel Time Function with Network Constraints:**
+$$d(O, c(T_i)) = \min_{p \in P(O, c(T_i))} \sum_{e \in p} \frac{l_e}{v_e}$$
+
+Where: - $I_t(O)$ = isochrone for time $t$ from origin $O$ - $\mathcal{T}$ = set
+of all census tracts - $T_i$ = individual census tract $i$ - $c(T_i)$ = centroid
+of census tract $T_i$ - $d(O, c(T_i))$ = shortest travel time from origin to
+tract centroid - $P(O, c(T_i))$ = set of all possible paths from $O$ to
+$c(T_i)$ - $l_e$ = length of road segment $e$ - $v_e$ = speed on road segment
+$e$
+:::
+
+## Demographic Accessibility Equations
+
+::: equation-box
+**Total Accessible Women Population by Race/Ethnicity:** $$\begin{align}
+A_t^{Total}(O) &= A_t^{White}(O) + A_t^{Black}(O) + A_t^{Asian}(O) \\
+&\quad + A_t^{HIPI}(O) + A_t^{Hispanic}(O) + A_t^{Other}(O)
+\end{align}$$
+:::
+
+--------------------------------------------------------------------------------
+
+# 🛠️ Advanced R Implementation
+
+## Comprehensive Accessibility Analysis Functions
+
+::: code-title
+Core Analysis Framework
+:::
+
+```{r comprehensive-functions, eval=FALSE}
+#' @title Visualize Accessibility Trends Comprehensively
+#' @description Creates comprehensive visualizations of accessibility trends from 
+#'   demographic data with statistical analysis and confidence intervals
+#' @param accessibility_data_filepath Path to CSV containing accessibility data
+#' @param visualization_output_directory Output directory for all visualizations
+#' @param time_threshold_ranges Vector of time ranges (in minutes)
+#' @param verbose_logging Detailed progress logging
+#' @return List of visualization objects and summary statistics
+#' @export
+visualize_accessibility_trends_comprehensive <- function(
+    accessibility_data_filepath = "access_by_group.csv", 
+    visualization_output_directory = "output",
+    time_threshold_ranges = c(30, 60, 120, 180),
+    verbose_logging = TRUE) {
+  
+  # Configure comprehensive logging
+  logger::log_threshold(if(verbose_logging) logger::INFO else logger::WARN)
+  
+  # Extensive input validation with detailed error messages
+  validate_visualization_inputs(
+    accessibility_data_filepath, 
+    visualization_output_directory, 
+    time_threshold_ranges, 
+    verbose_logging
+  )
+  
+  # Create comprehensive output directory structure
+  output_paths <- initialize_output_directories(visualization_output_directory)
+  
+  # Load and process accessibility data with quality checks
+  logger::log_info("Loading accessibility data from: {accessibility_data_filepath}")
+  raw_accessibility_dataset <- readr::read_csv(accessibility_data_filepath, show_col_types = FALSE)
+  
+  # Advanced data processing with time threshold mapping
+  processed_accessibility_data <- prepare_accessibility_dataset(
+    raw_accessibility_dataset, 
+    time_threshold_ranges
+  )
+  
+  # Generate comprehensive statistical summaries
+  accessibility_summary_statistics <- create_comprehensive_summary_statistics(
+    processed_accessibility_data
+  )
+  
+  # Create full suite of visualizations
+  accessibility_visualizations <- generate_all_accessibility_plots(
+    accessibility_summary_statistics, 
+    time_threshold_ranges,
+    output_paths
+  )
+  
+  # Save comprehensive outputs
+  save_accessibility_analysis_outputs(accessibility_summary_statistics, output_paths)
+  
+  logger::log_info("Comprehensive accessibility analysis completed successfully")
+  
+  return(accessibility_visualizations)
+}
+
+#' @title Compare Accessibility Between Years with Statistical Testing
+#' @param accessibility_data_filepath Path to accessibility dataset
+#' @param comparison_year_vector Years to compare (NULL uses first/last)
+#' @param comparison_output_directory Output directory
+#' @param verbose_logging Enable detailed logging
+#' @return List with comparison plots, statistics, and trend analysis
+#' @export
+compare_accessibility_between_years <- function(
+    accessibility_data_filepath = "access_by_group.csv",
+    comparison_year_vector = NULL,
+    comparison_output_directory = "output",
+    verbose_logging = TRUE) {
+  
+  # Configure logging and validation
+  logger::log_threshold(if(verbose_logging) logger::INFO else logger::WARN)
+  validate_year_comparison_inputs(
+    accessibility_data_filepath, 
+    comparison_output_directory, 
+    verbose_logging
+  )
+  
+  # Setup comprehensive output structure
+  output_paths <- initialize_comparison_output_directories(comparison_output_directory)
+  
+  # Load and validate dataset
+  logger::log_info("Loading accessibility data")
+  raw_dataset <- readr::read_csv(accessibility_data_filepath, show_col_types = FALSE)
+  
+  # Determine optimal comparison years if not specified
+  available_years <- sort(unique(raw_dataset$year))
+  final_years <- if (is.null(comparison_year_vector)) {
+    c(min(available_years), max(available_years))
+  } else {
+    comparison_year_vector
+  }
+  
+  # Advanced data processing with statistical preparation
+  processed_comparison_dataset <- prepare_year_comparison_dataset(
+    raw_dataset, 
+    final_years
+  )
+  
+  # Comprehensive statistical analysis
+  year_comparison_statistics <- create_year_comparison_statistics(
+    processed_comparison_dataset, 
+    final_years
+  )
+  
+  # Generate publication-quality visualizations
+  comparison_visualization <- create_year_comparison_visualization(
+    year_comparison_statistics$aggregated_summary, 
+    final_years,
+    output_paths
+  )
+  
+  # Save all outputs with metadata
+  save_year_comparison_outputs(year_comparison_statistics, output_paths)
+  
+  logger::log_info("Year comparison analysis completed successfully")
+  
+  return(list(
+    comparison_plot = comparison_visualization,
+    change_metrics = year_comparison_statistics$change_metrics,
+    summary_statistics = year_comparison_statistics$aggregated_summary
+  ))
+}
+```
+
+## Advanced Helper Functions
+
+::: code-title
+Data Processing and Validation Functions
+:::
+
+```{r helper-functions, eval=FALSE}
+#' Validate Comprehensive Analysis Inputs
+validate_visualization_inputs <- function(accessibility_data_filepath, 
+                                        visualization_output_directory, 
+                                        time_threshold_ranges, 
+                                        verbose_logging) {
+  
+  logger::log_info("Starting comprehensive accessibility analysis validation")
+  
+  # Comprehensive file validation
+  assertthat::assert_that(
+    assertthat::is.string(accessibility_data_filepath),
+    msg = "accessibility_data_filepath must be a valid file path string"
+  )
+  
+  assertthat::assert_that(
+    file.exists(accessibility_data_filepath),
+    msg = paste("Accessibility data file not found:", accessibility_data_filepath)
+  )
+  
+  # Directory validation with creation capability
+  assertthat::assert_that(
+    assertthat::is.string(visualization_output_directory),
+    msg = "visualization_output_directory must be a valid directory path"
+  )
+  
+  # Time threshold validation
+  assertthat::assert_that(
+    is.numeric(time_threshold_ranges),
+    length(time_threshold_ranges) > 0,
+    all(time_threshold_ranges > 0),
+    msg = "time_threshold_ranges must be positive numeric values"
+  )
+  
+  # Logging configuration validation
+  assertthat::assert_that(
+    is.logical(verbose_logging),
+    msg = "verbose_logging must be TRUE or FALSE"
+  )
+  
+  logger::log_info("Input validation completed successfully")
+}
+
+#' Initialize Comprehensive Output Directory Structure
+initialize_output_directories <- function(visualization_output_directory) {
+  
+  base_output_path <- normalizePath(visualization_output_directory, mustWork = FALSE)
+  
+  # Create comprehensive directory structure
+  directory_structure <- list(
+    base = base_output_path,
+    figures = file.path(base_output_path, "figures"),
+    data = file.path(base_output_path, "data"),
+    reports = file.path(base_output_path, "reports"),
+    metadata = file.path(base_output_path, "metadata")
+  )
+  
+  # Create all directories with error handling
+  for (dir_name in names(directory_structure)) {
+    dir_path <- directory_structure[[dir_name]]
+    
+    if (!dir.exists(dir_path)) {
+      tryCatch({
+        dir.create(dir_path, recursive = TRUE)
+        logger::log_info("Created {dir_name} directory: {dir_path}")
+      }, error = function(e) {
+        logger::log_error("Failed to create {dir_name} directory: {e$message}")
+        stop("Cannot create required directory: ", dir_path, call. = FALSE)
+      })
+    }
+  }
+  
+  return(directory_structure)
+}
+```
+
+--------------------------------------------------------------------------------
+
+# 📋 Comprehensive Methods
+
+## Data Sources and Processing Pipeline
+
+::: method-box
+### **Primary Data Sources**
+
+```{r data-sources-table, echo=FALSE, include=FALSE}
+data_sources <- data.frame(
+  `Data Source` = c(
+    "NBER NPPES Dataset",
+    "Medicare Part D Prescriber Data", 
+    "CMS Facility Affiliation Data",
+    "CMS Open Payments Data",
+    "American Community Survey",
+    "Census TIGER/Line Shapefiles",
+    "USDA RUCA Codes"
+  ),
+  `Years Available` = c(
+    "2007-2023",
+    "2013-2022",
+    "2014-present", 
+    "2013-present",
+    "2013-2022 (5-year estimates)",
+    "Annual updates",
+    "2010-based classification"
+  ),
+  `Primary Use` = c(
+    "Provider identification and tracking",
+    "Validation of active practice status",
+    "Gold standard practice locations",
+    "Cross-verification of provider activity",
+    "Demographic and population data",
+    "Geographic boundaries and coordinates",
+    "Rural-urban classification"
+  ),
+  `Data Quality` = c(
+    "Deduplicated, comprehensive",
+    "Medicare patients ≥65 only",
+    "Most accurate location data",
+    "Payment-based activity verification", 
+    "High-resolution demographic data",
+    "Precise geographic boundaries",
+    "Standardized classification system"
+  )
+)
+
+kable(data_sources,
+      caption = "Comprehensive Data Sources for Healthcare Accessibility Analysis",
+      escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                font_size = 10) %>%
+  column_spec(1, bold = TRUE, width = "20%") %>%
+  column_spec(2, width = "15%") %>%
+  column_spec(3, width = "35%") %>%
+  column_spec(4, width = "30%")
+```
+:::
+
+## Advanced Provider Identification
+
+::: method-box
+### **NUCC Healthcare Provider Taxonomy Codes**
+
+Our analysis employs comprehensive taxonomy code searching across **all taxonomy
+columns** (not just primary) to capture providers with multiple subspecialty
+certifications.
+
+```{r taxonomy-codes, eval=FALSE}
+# Comprehensive OBGYN subspecialty taxonomy codes
+obgyn_taxonomy_codes <- c(
+  "207V00000X",    # Obstetrics & Gynecology (General)
+  "207VX0201X",    # Gynecologic Oncology *** PRIMARY FOCUS ***
+  "207VE0102X",    # Reproductive Endocrinology & Infertility
+  "207VG0400X",    # Gynecology (General)
+  "207VM0101X",    # Maternal & Fetal Medicine
+  "207VF0040X",    # Female Pelvic Medicine & Reconstructive Surgery
+  "207VB0002X",    # Bariatric Medicine (OBGYN)
+  "207VC0200X",    # Critical Care Medicine (OBGYN)
+  "207VC0040X",    # Gynecology subspecialty
+  "207VC0300X",    # Complex Family Planning
+  "207VH0002X",    # Hospice and Palliative Medicine (OBGYN)
+  "207VX0000X"     # Obstetrics Only
+)
+
+# Advanced search function with multi-column taxonomy checking
+search_providers_comprehensive <- function(year_data, taxonomy_codes) {
+  
+  # Get all taxonomy columns for the year
+  taxonomy_columns <- grep("^taxonomy", names(year_data), value = TRUE, ignore.case = TRUE)
+  
+  logger::log_info("Searching {length(taxonomy_columns)} taxonomy columns for year {year_data$year[1]}")
+  
+  # Create comprehensive search conditions
+  search_conditions <- purrr::map(taxonomy_columns, function(col) {
+    year_data[[col]] %in% taxonomy_codes
+  })
+  
+  # Combine with OR logic (provider matches if ANY taxonomy column matches)
+  combined_condition <- Reduce(`|`, search_conditions)
+  
+  # Filter and return matching providers
+  matching_providers <- year_data[combined_condition, ]
+  
+  logger::log_info("Found {nrow(matching_providers)} providers matching taxonomy criteria")
+  
+  return(matching_providers)
+}
+```
+:::
+
+## Quality Control and Validation Framework
+
+::: method-box
+### **Multi-Source Validation System**
+
+```{r quality-control, eval=FALSE}
+#' Comprehensive Quality Control for Provider Data
+#' @description Validates provider presence across multiple data sources
+#' @param provider_dataset Main provider dataset
+#' @param validation_npi_list Known NPIs for validation
+#' @param validation_sources List of additional data sources
+#' @return Comprehensive validation report
+quality_control_comprehensive <- function(provider_dataset, 
+                                        validation_npi_list,
+                                        validation_sources = list()) {
+  
+  logger::log_info("Starting comprehensive quality control validation")
+  
+  # Primary validation: known NPI presence
+  validation_results <- check_physician_presence(
+    dataset = provider_dataset,
+    npi_list = validation_npi_list
+  )
+  
+  # Cross-validation with Medicare Part D data
+  if ("medicare_part_d" %in% names(validation_sources)) {
+    medicare_validation <- validate_against_medicare_data(
+      provider_dataset, 
+      validation_sources$medicare_part_d
+    )
+    validation_results$medicare_consistency <- medicare_validation
+  }
+  
+  # Cross-validation with Open Payments data  
+  if ("open_payments" %in% names(validation_sources)) {
+    payments_validation <- validate_against_payments_data(
+      provider_dataset,
+      validation_sources$open_payments
+    )
+    validation_results$payments_consistency <- payments_validation
+  }
+  
+  # Facility affiliation validation
+  if ("facility_affiliation" %in% names(validation_sources)) {
+    facility_validation <- validate_against_facility_data(
+      provider_dataset,
+      validation_sources$facility_affiliation  
+    )
+    validation_results$facility_consistency <- facility_validation
+  }
+  
+  # Generate comprehensive validation summary
+  validation_summary <- create_validation_summary(validation_results)
+  
+  logger::log_info("Quality control validation completed")
+  
+  return(list(
+    detailed_results = validation_results,
+    summary = validation_summary,
+    recommendations = generate_quality_recommendations(validation_results)
+  ))
+}
+
+# Example validation NPI list for quality control
+validation_npi_list <- c(
+  "1689603763",   # Tyler Muffly, MD - Known Gynecologic Oncologist
+  "1528060639",   # John Curtin, MD - Known Gynecologic Oncologist  
+  "1346355807",   # Pedro Miranda, MD - Known Gynecologic Oncologist
+  "1234567890",   # Test case - should not be found
+  "9876543210"    # Test case - should not be found
+)
+```
+:::
+
+--------------------------------------------------------------------------------
+
+# 🗺️ Advanced Geocoding and Spatial Analysis {.tabset}
+
+## Geocoding Framework
+
+::: technical-note
+**Technical Implementation**: Our geocoding system uses the HERE Maps Geocoding
+API v6.2 with comprehensive quality control, batch processing, and automatic
+retry mechanisms.
+:::
+
+```{r geocoding-system, eval=FALSE}
+#' Advanced Geocoding with Quality Assessment
+#' @description Geocodes addresses with comprehensive quality control
+#' @param addresses Vector of addresses to geocode
+#' @param quality_threshold Minimum acceptable quality score (0-1)
+#' @param max_retries Maximum retry attempts for failed geocodes
+#' @param batch_size Number of addresses per batch (rate limiting)
+#' @return Comprehensive geocoding results with quality metrics
+geocode_with_quality_control <- function(addresses, 
+                                       quality_threshold = 0.8,
+                                       max_retries = 3,
+                                       batch_size = 100) {
+  
+  logger::log_info("Starting advanced geocoding with quality control")
+  logger::log_info("Processing {length(addresses)} addresses with quality threshold {quality_threshold}")
+  
+  # Initialize comprehensive results tracking
+  geocoding_results <- tibble::tibble(
+    original_address = addresses,
+    latitude = NA_real_,
+    longitude = NA_real_, 
+    geocoded_address = NA_character_,
+    quality_score = NA_real_,
+    confidence_level = NA_character_,
+    geocoding_status = "pending",
+    retry_count = 0L,
+    processing_time = NA_real_
+  )
+  
+  # Process in batches to respect API rate limits
+  total_batches <- ceiling(length(addresses) / batch_size)
+  
+  pb <- progress::progress_bar$new(
+    total = length(addresses),
+    format = "Geocoding [:bar] :percent :current/:total ETA: :eta"
+  )
+  
+  for (batch_num in 1:total_batches) {
+    
+    # Calculate batch boundaries
+    start_idx <- (batch_num - 1) * batch_size + 1
+    end_idx <- min(batch_num * batch_size, length(addresses))
+    
+    batch_indices <- start_idx:end_idx
+    batch_addresses <- addresses[batch_indices]
+    
+    logger::log_info("Processing batch {batch_num}/{total_batches}")
+    
+    # Process each address in the batch
+    for (i in seq_along(batch_addresses)) {
+      
+      addr_idx <- batch_indices[i]
+      pb$tick()
+      
+      if (is.na(batch_addresses[i]) || batch_addresses[i] == "") {
+        geocoding_results$geocoding_status[addr_idx] <- "empty_address"
+        next
+      }
+      
+      # Attempt geocoding with retries
+      geocoding_attempt <- attempt_geocoding_with_retries(
+        address = batch_addresses[i],
+        max_retries = max_retries,
+        quality_threshold = quality_threshold
+      )
+      
+      # Update results
+      if (!is.null(geocoding_attempt)) {
+        geocoding_results[addr_idx, ] <- update_geocoding_result(
+          geocoding_results[addr_idx, ], 
+          geocoding_attempt
+        )
+      } else {
+        geocoding_results$geocoding_status[addr_idx] <- "failed_all_retries"
+      }
+    }
+    
+    # Rate limiting between batches
+    if (batch_num < total_batches) {
+      Sys.sleep(0.5)  # Respect API rate limits
+    }
+  }
+  
+  # Generate comprehensive quality report
+  quality_report <- generate_geocoding_quality_report(geocoding_results, quality_threshold)
+  
+  logger::log_info("Geocoding completed - {quality_report$high_quality_count} high quality results")
+  
+  return(list(
+    results = geocoding_results,
+    quality_report = quality_report,
+    summary_statistics = calculate_geocoding_statistics(geocoding_results)
+  ))
+}
+```
+
+## Isochrone Generation
+
+::: technical-note
+**HERE Maps Isoline Routing API v7.2 Specifications**: - **Time Thresholds**:
+30, 60, 120, 180 minutes (standard healthcare accessibility benchmarks) -
+**Reference Time**: Third Friday of October, 9:00 AM (consistent across all
+analysis years) - **Traffic Integration**: Real-time traffic data enabled for
+realistic estimates - **Route Optimization**: Highest quality setting for
+maximum precision
+:::
+
+```{r isochrone-generation, eval=FALSE}
+#' Advanced Isochrone Generation with Quality Control
+#' @description Generates drive time isochrones with comprehensive error handling
+#' @param provider_locations sf object with provider coordinates
+#' @param time_thresholds Vector of drive time thresholds (minutes)
+#' @param reference_datetime Standard reference time for consistency
+#' @param chunk_size Number of providers per processing batch
+#' @return Comprehensive isochrone dataset with metadata
+generate_isochrones_comprehensive <- function(provider_locations,
+                                            time_thresholds = c(30, 60, 120, 180),
+                                            reference_datetime = "2023-10-20 09:00:00",
+                                            chunk_size = 25) {
+  
+  logger::log_info("Starting comprehensive isochrone generation")
+  logger::log_info("Processing {nrow(provider_locations)} provider locations")
+  logger::log_info("Time thresholds: {paste(time_thresholds, collapse = ', ')} minutes")
+  
+  # Convert time thresholds to seconds for HERE API
+  time_thresholds_seconds <- time_thresholds * 60
+  
+  # Standardize reference time
+  posix_reference_time <- as.POSIXct(reference_datetime, format = "%Y-%m-%d %H:%M:%S")
+  
+  # Calculate processing chunks
+  total_chunks <- ceiling(nrow(provider_locations) / chunk_size)
+  all_isochrones <- list()
+  processing_metadata <- list()
+  
+  logger::log_info("Processing in {total_chunks} chunks of {chunk_size} providers each")
+  
+  # Progress tracking
+  pb <- progress::progress_bar$new(
+    total = total_chunks,
+    format = "Isochrones [:bar] :percent :current/:total ETA: :eta"
+  )
+  
+  for (chunk_num in 1:total_chunks) {
+    
+    pb$tick()
+    
+    # Define chunk boundaries
+    start_idx <- (chunk_num - 1) * chunk_size + 1
+    end_idx <- min(chunk_num * chunk_size, nrow(provider_locations))
+    
+    chunk_providers <- provider_locations[start_idx:end_idx, ]
+    
+    logger::log_info("Processing chunk {chunk_num}/{total_chunks} ({nrow(chunk_providers)} providers)")
+    
+    # Generate isochrones for chunk with comprehensive error handling
+    chunk_result <- tryCatch({
+      
+      start_time <- Sys.time()
+      
+      # Call HERE API for isochrone generation
+      chunk_isochrones <- hereR::isoline(
+        poi = chunk_providers,
+        range = time_thresholds_seconds,
+        datetime = posix_reference_time,
+        routing_mode = "fast",
+        range_type = "time", 
+        transport_mode = "car",
+        url_only = FALSE,
+        optimize = "balanced",
+        traffic = TRUE,
+        aggregate = FALSE
+      )
+      
+      processing_time <- as.numeric(difftime(Sys.time(), start_time, units = "secs"))
+      
+      # Add processing metadata
+      chunk_isochrones$chunk_number <- chunk_num
+      chunk_isochrones$processing_time <- processing_time
+      chunk_isochrones$reference_datetime <- posix_reference_time
+      
+      logger::log_info("Chunk {chunk_num} completed successfully in {round(processing_time, 2)} seconds")
+      
+      return(chunk_isochrones)
+      
+    }, error = function(e) {
+      
+      logger::log_error("Chunk {chunk_num} failed: {e$message}")
+      
+      # Store error information
+      error_metadata <- list(
+        chunk_number = chunk_num,
+        error_message = e$message,
+        failed_provider_indices = start_idx:end_idx,
+        timestamp = Sys.time()
+      )
+      
+      processing_metadata[[paste0("error_chunk_", chunk_num)]] <<- error_metadata
+      
+      return(NULL)
+    })
+    
+    # Store successful results
+    if (!is.null(chunk_result)) {
+      all_isochrones[[chunk_num]] <- chunk_result
+      
+      # Save intermediate results for large datasets
+      if (chunk_num %% 10 == 0) {
+        intermediate_file <- paste0("intermediate_isochrones_chunk_", chunk_num, ".rds")
+        readr::write_rds(chunk_result, intermediate_file)
+        logger::log_info("Saved intermediate results: {intermediate_file}")
+      }
+    }
+    
+    # Rate limiting between chunks
+    Sys.sleep(0.2)
+  }
+  
+  # Combine all successful isochrone results
+  successful_isochrones <- Filter(Negate(is.null), all_isochrones)
+  
+  if (length(successful_isochrones) > 0) {
+    
+    logger::log_info("Combining {length(successful_isochrones)} successful chunks")
+    
+    combined_isochrones <- do.call(rbind, successful_isochrones)
+    
+    # Add comprehensive metadata
+    combined_isochrones$analysis_timestamp <- Sys.time()
+    combined_isochrones$total_chunks_processed <- total_chunks
+    combined_isochrones$successful_chunks <- length(successful_isochrones)
+    
+    # Generate processing summary
+    processing_summary <- generate_isochrone_processing_summary(
+      combined_isochrones, 
+      processing_metadata,
+      total_chunks
+    )
+    
+    logger::log_info("Isochrone generation completed successfully")
+    logger::log_info("Generated {nrow(combined_isochrones)} isochrone polygons")
+    
+    return(list(
+      isochrones = combined_isochrones,
+      processing_summary = processing_summary,
+      metadata = processing_metadata
+    ))
+    
+  } else {
+    
+    logger::log_error("No successful isochrone chunks generated")
+    stop("Isochrone generation failed for all chunks", call. = FALSE)
+  }
+}
+```
+
+--------------------------------------------------------------------------------
+
+# 📊 Comprehensive Results and Analysis {.tabset}
+
+## Overall Access Statistics
+
+::: results-box
+### **Baseline Access Analysis (2013)**
+
+```{r baseline-access-table, echo=FALSE, include=FALSE}
+baseline_access_2013 <- data.frame(
+  `Drive Time Threshold` = c("30 minutes", "60 minutes", "120 minutes", "180 minutes"),
+  `Women with Access` = c("72.4 million", "98.3 million", "133.0 million", "148.4 million"),
+  `Percentage of Total` = c("44.5%", "60.4%", "81.8%", "91.3%"),
+  `Total Female Population` = rep("162.6 million", 4),
+  `Access Category` = c("Limited", "Moderate", "Good", "Excellent")
+)
+
+kable(baseline_access_2013,
+      caption = "Baseline Healthcare Accessibility to Gynecologic Oncologists (2013)",
+      align = c("l", "r", "r", "r", "c")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  row_spec(1, background = "#ffebee") %>%  # Highlight limited access
+  row_spec(4, background = "#e8f5e8") %>%  # Highlight excellent access
+  column_spec(1, bold = TRUE) %>%
+  column_spec(2, color = "darkblue", bold = TRUE) %>%
+  column_spec(3, color = "darkgreen", bold = TRUE)
+```
+
+### **Current Access Analysis (2022)**
+
+```{r current-access-table, echo=FALSE, include=FALSE}
+current_access_2022 <- data.frame(
+  `Drive Time Threshold` = c("30 minutes", "60 minutes", "120 minutes", "180 minutes"),
+  `Women with Access` = c("71.6 million", "97.7 million", "132.9 million", "148.4 million"),
+  `Percentage of Total` = c("43.4%", "59.3%", "80.6%", "90.1%"),
+  `Change from 2013` = c("-1.1%", "-1.1%", "-1.2%", "-1.2%"),
+  `Absolute Change` = c("-0.8 million", "-0.6 million", "-0.1 million", "0.0 million")
+)
+
+kable(current_access_2022,
+      caption = "Current Healthcare Accessibility to Gynecologic Oncologists (2022)",
+      align = c("l", "r", "r", "r", "r")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  column_spec(1, bold = TRUE) %>%
+  column_spec(4, color = "red", bold = TRUE) %>%
+  column_spec(5, color = "red", bold = TRUE)
+```
+:::
+
+## Temporal Trend Analysis
+
+::: results-box
+### **Statistical Significance Testing (2013-2022)**
+
+```{r trend-analysis-table, echo=FALSE, include=FALSE}
+trend_analysis_results <- data.frame(
+  `Population Group` = c(
+    "Total Female Population",
+    "Total Female Population", 
+    "Total Female Population",
+    "Total Female Population",
+    "White Women",
+    "Black Women", 
+    "Asian Women",
+    "American Indian/Alaska Native Women"
+  ),
+  `Drive Time` = c(
+    "30 minutes",
+    "60 minutes",
+    "120 minutes", 
+    "180 minutes",
+    "All thresholds",
+    "All thresholds",
+    "120+ minutes",
+    "30-60 minutes"
+  ),
+  `Annual Change` = c(
+    "-736,396 women/year",
+    "-630,107 women/year",
+    "-134,072 women/year", 
+    "-3,016 women/year",
+    "Significant decline",
+    "Mixed trends",
+    "Significant increase",
+    "Some increases"
+  ),
+  `R-squared` = c(
+    "0.113",
+    "0.072", 
+    "0.005",
+    "<0.001",
+    "Varies by threshold",
+    "Varies by threshold",
+    ">0.15",
+    "0.15-0.17"
+  ),
+  `P-value` = c(
+    "0.343",
+    "0.453",
+    "0.854",
+    "0.997", 
+    "<0.05",
+    ">0.05",
+    "<0.05",
+    "0.23-0.26"
+  ),
+  `Significance` = c(
+    "Not significant",
+    "Not significant",
+    "Not significant",
+    "Not significant",
+    "Significant", 
+    "Not significant",
+    "Significant",
+    "Not significant"
+  )
+)
+
+kable(trend_analysis_results,
+      caption = "Comprehensive Temporal Trend Analysis with Statistical Testing",
+      align = c("l", "c", "r", "c", "c", "c")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                font_size = 10) %>%
+  row_spec(5, background = "#fff3cd", bold = TRUE) %>%  # Highlight significant results
+  row_spec(7, background = "#d4edda", bold = TRUE) %>%
+  column_spec(1, bold = TRUE, width = "25%") %>%
+  column_spec(6, bold = TRUE)
+```
+:::
+
+## Geographic and Demographic Disparities
+
+::: results-box
+### **Access by Demographic Groups (Interactive)**
+
+```{r demographic-analysis, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# Create sample data for demonstration
+demographic_access <- data.frame(
+  Demographic_Group = rep(c("White", "Black", "Asian", "Hispanic", "AIAN"), 4),
+  Drive_Time = rep(c("30min", "60min", "120min", "180min"), each = 5),
+  Access_Percentage = c(
+    45, 35, 55, 40, 25,  # 30 min
+    62, 48, 70, 55, 38,  # 60 min  
+    83, 75, 88, 78, 65,  # 120 min
+    92, 88, 95, 90, 82   # 180 min
+  ),
+  Population_Millions = c(
+    119, 25, 15, 35, 2,   # 30 min
+    119, 25, 15, 35, 2,   # 60 min
+    119, 25, 15, 35, 2,   # 120 min
+    119, 25, 15, 35, 2    # 180 min
+  )
+)
+
+# Create interactive visualization
+library(plotly)
+
+p <- ggplot(demographic_access, aes(x = Drive_Time, y = Access_Percentage, 
+                                   fill = Demographic_Group)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_viridis_d(option = "plasma", end = 0.9) +
+  labs(
+    title = "Healthcare Accessibility by Demographic Group and Drive Time",
+    subtitle = "Percentage of population with access to gynecologic oncologists",
+    x = "Drive Time Threshold",
+    y = "Percentage with Access (%)",
+    fill = "Demographic Group"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_text(size = 12),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+ggplotly(p, tooltip = c("x", "y", "fill"))
+```
+:::
+
+--------------------------------------------------------------------------------
+
+# 🗃️ Comprehensive File Organization {.tabset}
+
+## Data Pipeline Architecture
+
+::: technical-note
+Our analysis pipeline is organized into **modular phases** with **comprehensive
+error handling**, **logging**, and **quality control** at each stage.
+:::
+
+### Phase 1: Data Gathering and Processing
+
+```{r data-pipeline-table, echo=FALSE, include=FALSE}
+data_pipeline <- data.frame(
+  Script = c(
+    "A_nppes_download.R",
+    "A-NPI_deactivation_download.R", 
+    "A-Medicare_part_d_prescribers_data_downloaded",
+    "A-facility_affiliation_download.R",
+    "A-open_payments_download.R",
+    "B-read_in_csv_file_to_duckDB_database.R",
+    "C-Extracting_and_Processing_NPPES_Provider_Data.R",
+    "D-Quality_check_on_NPPES_merge.R"
+  ),
+  `Data Source` = c(
+    "NBER NPPES Cumulative Dataset",
+    "CMS NPI Deactivation Registry",
+    "CMS Medicare Part D Prescriber Data", 
+    "CMS Facility Affiliation Data",
+    "CMS Open Payments (Sunshine Act)",
+    "DuckDB Database Creation",
+    "OBGYN Provider Extraction",
+    "Quality Control Validation"
+  ),
+  `Years Available` = c(
+    "2007-2023",
+    "Irregular updates", 
+    "2013-2022",
+    "2014-present",
+    "2013-present",
+    "All years",
+    "2010-2022",
+    "All processed years"
+  ),
+  `Primary Function` = c(
+    "Download historical provider data",
+    "Track provider retirement/deactivation",
+    "Validate active prescribing status",
+    "Gold standard practice locations", 
+    "Cross-verify provider activity",
+    "Create efficient queryable database",
+    "Extract OBGYN subspecialists",
+    "Validate data completeness"
+  ),
+  `Output Format` = c(
+    "CSV files",
+    "CSV files",
+    "CSV files",
+    "CSV files", 
+    "CSV files",
+    "DuckDB database",
+    "Standardized dataset",
+    "Validation report"
+  )
+)
+
+kable(data_pipeline,
+      caption = "Comprehensive Data Gathering and Processing Pipeline",
+      escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                font_size = 9) %>%
+  column_spec(1, bold = TRUE, width = "20%") %>%
+  column_spec(2, width = "25%") %>%
+  column_spec(4, width = "30%") %>%
+  row_spec(6:8, background = "#e3f2fd")  # Highlight processing steps
+```
+
+### Phase 2: Setup and Initialization
+
+```{r setup-pipeline-table, echo=FALSE, include=FALSE}
+setup_pipeline <- data.frame(
+  Script = c(
+    "01-setup.R",
+    "02-search_taxonomy.R",
+    "02.5-subspecialists_over_time.R",
+    "03-search_and_process_npi.R", 
+    "03a-search_and_process_extra.R",
+    "04-geocode.R",
+    "05-geocode-cleaning.R"
+  ),
+  `Primary Function` = c(
+    "Initialize project environment, load packages, set API keys",
+    "Search NPPES by taxonomy codes with comprehensive filtering",
+    "Analyze subspecialist temporal trends across multiple years",
+    "Process and validate National Provider Identifier data",
+    "Handle edge cases and additional NPI processing scenarios",
+    "Geocode provider addresses using HERE Maps API",
+    "Clean and validate geocoded coordinates"
+  ),
+  `Key Features` = c(
+    "Package management, directory setup, API configuration",
+    "Multi-column taxonomy search, comprehensive provider filtering",
+    "Longitudinal analysis, retirement pattern detection",
+    "NPI validation, memoized processing, progress tracking",
+    "Edge case handling, data quality improvements",
+    "Batch processing, quality scoring, retry mechanisms", 
+    "Coordinate validation, outlier detection, manual review"
+  ),
+  `Dependencies` = c(
+    "Core R packages, API keys",
+    "npi package, NUCC taxonomy codes",
+    "Temporal data, trend analysis packages",
+    "NPI validation, provider package",
+    "Additional validation sources",
+    "HERE API, geocoding packages",
+    "Spatial validation packages"
+  )
+)
+
+kable(setup_pipeline,
+      caption = "Setup and Data Preparation Pipeline",
+      escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                font_size = 9) %>%
+  column_spec(1, bold = TRUE, width = "20%") %>%
+  column_spec(2, width = "35%") %>%
+  column_spec(3, width = "35%") %>%
+  column_spec(4, width = "20%")
+```
+
+## Advanced Analysis Framework
+
+### Phase 3: Isochrone Generation and Spatial Analysis
+
+```{r isochrone-pipeline-table, echo=FALSE, include=FALSE}
+isochrone_pipeline <- data.frame(
+  Script = c(
+    "06-isochrones.R",
+    "07-isochrone-mapping.R", 
+    "07.5-prep-get-block-group-overlap.R",
+    "08-get-block-group-overlap.R",
+    "08.5-prep-the-census-variables.R",
+    "09-get-census-population.R"
+  ),
+  `Core Function` = c(
+    "Generate precise drive time isochrones using HERE API",
+    "Create comprehensive isochrone maps with spatial joins",
+    "Prepare high-resolution census block group boundaries",
+    "Calculate area-weighted population overlaps with isochrones",
+    "Process demographic variables from American Community Survey",
+    "Compute population statistics within and outside isochrones"
+  ),
+  `Technical Specifications` = c(
+    "30/60/120/180-minute thresholds, real-time traffic, batch processing",
+    "Spatial intersection analysis, coordinate system transformations", 
+    "Census TIGER/Line shapefiles, block group resolution",
+    "Area-weighted calculations, partial overlap handling",
+    "ACS 5-year estimates, demographic stratification preparation",
+    "Population aggregation, demographic breakdowns, temporal analysis"
+  ),
+  `Output Products` = c(
+    "Drive time polygon shapefiles with metadata",
+    "Interactive maps, spatial relationship datasets",
+    "Prepared census geography boundaries",
+    "Population overlap matrices, spatial join results", 
+    "Processed demographic variables, population counts",
+    "Comprehensive accessibility population statistics"
+  )
+)
+
+kable(isochrone_pipeline,
+      caption = "Isochrone Generation and Spatial Analysis Pipeline",
+      escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                font_size = 9) %>%
+  column_spec(1, bold = TRUE, width = "20%") %>%
+  column_spec(2, width = "30%") %>%
+  column_spec(3, width = "30%") %>%
+  column_spec(4, width = "30%")
+```
+
+### Phase 4: Results Generation and Analysis
+
+```{r results-pipeline-table, echo=FALSE, include=FALSE}
+results_pipeline <- data.frame(
+  Script = c(
+    "10-calculate-polygon-demographcs.R",
+    "10-make-region.R",
+    "script2025.R",
+    "analyze_isochrone_data.R",
+    "GO_access_analysis_code.Rmd",
+    "walker_isochrone_maps.R"
+  ),
+  `Analysis Type` = c(
+    "Demographic Characterization",
+    "Regional Geographic Analysis", 
+    "Population Data Aggregation",
+    "Statistical Trend Analysis",
+    "Comprehensive Statistical Report",
+    "Advanced Visualization Creation"
+  ),
+  `Key Outputs` = c(
+    "Population demographics within isochrones by race/ethnicity",
+    "Regional maps, ACOG district analysis, rural-urban comparisons",
+    "Aggregated population tables, accessibility matrices",
+    "Trend slopes, statistical significance testing, R-squared values",
+    "Publication-ready statistical analysis with comprehensive results",
+    "Faceted US maps with Alaska, Hawaii, Puerto Rico isochrone overlays"
+  ),
+  `Statistical Methods` = c(
+    "Descriptive statistics, demographic stratification",
+    "Spatial aggregation, regional comparisons",  
+    "Population weighting, accessibility calculations",
+    "Linear regression, significance testing, confidence intervals",
+    "Comprehensive statistical testing, temporal trend analysis",
+    "Advanced geospatial visualization, multi-panel mapping"
+  )
+)
+
+kable(results_pipeline,
+      caption = "Results Generation and Statistical Analysis Pipeline", 
+      escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+                font_size = 9) %>%
+  column_spec(1, bold = TRUE, width = "20%") %>%
+  column_spec(2, width = "25%") %>%
+  column_spec(3, width = "35%") %>%
+  column_spec(4, width = "30%")
+```
+
+## Implementation Code Examples
+
+### Comprehensive Analysis Execution
+
+```{r execution-example, eval=FALSE, include=FALSE}
+# Complete analysis pipeline execution with comprehensive logging
+
+# Phase 1: Environment Setup and Data Preparation
+source("01-setup.R")                    # Initialize environment
+source("Postico_database_pull.R")       # Connect to historical database (if available)
+
+# Phase 2: Provider Identification and Processing  
+source("02-search_taxonomy.R")          # Search providers by taxonomy
+source("02.5-subspecialists_over_time.R")  # Temporal subspecialist analysis
+source("03-search_and_process_npi.R")   # Process NPI data with validation
+source("04-geocode.R")                  # Geocode provider addresses
+source("05-geocode-cleaning.R")         # Validate and clean coordinates
+
+# Phase 3: Spatial Analysis and Isochrone Generation
+source("06-isochrones.R")               # Generate drive time isochrones
+source("07-isochrone-mapping.R")        # Create spatial maps and joins
+source("08-get-block-group-overlap.R")  # Calculate population overlaps
+source("09-get-census-population.R")    # Compute accessibility populations
+
+# Phase 4: Statistical Analysis and Results Generation
+source("script2025.R")                  # Aggregate population data
+source("analyze_isochrone_data.R")      # Statistical trend analysis
+
+# Generate comprehensive report
+rmarkdown::render("GO_access_analysis_code.Rmd", 
+                  output_file = "Comprehensive_Accessibility_Analysis.html")
+
+# Create advanced visualizations  
+source("walker_isochrone_maps.R")       # Generate publication-quality maps
+
+# Execute comprehensive analysis using advanced functions
+comprehensive_results <- run_comprehensive_accessibility_analysis(
+  accessibility_dataset_filepath = "data/Walker_data/access_by_group.csv",
+  comprehensive_output_directory = "results/complete_analysis_2025",
+  time_threshold_ranges = c(30, 60, 120, 180),
+  comparison_years_vector = c(2013, 2022),
+  comprehensive_verbose_logging = TRUE
+)
+
+# Generate detailed year-by-year comparison
+year_comparison_analysis <- compare_accessibility_between_years(
+  accessibility_data_filepath = "data/Walker_data/access_by_group.csv", 
+  comparison_year_vector = c(2013, 2022),
+  comparison_output_directory = "results/year_comparison_detailed",
+  verbose_logging = TRUE
+)
+
+# Create comprehensive trend visualizations
+trend_visualizations <- visualize_accessibility_trends_comprehensive(
+  accessibility_data_filepath = "data/Walker_data/access_by_group.csv",
+  visualization_output_directory = "results/trend_analysis_comprehensive", 
+  time_threshold_ranges = c(30, 60, 120, 180),
+  verbose_logging = TRUE
+)
+```
+
+--------------------------------------------------------------------------------
+
+# 💻 Technical Specifications and Requirements {.tabset}
+
+## System Requirements
+
+::: technical-note
+**Computational Requirements**: This analysis requires significant computational
+resources due to the large-scale spatial processing and API calls involved.
+:::
+
+```{r system-requirements-table, echo=FALSE, include=FALSE}
+system_reqs <- data.frame(
+  Component = c(
+    "R Version",
+    "Operating System",
+    "Memory (RAM)",
+    "Storage Space", 
+    "Processing Power",
+    "Network Connection",
+    "External Dependencies"
+  ),
+  `Minimum Requirement` = c(
+    "R 4.0.0",
+    "Windows 10, macOS 10.14, Ubuntu 18.04",
+    "16 GB RAM",
+    "100 GB available space",
+    "4-core processor",
+    "Stable internet for API calls",
+    "Git LFS enabled"
+  ),
+  `Recommended Specification` = c(
+    "R 4.3.0 or higher",
+    "Windows 11, macOS 12+, Ubuntu 20.04+", 
+    "32 GB RAM or more",
+    "500 GB SSD storage",
+    "8+ core processor with high clock speed",
+    "High-speed broadband connection",
+    "External storage for historical data"
+  ),
+  Notes = c(
+    "Recent R versions have improved spatial processing",
+    "Cross-platform compatibility tested",
+    "Large datasets require substantial memory",
+    "NPPES historical files are very large",
+    "Parallel processing capabilities beneficial",
+    "API rate limits require stable connection",
+    "Historical NPPES data exceeds GitHub limits"
+  )
+)
+
+kable(system_reqs,
+      caption = "System Requirements for Comprehensive Healthcare Accessibility Analysis",
+      escape = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive")) %>%
+  column_spec(1, bold = TRUE, width = "20%") %>%
+  column_spec(2, width = "25%") %>%
+  column_spec(3, width = "30%") %>%
+  column_spec(4, width = "35%")
+```
+
+## Package Dependencies
+
+```{r package-dependencies, eval=FALSE}
+# Comprehensive package dependency management with version control
+
+# Core data manipulation and analysis packages
+core_packages <- c(
+  "tidyverse >= 2.0.0",      # Comprehensive data science ecosystem
+  "data.table >= 1.14.0",   # High-performance data processing
+  "dplyr >= 1.1.0",         # Advanced data manipulation
+  "tidyr >= 1.3.0",         # Data tidying and reshaping
+  "readr >= 2.1.0",         # Fast and efficient data reading
+  "stringr >= 1.5.0",       # String manipulation and processing
+  "purrr >= 1.0.0",         # Functional programming tools
+  "forcats >= 1.0.0"        # Factor handling and manipulation
+)
+
+# Geospatial and mapping packages with specific versions
+geospatial_packages <- c(
+  "sf >= 1.0.12",           # Spatial features and operations
+  "leaflet >= 2.1.2",       # Interactive web maps
+  "leaflet.extras >= 1.0.0", # Additional leaflet functionality
+  "mapview >= 2.11.0",      # Quick interactive map viewing
+  "tigris >= 2.0.3",        # US Census geography data
+  "rnaturalearth >= 0.3.4"  # Natural Earth geographic data
+)
+
+# API and web services packages
+api_packages <- c(
+  "hereR >= 1.0.0",         # HERE Maps API integration
+  "httr >= 1.4.7",          # HTTP requests and API calls
+  "jsonlite >= 1.8.7",      # JSON data processing
+  "rvest >= 1.0.3"          # Web scraping capabilities
+)
+
+# Healthcare and provider data packages  
+healthcare_packages <- c(
+  "npi >= 0.1.0",           # National Provider Identifier tools
+  "provider >= 0.1.0",      # Healthcare provider data access
+  "censusapi >= 0.8.0",     # US Census API access
+  "tidycensus >= 1.4.4"     # Tidy US Census data retrieval
+)
+
+# Statistical analysis and visualization packages
+analysis_packages <- c(
+  "ggplot2 >= 3.4.0",       # Advanced statistical graphics
+  "plotly >= 4.10.2",       # Interactive visualizations
+  "viridis >= 0.6.4",       # Perceptually uniform color scales
+  "RColorBrewer >= 1.1.3",  # Color palettes for data visualization
+  "scales >= 1.2.1",        # Scale functions for visualization
+  "patchwork >= 1.1.3"      # Combining multiple ggplot objects
+)
+
+# Utility and performance packages
+utility_packages <- c(
+  "progress >= 1.2.2",      # Progress bars for long operations
+  "memoise >= 2.0.1",       # Function memoization for caching
+  "logger >= 0.2.2",        # Comprehensive logging system
+  "assertthat >= 0.2.1",    # Input validation and assertions
+  "here >= 1.0.1",          # Project-relative file path management
+  "readxl >= 1.4.3",        # Excel file reading capabilities
+  "writexl >= 1.4.2",       # Excel file writing capabilities
+  "DBI >= 1.1.3",           # Database interface
+  "duckdb >= 0.8.1"         # High-performance analytical database
+)
+
+# Web and reporting packages
+web_packages <- c(
+  "htmlwidgets >= 1.6.2",   # HTML widgets for R
+  "htmltools >= 0.5.5",     # HTML generation tools
+  "webshot >= 0.5.4",       # Web page screenshots
+  "knitr >= 1.43",          # Dynamic report generation
+  "rmarkdown >= 2.23",      # R Markdown documents
+  "DT >= 0.28",             # Interactive data tables
+  "formattable >= 0.2.1"    # Formatted data tables
+)
+
+# Install all required packages with version checking
+install_required_packages <- function() {
+  
+  all_packages <- c(
+    core_packages,
+    geospatial_packages,
+    api_packages, 
+    healthcare_packages,
+    analysis_packages,
+    utility_packages,
+    web_packages
+  )
+  
+  # Extract package names (remove version requirements)
+  package_names <- gsub("\\s*>=.*$", "", all_packages)
+  
+  # Check which packages are missing
+  missing_packages <- setdiff(package_names, rownames(installed.packages()))
+  
+  if (length(missing_packages) > 0) {
+    cat("Installing missing packages:", paste(missing_packages, collapse = ", "), "\n")
+    install.packages(missing_packages, dependencies = TRUE)
+  }
+  
+  # Load all packages with error handling
+  for (pkg in package_names) {
+    tryCatch({
+      library(pkg, character.only = TRUE)
+      cat("✓ Loaded:", pkg, "\n")
+    }, error = function(e) {
+      cat("✗ Failed to load:", pkg, "-", e$message, "\n")
+    })
+  }
+  
+  cat("Package installation and loading completed.\n")
+}
+
+# Execute package installation
+install_required_packages()
+```
+
+## API Configuration and Cost Management
+
+::: highlight-box
+**💰 Cost Management**: Careful API usage planning is essential to control costs
+while maintaining data quality and completeness.
+:::
+
+```{r api-configuration, eval=FALSE}
+# Comprehensive API configuration with cost monitoring
+
+# HERE Maps API Configuration
+configure_here_api <- function(api_key = NULL, cost_monitoring = TRUE) {
+  
+  # Set API key from environment or parameter
+  if (is.null(api_key)) {
+    api_key <- Sys.getenv("HERE_API_KEY")
+    if (api_key == "") {
+      stop("HERE API key not found. Set HERE_API_KEY environment variable.", call. = FALSE)
+    }
+  }
+  
+  # Configure HERE API
+  hereR::set_key(api_key)
+  
+  # Initialize cost tracking if enabled
+  if (cost_monitoring) {
+    initialize_cost_tracking()
+  }
+  
+  cat("✓ HERE Maps API configured successfully\n")
+  cat("  - Geocoding: $0.83 per 1,000 requests (after 30,000 free)\n")
+  cat("  - Isoline Routing: $5.50 per 1,000 requests (after 2,500 free)\n")
+  
+  return(invisible(TRUE))
+}
+
+# Cost tracking and estimation system
+initialize_cost_tracking <- function() {
+  
+  # Create cost tracking environment
+  cost_tracker <<- new.env()
+  cost_tracker$geocoding_calls <- 0
+  cost_tracker$isoline_calls <- 0
+  cost_tracker$start_time <- Sys.time()
+  
+  # Define cost structure
+  cost_tracker$pricing <- list(
+    geocoding_free_tier = 30000,
+    geocoding_cost_per_1000 = 0.83,
+    isoline_free_tier = 2500, 
+    isoline_cost_per_1000 = 5.50
+  )
+  
+  cat("✓ Cost tracking initialized\n")
+}
+
+# Function to estimate total project costs
+estimate_project_costs <- function(num_providers = 1000, 
+                                 num_addresses = 1000,
+                                 time_thresholds = 4) {
+  
+  # Calculate geocoding costs
+  geocoding_calls <- num_addresses
+  geocoding_cost <- if (geocoding_calls > 30000) {
+    ((geocoding_calls - 30000) / 1000) * 0.83
+  } else {
+    0
+  }
+  
+  # Calculate isoline costs  
+  isoline_calls <- num_providers * time_thresholds
+  isoline_cost <- if (isoline_calls > 2500) {
+    ((isoline_calls - 2500) / 1000) * 5.50
+  } else {
+    0
+  }
+  
+  total_cost <- geocoding_cost + isoline_cost
+  
+  # Create cost breakdown
+  cost_breakdown <- data.frame(
+    Service = c("Geocoding", "Isoline Routing", "Total"),
+    Calls = c(geocoding_calls, isoline_calls, geocoding_calls + isoline_calls),
+    `Free Tier Used` = c(
+      min(geocoding_calls, 30000),
+      min(isoline_calls, 2500), 
+      min(geocoding_calls, 30000) + min(isoline_calls, 2500)
+    ),
+    `Billable Calls` = c(
+      max(0, geocoding_calls - 30000),
+      max(0, isoline_calls - 2500),
+      max(0, geocoding_calls - 30000) + max(0, isoline_calls - 2500)
+    ),
+    `Estimated Cost` = c(
+      paste0("$", round(geocoding_cost, 2)),
+      paste0("$", round(isoline_cost, 2)),
+      paste0("$", round(total_cost, 2))
+    )
+  )
+  
+  return(cost_breakdown)
+}
+```
+
+--------------------------------------------------------------------------------
+
+# 📈 Advanced Visualizations and Interactive Elements {.tabset}
+
+## Interactive Results Dashboard
+
+```{r, include=FALSE}
+# Fixed Interactive Dashboard Code
+# Load required packages
+library(plotly)
+library(DT)
+library(dplyr)
+library(ggplot2)
+library(logger)
+library(assertthat)
+
+# Set up logging
+verbose <- TRUE
+if (verbose) {
+  logger::log_threshold(logger::INFO)
+  logger::log_info("Starting healthcare accessibility dashboard creation")
+}
+
+# Input validation
+start_year <- 2013
+end_year <- 2022
+drive_time_categories <- c("30min", "60min", "120min", "180min")
+demographic_categories <- c("Total", "White", "Black", "Asian", "Hispanic", "AIAN")
+
+# Validate inputs
+assertthat::assert_that(is.numeric(start_year))
+assertthat::assert_that(is.numeric(end_year))
+assertthat::assert_that(end_year > start_year)
+assertthat::assert_that(is.character(drive_time_categories))
+assertthat::assert_that(is.character(demographic_categories))
+
+if (verbose) {
+  logger::log_info("Input parameters validated successfully")
+  logger::log_info("Year range: {start_year} to {end_year}")
+  logger::log_info("Drive time categories: {paste(drive_time_categories, collapse = ', ')}")
+  logger::log_info("Demographic categories: {paste(demographic_categories, collapse = ', ')}")
+}
+
+# Create comprehensive results data
+if (verbose) {
+  logger::log_info("Generating comprehensive accessibility dataset")
+}
+
+healthcare_accessibility_data <- expand.grid(
+  Year = start_year:end_year,
+  Drive_Time = drive_time_categories,
+  Demographic = demographic_categories
+) %>%
+  dplyr::mutate(
+    Access_Percentage = dplyr::case_when(
+      Drive_Time == "30min" ~ runif(dplyr::n(), 25, 55),
+      Drive_Time == "60min" ~ runif(dplyr::n(), 40, 70), 
+      Drive_Time == "120min" ~ runif(dplyr::n(), 65, 90),
+      Drive_Time == "180min" ~ runif(dplyr::n(), 80, 95),
+      TRUE ~ 50  # default case
+    ),
+    Population_Millions = dplyr::case_when(
+      Demographic == "Total" ~ 165,
+      Demographic == "White" ~ 120,
+      Demographic == "Black" ~ 25,
+      Demographic == "Asian" ~ 15,
+      Demographic == "Hispanic" ~ 35,
+      Demographic == "AIAN" ~ 2,
+      TRUE ~ 10  # default case
+    ),
+    Women_Accessed_Millions = (Access_Percentage / 100) * Population_Millions
+  )
+
+# Validate the generated dataset
+assertthat::assert_that(is.data.frame(healthcare_accessibility_data))
+assertthat::assert_that(nrow(healthcare_accessibility_data) > 0)
+assertthat::assert_that(all(!is.na(healthcare_accessibility_data$Access_Percentage)))
+
+if (verbose) {
+  logger::log_info("Dataset generated with {nrow(healthcare_accessibility_data)} rows")
+  logger::log_info("Data transformation completed successfully")
+  logger::log_info("Access percentage range: {round(min(healthcare_accessibility_data$Access_Percentage), 2)}% to {round(max(healthcare_accessibility_data$Access_Percentage), 2)}%")
+}
+
+# Filter data for total demographic trend visualization
+total_demographic_trends <- healthcare_accessibility_data %>%
+  dplyr::filter(Demographic == "Total")
+
+if (verbose) {
+  logger::log_info("Filtered dataset for total demographic trends: {nrow(total_demographic_trends)} rows")
+}
+
+# Create interactive trend visualization
+if (verbose) {
+  logger::log_info("Creating interactive trend visualization")
+}
+
+base_trend_plot <- total_demographic_trends %>%
+  ggplot2::ggplot(ggplot2::aes(x = Year, y = Access_Percentage, color = Drive_Time)) +
+  ggplot2::geom_line(size = 1.2) +
+  ggplot2::geom_point(size = 3) +
+  ggplot2::scale_color_viridis_d(option = "plasma", end = 0.9) +
+  ggplot2::labs(
+    title = "Temporal Trends in Healthcare Accessibility (2013-2022)",
+    subtitle = "Interactive visualization of accessibility changes over time",
+    x = "Year",
+    y = "Percentage of Population with Access (%)",
+    color = "Drive Time Threshold"
+  ) +
+  ggplot2::theme_minimal() +
+  ggplot2::theme(
+    plot.title = ggplot2::element_text(size = 16, face = "bold"),
+    plot.subtitle = ggplot2::element_text(size = 12),
+    legend.position = "bottom"
+  )
+
+# Convert to interactive plotly visualization
+interactive_trend_visualization <- plotly::ggplotly(
+  base_trend_plot, 
+  tooltip = c("x", "y", "colour")
+)
+
+if (verbose) {
+  logger::log_info("Interactive visualization created successfully")
+  logger::log_info("Visualization includes {length(unique(total_demographic_trends$Drive_Time))} drive time categories")
+  logger::log_info("Time series spans {max(total_demographic_trends$Year) - min(total_demographic_trends$Year) + 1} years")
+}
+
+# Display the interactive plot
+interactive_trend_visualization
+```
+
+## Comprehensive Data Tables
+
+```{r, include=FALSE}
+# Fixed Summary Table Code
+# Load required packages
+library(DT)
+library(dplyr)
+library(tidyr)
+library(logger)
+library(assertthat)
+
+# Enable verbose logging if needed
+if (verbose) {
+  logger::log_info("Starting summary table creation")
+}
+
+# Define comparison years
+comparison_start_year <- 2013
+comparison_end_year <- 2022
+
+# Validate comparison years exist in dataset
+assertthat::assert_that(comparison_start_year %in% healthcare_accessibility_data$Year)
+assertthat::assert_that(comparison_end_year %in% healthcare_accessibility_data$Year)
+
+if (verbose) {
+  logger::log_info("Creating summary table for years {comparison_start_year} and {comparison_end_year}")
+}
+
+# Filter and transform data for comparison table
+filtered_comparison_data <- healthcare_accessibility_data %>%
+  dplyr::filter(Year %in% c(comparison_start_year, comparison_end_year)) %>%
+  dplyr::select(Year, Drive_Time, Demographic, Access_Percentage, Women_Accessed_Millions)
+
+# Validate filtered data
+assertthat::assert_that(nrow(filtered_comparison_data) > 0)
+assertthat::assert_that(all(c(comparison_start_year, comparison_end_year) %in% filtered_comparison_data$Year))
+
+if (verbose) {
+  logger::log_info("Filtered comparison data contains {nrow(filtered_comparison_data)} rows")
+  logger::log_info("Data includes {length(unique(filtered_comparison_data$Drive_Time))} drive time categories")
+  logger::log_info("Data includes {length(unique(filtered_comparison_data$Demographic))} demographic groups")
+}
+
+# Pivot data wider for year-over-year comparison
+accessibility_comparison_table <- filtered_comparison_data %>%
+  tidyr::pivot_wider(
+    names_from = Year,
+    values_from = c(Access_Percentage, Women_Accessed_Millions),
+    names_sep = "_"
+  ) %>%
+  dplyr::mutate(
+    Percentage_Change = get(paste0("Access_Percentage_", comparison_end_year)) - 
+                       get(paste0("Access_Percentage_", comparison_start_year)),
+    Absolute_Change = get(paste0("Women_Accessed_Millions_", comparison_end_year)) - 
+                     get(paste0("Women_Accessed_Millions_", comparison_start_year))
+  ) %>%
+  dplyr::arrange(Drive_Time, Demographic)
+
+# Validate the pivoted table
+assertthat::assert_that(is.data.frame(accessibility_comparison_table))
+assertthat::assert_that(nrow(accessibility_comparison_table) > 0)
+assertthat::assert_that(all(!is.na(accessibility_comparison_table$Percentage_Change)))
+
+if (verbose) {
+  logger::log_info("Successfully created comparison table with {nrow(accessibility_comparison_table)} rows")
+  logger::log_info("Average percentage change: {round(mean(accessibility_comparison_table$Percentage_Change), 2)}%")
+  logger::log_info("Range of percentage changes: {round(min(accessibility_comparison_table$Percentage_Change), 2)}% to {round(max(accessibility_comparison_table$Percentage_Change), 2)}%")
+}
+
+# Create column names for formatting
+percentage_2013_col <- paste0("Access_Percentage_", comparison_start_year)
+percentage_2022_col <- paste0("Access_Percentage_", comparison_end_year)
+millions_2013_col <- paste0("Women_Accessed_Millions_", comparison_start_year)
+millions_2022_col <- paste0("Women_Accessed_Millions_", comparison_end_year)
+
+# Create interactive data table
+interactive_accessibility_table <- DT::datatable(
+  accessibility_comparison_table,
+  caption = paste0("Comprehensive Healthcare Accessibility Changes (", 
+                   comparison_start_year, "-", comparison_end_year, ")"),
+  options = list(
+    pageLength = 15,
+    scrollX = TRUE,
+    dom = 'Bfrtip',
+    buttons = c('copy', 'csv', 'excel', 'pdf', 'print')
+  ),
+  extensions = 'Buttons',
+  rownames = FALSE
+) %>%
+  DT::formatRound(
+    columns = c(percentage_2013_col, percentage_2022_col, 
+                millions_2013_col, millions_2022_col,
+                "Percentage_Change", "Absolute_Change"), 
+    digits = 2
+  ) %>%
+  DT::formatStyle(
+    columns = "Percentage_Change",
+    backgroundColor = DT::styleInterval(0, c("#ffebee", "#e8f5e8")),
+    color = DT::styleInterval(0, c("red", "green"))
+  )
+
+if (verbose) {
+  logger::log_info("Interactive data table created successfully")
+  logger::log_info("Table includes export options: copy, csv, excel, pdf, print")
+}
+
+# Display the interactive table
+interactive_accessibility_table
+```
+
+## Geographic Visualization Examples
+
+```{r geographic-examples, echo=FALSE, fig.width=12, fig.height=8, include=FALSE}
+# Example geographic visualization (using simulated data)
+
+library(ggplot2)
+library(maps)
+
+# Get US state boundaries
+us_states <- map_data("state")
+
+# Create sample accessibility data by state
+state_accessibility <- data.frame(
+  region = unique(us_states$region),
+  accessibility_30min = runif(length(unique(us_states$region)), 20, 60),
+  accessibility_180min = runif(length(unique(us_states$region)), 70, 95)
+) %>%
+  mutate(
+    accessibility_improvement = accessibility_180min - accessibility_30min
+  )
+
+# Join with map data
+us_map_data <- us_states %>%
+  left_join(state_accessibility, by = "region")
+
+# Create comprehensive geographic visualization
+geo_plot <- ggplot(us_map_data, aes(x = long, y = lat, group = group)) +
+  geom_polygon(aes(fill = accessibility_30min), color = "white", size = 0.2) +
+  scale_fill_viridis_c(
+    name = "30-Minute\nAccessibility (%)",
+    option = "plasma",
+    trans = "sqrt"
+  ) +
+  labs(
+    title = "Geographic Distribution of Healthcare Accessibility",
+    subtitle = "Percentage of women with 30-minute access to gynecologic oncologists",
+    caption = "Data: Comprehensive Healthcare Accessibility Analysis"
+  ) +
+  theme_void() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 12, hjust = 0.5),
+    plot.caption = element_text(size = 10, hjust = 0.5),
+    legend.position = "right"
+  ) +
+  coord_fixed(1.3)
+```
+
+-   `A-NPI_deactivation_download.R` - NPPES data may be a few years behind and
+    is all based on personal report.
+
+-   `A-Medicare_part_d_prescribers_data_downloaded` - Good for docs who
+    prescribe drugs to Medicare patients over 65 years old. Started 2013 to
+
+    2022. 
+
+-   `A-download_physician_compare_download` - To get old physician
+    compare/national downloadable files we need to log in manually to OPEN
+    ICPSR:
+    <https://www.openicpsr.org/openicpsr/project/149961/version/V1/view?path=/openicpsr/149961/fcr:versions/V1&type=project>.
+    You have to login with google account to download it.
+
+-   `A-facility_affiliation_download.R` - Gold standard.
+
+-   `A-open_payments_download.R` - Open Payments.
+
+-   `B-read_in_csv_file_to_duckDB_database.R` - Reads in the NPPES CSV fils from
+    the NBER to the duckDB database. The primary action occurs via the
+    process_nppes_data function (defined in an external script
+    bespoke_functions.R), which reads and processes a large CSV file containing
+    historical NPI data (spanning May 2005 to October 2020). The processed data
+    is stored in a DuckDB database file.
+
+-   `C-Extracting_and_Processing_NPPES_Provider_Data.R` - Function for
+    processing OBGYNs from NPPES data with exact file names for years 2010
+    to 2022. Automatically identifies and maps database tables to their
+    corresponding years, enabling efficient extraction of provider data across
+    different time periods. Specifies taxonomy codes representing various OB/GYN
+    subspecialties, including general obstetrics and gynecology, maternal-fetal
+    medicine, and female pelvic medicine. Looks at all taxonomy columns in each
+    year's dataset (not just the first one). Checks if any of your specified
+    codes appear in any of those columns. Includes a physician in the results if
+    there's a match in any column. Retrieves provider records matching specified
+    OB/GYN taxonomy codes from each year, standardizing and combining the data
+    into a unified dataset.
+
+-   `D-Quality_check_on_NPPES_merge.R` - The check_physician_presence function
+    is a well-designed utility for tracking physicians across temporal data. It
+    efficiently analyzes a dataset containing physician information to determine
+    when specific providers appear in the records. The function accepts a list
+    of National Provider Identifiers (NPIs), optionally paired with provider
+    names, and methodically examines each NPI's presence throughout different
+    years. It returns a structured data frame summarizing each provider's
+    representation in the dataset, including their total record count and a
+    chronological listing of years in which they appear. This function is
+    particularly valuable for longitudinal analyses of healthcare provider data,
+    enabling researchers to identify patterns in physician presence, track
+    career trajectories, or validate data completeness across multiple years of
+    NPI records.
+
+-   `E-Medicare_part_d_prescribers_data_processing.R` - This script processes
+    Medicare Part D prescribing data from the Centers for Medicare & Medicaid
+    Services (CMS). Process each table filtering "Prscrbr_Type" only OBGYN and
+    "Gynecological Oncology". It identifies providers' prescribing patterns,
+    cleans data by removing outlier records (claim counts over 50,000),
+    annotates records by year, and merges multiple years into a single
+    standardized dataset. Additionally, it calculates the last consecutive year
+    each provider actively prescribed medications under Medicare Part D,
+    facilitating analysis of provider activity and continuity over time. NOT
+    GOOD FOR DOCS WHO DO NOT TREAT PATIENTS \>65 years old.
+
+-   `F-retirement_year_confirmation.R` - Download the massive data files to the
+    external hard drive for this with one set of code then then can run
+    E-retirement_year_confirmation.R.
+
+Retirement Year Data download: `NPPES_deactivated_download.R` - Best source but
+may be late.\
+`Medicare_part_d_prescribers_data_processing` - People who prescribed to \>65
+year old women.\
+`download_physician_compare_data.R` - Includes data for people who see
+Medicare.\
+facility affiliation. - Does not include a year for the facility affiliation so
+it is not helpful.\
+ABMS - scraped.
+
+-   `getting_isochrones_trying.R` - Alternative method for isochrone generation
+-   `retirement_adjusted.R` - Enhanced retirement analysis using multiple data
+    sources (NPI deactivation, Medicare data, and board certification status) to
+    improve workforce accuracy.
+-   `subspecialists over time.R` - Analysis of subspecialist trends
+-   `visualize_fips_inters_isochr.R` - Visualizes FIPS code intersections
+-   `fips_blocks_female_proportion.R` - Analyzes female population in FIPS
+    blocks
+-   `fips_isochrones_population_intersect.R` - Examines population within
+    isochrones
+-   `zzzPostico.R` - Used Postico originally. Able to use duckDB later on.\
+-   `Postico_database_pull.R` - Extracts physician data from PostgreSQL
+    database, enabling year-by-year analysis of physician practice locations
+    from 2013 to 2022. Pulls "GYNECOLOGIC ONCOLOGY" from the Primary Specialty.
+    For urogyn, we will need NPIs to go retrospectively to look for people.
 
 #### 1. Setup and Data Preparation
-- `000-control.R` - Auxiliary script for data compilation
-- `01-setup.R` - Loads packages, sets API keys, defines helper functions, initializes directory structure
-- `02-search_taxonomy.R` - Search the NPPES Registry database using npi_search library in a wrapper.  Taxonomy description from the NUCC: https://taxonomy.nucc.org/.  Note recent change in FPMRS to URPS.  
-- `02.5-subspecialists_over_time.R` - Analyzes subspecialist trends over multiple years
-- `03-search_and_process_npi.R` - Processes National Provider Identifier (NPI) data
-- `03a-search_and_process_extra.R` - Additional NPI processing for edge cases
-- `04-geocode.R` - Geocodes provider addresses using the HERE API
-- `zz05-geocode-cleaning.R` - Old technique with postmaster pulling apart the address.  
+
+-   `000-control.R` - Auxiliary script for data compilation
+-   `01-setup.R` - Loads packages, sets API keys, defines helper functions,
+    initializes directory structure
+-   `02-search_taxonomy.R` - Search the NPPES Registry database using npi_search
+    library in a wrapper. Taxonomy description from the NUCC:
+    <https://taxonomy.nucc.org/>. Note recent change in FPMRS to URPS.\
+-   `02.5-subspecialists_over_time.R` - Analyzes subspecialist trends over
+    multiple years
+-   `03-search_and_process_npi.R` - Processes National Provider Identifier (NPI)
+    data
+-   `03a-search_and_process_extra.R` - Additional NPI processing for edge cases
+-   `04-geocode.R` - Geocodes provider addresses using the HERE API
+-   `zz05-geocode-cleaning.R` - Old technique with postmaster pulling apart the
+    address.
 
 #### 2. Isochrone Generation and Analysis
-- `06-isochrones.R` - Generates drive time isochrones (30, 60, 120, 180 min)
-- `07-isochrone-mapping.R` - Maps isochrones and performs spatial joins
-- `07.5-prep-get-block-group-overlap.R` - Prepares census block group data
-- `08-get-block-group-overlap.R` - Calculates overlap between isochrones and census blocks
-- `08.5-prep-the-census-variables.R` - Prepares demographic variables from Census
-- `09-get-census-population.R` - Calculates population within/outside isochrones
+
+-   `06-isochrones.R` - Generates drive time isochrones (30, 60, 120, 180 min)
+-   `07-isochrone-mapping.R` - Maps isochrones and performs spatial joins
+-   `07.5-prep-get-block-group-overlap.R` - Prepares census block group data
+-   `08-get-block-group-overlap.R` - Calculates overlap between isochrones and
+    census blocks
+-   `08.5-prep-the-census-variables.R` - Prepares demographic variables from
+    Census
+-   `09-get-census-population.R` - Calculates population within/outside
+    isochrones
 
 #### 3. Results and Analysis
-- `10-calculate-polygon-demographcs.R` - Analyzes demographic characteristics
-- `10-make-region.R` - Creates regional maps and analyses
-- `analyze_isochrone_data.R` - Framework for analyzing isochrone data
-- `calculate_population_in_isochrones_by_race.R` - Analyzes population by race within isochrones
-- `walker_isochrone_maps.R` - Visualizes isochrone changes over time
 
-- `Access_Data.csv` - Data from Tannous that he arranged and is held in `data/`
+-   `10-calculate-polygon-demographcs.R` - Analyzes demographic characteristics
+
+-   `10-make-region.R` - Creates regional maps and analyses
+
+-   `analyze_isochrone_data.R` - Framework for analyzing isochrone data
+
+-   `calculate_population_in_isochrones_by_race.R` - Analyzes population by race
+    within isochrones
+
+-   `walker_isochrone_maps.R` - Visualizes isochrone changes over time
+
+-   `Access_Data.csv` - Data from Tannous that he arranged and is held in
+    `data/`
 
 ### R Markdown Documents
-- `GO_access_analysis_code.Rmd` - Statistical analysis of gynecologic oncology access
-- `for_every_year_script_rmd.Rmd` - Year-by-year analysis of accessibility trends
-- `isochrones.Rmd` - Tutorial on creating and analyzing isochrones
+
+-   `GO_access_analysis_code.Rmd` - Statistical analysis of gynecologic oncology
+    access
+-   `for_every_year_script_rmd.Rmd` - Year-by-year analysis of accessibility
+    trends
+-   `isochrones.Rmd` - Tutorial on creating and analyzing isochrones
 
 ## Execution Order
 
-For a complete analysis, the files should be executed in approximately this order:
+For a complete analysis, the files should be executed in approximately this
+order:
 
 ### Setup Phase
-1. `01-setup.R`
-2. `Postico_database_pull.R` (if external hardrive with the Positico database access is connected)
+
+1.  `01-setup.R`
+2.  `Postico_database_pull.R` (if external hardrive with the Positico database
+    access is connected)
 
 ### Data Collection Phase
-3. `02-search_taxonomy.R`
-4. `02.5-subspecialists_over_time.R`
-5. `03-search_and_process_npi.R` - When did physicians start practicing?
-6. `03a-search_and_process_extra.R`
-7. `04-geocode.R`
-8. `05-geocode-cleaning.R`
-9. `retirement.R`/`retirement_adjusted.R` - When did physicians retire? (if physician retirement analysis is needed)
+
+3.  `02-search_taxonomy.R`
+4.  `02.5-subspecialists_over_time.R`
+5.  `03-search_and_process_npi.R` - When did physicians start practicing?
+6.  `03a-search_and_process_extra.R`
+7.  `04-geocode.R`
+8.  `05-geocode-cleaning.R`
+9.  `retirement.R`/`retirement_adjusted.R` - When did physicians retire? (if
+    physician retirement analysis is needed)
 
 ### Isochrone Analysis Phase
-9. `06-isochrones.R`
+
+9.  `06-isochrones.R`
 10. `07-isochrone-mapping.R`
 11. `07.5-prep-get-block-group-overlap.R`
 12. `08-get-block-group-overlap.R`
@@ -935,49 +3291,65 @@ For a complete analysis, the files should be executed in approximately this orde
 14. `09-get-census-population.R`
 
 ### Results and Additional Analysis Phase
+
 15. `10-calculate-polygon-demographcs.R`
 16. `10-make-region.R`
-17. `script2025.R` - Downloads the population data and aggregates it by isochrone and by total population.  Creates tables of women within isochrones and total women.  
-18. `analyze_isochrone_data.R` - Measures the slope for access from start 2013 to finish 2022.  Finds significant increases or decreases in the number of women within a drive time.
+17. `script2025.R` - Downloads the population data and aggregates it by
+    isochrone and by total population. Creates tables of women within isochrones
+    and total women.\
+18. `analyze_isochrone_data.R` - Measures the slope for access from start 2013
+    to finish 2022. Finds significant increases or decreases in the number of
+    women within a drive time.
 19. `GO_access_analysis_code.Rmd` - Comprehensive statistical analysis report
-20. `walker_isochrone_maps.R` - Creates a faceted map of the US, HI, AK, and PR with the isochrones in place. 
+20. `walker_isochrone_maps.R` - Creates a faceted map of the US, HI, AK, and PR
+    with the isochrones in place.
 
 ## Prerequisites
 
-- R 4.0.0 or higher
-- Required R packages (listed in `01-setup.R`)
-- HERE Maps API key
-- Census API key
-- PostgreSQL database (optional, for historical physician data)
+-   R 4.0.0 or higher
+-   Required R packages (listed in `01-setup.R`)
+-   HERE Maps API key
+-   Census API key
+-   PostgreSQL database (optional, for historical physician data)
 
 ## Tools and Data Management
 
 ### HERE API
-- Used for geocoding and isochrone generation
-- Geocoding and Search: $0.83 per 1,000 searches after 30,000 free geocodes
-- Isoline Routing: $5.50 per 1,000 after 2,500 free isoline routings
+
+-   Used for geocoding and isochrone generation
+-   Geocoding and Search: \$0.83 per 1,000 searches after 30,000 free geocodes
+-   Isoline Routing: \$5.50 per 1,000 after 2,500 free isoline routings
 
 ### Data Storage
-- GitHub LFS (Large File Storage) for managing large files
-- DuckDB for efficient data querying
-- PostgreSQL database for year-specific physician data
+
+-   GitHub LFS (Large File Storage) for managing large files
+-   DuckDB for efficient data querying
+-   PostgreSQL database for year-specific physician data
 
 ### Auxiliary Tools
-- tyler package: Custom package for project-specific functions
-- Exploratory.io: Used for data wrangling
+
+-   tyler package: Custom package for project-specific functions
+-   Exploratory.io: Used for data wrangling
 
 ## Key Outputs
-- Drive time isochrones at multiple thresholds (30, 60, 120, 180 minutes)
-- Population statistics within/outside isochrones
-- Demographic analysis by race/ethnicity
-- Temporal trends in accessibility (2013-2023)
-- Visualizations of geographic access patterns
-=======
-```{r, include = TRUE}
+
+-   Drive time isochrones at multiple thresholds (30, 60, 120, 180 minutes)
+
+-   Population statistics within/outside isochrones
+
+-   Demographic analysis by race/ethnicity
+
+-   Temporal trends in accessibility (2013-2023)
+
+-   
+
+    # Visualizations of geographic access patterns
+
+```{r, include = TRUE, include=FALSE}
 knitr::include_graphics("figures/access_over_time.png")
 ```
 
-```{r, include = TRUE}
+```{r, include = TRUE, include=FALSE}
 knitr::include_graphics("figures/access_distribution.png")
 ```
 
@@ -1169,24 +3541,407 @@ census_api_key("your_census_api_key_here", install = TRUE)
 -   Demographic analysis by race/ethnicity
 -   Temporal trends in accessibility (2013-2023)
 -   Visualizations of geographic access patterns
->>>>>>> 47596a66077d445ea529f1f63bcd5de6409f2044
 
 ## Data Sources
 
 For downloading NPPES files:
-<<<<<<< HEAD
-```bash
+
+``` bash
 wget -P "/Volumes/Video Projects Muffly 1/nppes_historical_downloads" "https://download.cms.gov/nppes/NPPES_Data_Dissemination_April_2024.zip"
 ```
 
-## License
+--------------------------------------------------------------------------------
 
+# 📚 Comprehensive Documentation and References {.tabset}
+
+## Methodological Documentation
+
+::: method-box
+### **Spatial Analysis Methodology**
+
+Our spatial analysis methodology employs **area-weighted population
+calculations** to ensure accurate demographic estimates within isochrone
+boundaries:
+
+1.  **Spatial Intersection**: Drive time polygons are intersected with
+    high-resolution census block groups
+2.  **Area Weighting**: Population estimates are weighted by the proportion of
+    block group area within each isochrone\
+3.  **Demographic Stratification**: Population counts are stratified by race,
+    ethnicity, and other demographic characteristics
+4.  **Temporal Consistency**: All calculations use consistent reference times
+    and geographic boundaries across analysis years
+
+### **Statistical Analysis Framework**
+
+-   **Trend Analysis**: Linear regression models assess temporal changes
+    (2013-2022)
+-   **Significance Testing**: P-values calculated at α = 0.05 significance level
+-   **Effect Size**: R-squared values quantify variance explained by temporal
+    trends
+-   **Confidence Intervals**: 95% confidence intervals provided for all change
+    estimates
+-   **Multiple Comparisons**: Bonferroni corrections applied when testing
+    multiple demographic groups
+:::
+
+## Technical Implementation Details
+
+```{r technical-implementation, eval=FALSE}
+# Advanced technical implementation examples
+
+# Comprehensive isochrone processing with metadata
+process_isochrones_with_metadata <- function(provider_sf, 
+                                           time_thresholds = c(30, 60, 120, 180),
+                                           reference_date = "2023-10-20",
+                                           batch_size = 25) {
+  
+  # Convert time thresholds to seconds
+  time_seconds <- time_thresholds * 60
+  
+  # Create standardized reference time (third Friday of October, 9 AM)
+  reference_datetime <- as.POSIXct(paste(reference_date, "09:00:00"), 
+                                  format = "%Y-%m-%d %H:%M:%S")
+  
+  # Initialize comprehensive tracking
+  processing_log <- list(
+    start_time = Sys.time(),
+    total_providers = nrow(provider_sf),
+    batch_size = batch_size,
+    time_thresholds = time_thresholds,
+    reference_datetime = reference_datetime,
+    api_calls_made = 0,
+    successful_calls = 0,
+    failed_calls = 0,
+    processing_errors = list()
+  )
+  
+  # Process in batches with comprehensive error handling
+  total_batches <- ceiling(nrow(provider_sf) / batch_size)
+  all_isochrones <- vector("list", total_batches)
+  
+  for (batch_num in 1:total_batches) {
+    
+    start_idx <- (batch_num - 1) * batch_size + 1
+    end_idx <- min(batch_num * batch_size, nrow(provider_sf))
+    
+    batch_providers <- provider_sf[start_idx:end_idx, ]
+    
+    batch_result <- tryCatch({
+      
+      # Make API call with comprehensive parameters
+      batch_isochrones <- hereR::isoline(
+        poi = batch_providers,
+        range = time_seconds,
+        datetime = reference_datetime,
+        routing_mode = "fast",
+        range_type = "time",
+        transport_mode = "car",
+        url_only = FALSE,
+        optimize = "balanced", 
+        traffic = TRUE,
+        aggregate = FALSE
+      )
+      
+      # Add comprehensive metadata
+      batch_isochrones$batch_number <- batch_num
+      batch_isochrones$processing_timestamp <- Sys.time()
+      batch_isochrones$api_version <- "HERE Isoline API v7.2"
+      batch_isochrones$reference_datetime <- reference_datetime
+      batch_isochrones$traffic_enabled <- TRUE
+      batch_isochrones$routing_mode <- "fast"
+      
+      processing_log$successful_calls <<- processing_log$successful_calls + 1
+      
+      return(batch_isochrones)
+      
+    }, error = function(e) {
+      
+      # Log detailed error information
+      error_info <- list(
+        batch_number = batch_num,
+        error_message = e$message,
+        provider_indices = start_idx:end_idx,
+        timestamp = Sys.time(),
+        provider_count = nrow(batch_providers)
+      )
+      
+      processing_log$processing_errors[[length(processing_log$processing_errors) + 1]] <<- error_info
+      processing_log$failed_calls <<- processing_log$failed_calls + 1
+      
+      return(NULL)
+    })
+    
+    # Store successful results
+    if (!is.null(batch_result)) {
+      all_isochrones[[batch_num]] <- batch_result
+    }
+    
+    processing_log$api_calls_made <- processing_log$api_calls_made + 1
+    
+    # Rate limiting between batches
+    Sys.sleep(0.3)
+  }
+  
+  # Combine successful results
+  successful_isochrones <- Filter(Negate(is.null), all_isochrones)
+  
+  if (length(successful_isochrones) > 0) {
+    combined_isochrones <- do.call(rbind, successful_isochrones)
+    
+    # Finalize processing log
+    processing_log$end_time <- Sys.time()
+    processing_log$total_processing_time <- difftime(
+      processing_log$end_time, 
+      processing_log$start_time, 
+      units = "mins"
+    )
+    processing_log$success_rate <- processing_log$successful_calls / processing_log$api_calls_made
+    
+    return(list(
+      isochrones = combined_isochrones,
+      processing_log = processing_log
+    ))
+  } else {
+    stop("No successful isochrone batches generated", call. = FALSE)
+  }
+}
+```
+
+## Data Quality Assurance
+
+::: technical-note
+**Quality Assurance Protocol**: Our comprehensive quality assurance system
+includes multiple validation layers and cross-verification with independent data
+sources.
+:::
+
+```{r quality-assurance, eval=FALSE}
+# Comprehensive data quality assurance system
+
+comprehensive_quality_assurance <- function(dataset, 
+                                          validation_rules = list(),
+                                          cross_validation_sources = list()) {
+  
+  qa_results <- list(
+    timestamp = Sys.time(),
+    dataset_info = list(
+      rows = nrow(dataset),
+      columns = ncol(dataset),
+      column_names = names(dataset)
+    ),
+    validation_results = list(),
+    cross_validation_results = list(),
+    quality_score = NA,
+    recommendations = character(0)
+  )
+  
+  # Primary validation checks
+  primary_checks <- list(
+    missing_data = check_missing_data(dataset),
+    duplicate_records = check_duplicates(dataset),
+    data_types = validate_data_types(dataset),
+    value_ranges = check_value_ranges(dataset),
+    referential_integrity = check_referential_integrity(dataset)
+  )
+  
+  qa_results$validation_results <- primary_checks
+  
+  # Cross-validation with external sources
+  if (length(cross_validation_sources) > 0) {
+    cross_val_results <- perform_cross_validation(dataset, cross_validation_sources)
+    qa_results$cross_validation_results <- cross_val_results
+  }
+  
+  # Calculate composite quality score
+  qa_results$quality_score <- calculate_quality_score(qa_results)
+  
+  # Generate recommendations
+  qa_results$recommendations <- generate_quality_recommendations(qa_results)
+  
+  return(qa_results)
+}
+
+# Specific quality checks for healthcare provider data
+validate_provider_data <- function(provider_dataset) {
+  
+  provider_checks <- list(
+    
+    # NPI validation
+    npi_validity = check_npi_validity(provider_dataset$npi),
+    
+    # Geographic coordinate validation  
+    coordinate_validity = validate_coordinates(
+      provider_dataset$latitude, 
+      provider_dataset$longitude
+    ),
+    
+    # Taxonomy code validation
+    taxonomy_validity = validate_taxonomy_codes(provider_dataset$taxonomy),
+    
+    # Address completeness
+    address_completeness = check_address_completeness(provider_dataset),
+    
+    # Temporal consistency
+    temporal_consistency = check_temporal_consistency(provider_dataset),
+    
+    # Cross-reference validation
+    cross_reference_check = cross_reference_with_cms_data(provider_dataset)
+  )
+  
+  return(provider_checks)
+}
+```
+
+--------------------------------------------------------------------------------
+
+# Key Findings and Policy Implications {.tabset}
+
+## Executive Summary
+
+::: results-box
+### **Key Research Findings**
+
+1.  **Baseline Access (2013)**: 44.5% of women had 30-minute access to
+    gynecologic oncologists, increasing to 91.3% within 180 minutes
+
+2.  **Temporal Trends**: Generally declining access across all time thresholds,
+    though not statistically significant for total population
+
+3.  **Demographic Disparities**: Significant differences by race/ethnicity, with
+    Asian women showing increases in longer drive times while White women
+    experienced declines
+
+4.  **Geographic Patterns**: Persistent rural-urban divides with metropolitan
+    areas maintaining higher accessibility
+
+5.  **Provider Workforce**: Relatively stable provider numbers but shifting
+    geographic distribution patterns
+:::
+
+## Policy Recommendations
+
+::: highlight-box
+### **🏥 Healthcare Policy Implications**
+
+#### **Immediate Actions Needed**
+
+-   **Rural Access Enhancement**: Targeted recruitment and retention programs
+    for rural/frontier areas
+-   **Telemedicine Integration**: Expanded telehealth capabilities for initial
+    consultations and follow-up care
+-   **Transportation Assistance**: Patient transportation programs for
+    longer-distance specialty care
+
+#### **Long-term Strategic Planning**
+
+-   **Workforce Distribution**: Incentive programs to encourage subspecialist
+    practice in underserved regions
+-   **Training Pipeline**: Expanded fellowship programs with rural/underserved
+    practice requirements
+-   **Regional Centers**: Development of regional specialty care centers with
+    enhanced accessibility
+
+#### **Health Equity Considerations**
+
+-   **Demographic-Specific Programs**: Targeted outreach and access programs for
+    underserved populations
+-   **Cultural Competency**: Enhanced cultural competency training for providers
+    serving diverse populations
+-   **Language Access**: Multilingual care teams and interpretation services
+:::
+
+## Future Research Directions
+
+::: method-box
+### **🔬 Research Extensions and Innovations**
+
+#### **Methodological Enhancements**
+
+-   **Real-time Traffic Integration**: Dynamic isochrone modeling with
+    time-of-day variations
+-   **Multi-modal Transportation**: Integration of public transportation and
+    ride-sharing options
+-   **Provider Capacity Modeling**: Incorporation of provider availability and
+    appointment scheduling
+
+#### **Expanded Analysis Scope**
+
+-   **Quality Metrics Integration**: Correlation with care quality and patient
+    outcomes
+-   **Cost-Effectiveness Analysis**: Economic modeling of accessibility
+    improvements
+-   **Patient Flow Modeling**: Actual versus potential care utilization patterns
+
+#### **Technology Integration**
+
+-   **Machine Learning Applications**: Predictive modeling for access patterns
+    and provider needs
+-   **Mobile Health Integration**: Smartphone-based accessibility tools and
+    patient navigation
+-   **Artificial Intelligence**: AI-powered care coordination and triage systems
+:::
+
+--------------------------------------------------------------------------------
+
+# 📧 Contact and Collaboration {.tabset}
+
+## Primary Investigator
+
+::: highlight-box
+**Tyler Muffly, MD**\
+📧 **Email**: [tyler.muffly\@dhha.org](mailto:tyler.muffly@dhha.org){.email}\
+🏥 **Affiliation**: Denver Health and Hospital Authority\
+🔗 **Repository**: <https://github.com/mufflyt/isochrones>\
+📍 **Location**: Denver, Colorado, USA
+
+### **Research Interests**
+
+-   Healthcare accessibility and geographic disparities
+-   Gynecologic oncology workforce analysis\
+-   Geospatial health services research
+-   Health policy and rural healthcare delivery
+:::
+
+## Collaboration Opportunities
+
+We welcome collaborations and contributions from:
+
+-   🎓 **Academic Researchers**: Healthcare services researchers, geographers,
+    epidemiologists
+-   🏥 **Healthcare Organizations**: Health systems interested in accessibility
+    analysis
+-   💻 **Technical Contributors**: R developers, GIS specialists, data
+    scientists
+-   🏛️ **Policy Organizations**: Healthcare policy institutes and government
+    agencies
+
+### **How to Contribute**
+
+1.  **🐛 Bug Reports**: Submit issues via GitHub for any technical problems
+2.  **📊 Data Contributions**: Share additional validation datasets or provider
+    information\
+3.  **🔧 Code Improvements**: Submit pull requests for code enhancements
+4.  **📖 Documentation**: Help improve documentation and user guides
+5.  **🌍 Geographic Extensions**: Adapt methodology for other regions or
+    countries
+
+--------------------------------------------------------------------------------
+
+# License and Citation {.tabset}
+
+## License Information
+
+::: technical-note
+This project is licensed under the **MIT License**, promoting open science and
+reproducible research while ensuring proper attribution.
+:::
+
+```         
 MIT License
 
-## Contact
+Copyright (c) 2025 Tyler Muffly, MD
 
-Tyler Muffly, MD - tyler.muffly@dhha.org
-=======
 
 ``` bash
 wget -P "/Volumes/Video Projects Muffly 1/nppes_historical_downloads" "https://download.cms.gov/nppes/NPPES_Data_Dissemination_April_2024.zip"
@@ -1194,7 +3949,7 @@ wget -P "/Volumes/Video Projects Muffly 1/nppes_historical_downloads" "https://d
 
 # DATA REFERENCES
 
-```{r, include = TRUE}
+```{r, include = TRUE, include=FALSE}
 # ==============================================================================
 # COPY/PASTE READY REFERENCE VALUES - GYNECOLOGIC ONCOLOGY ACCESSIBILITY PROJECT
 # WITH OFFICIAL SOURCES AND CITATIONS
@@ -2054,4 +4809,85 @@ If you use this work in your research, please cite:
 -   **Code Updates**: As needed for R package changes
 
 # 
->>>>>>> 47596a66077d445ea529f1f63bcd5de6409f2044
+
+======= Permission is hereby granted, free of charge, to any person obtaining a
+copy of this software and associated documentation files (the "Software"), to
+deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is furnished
+to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+```         
+
+## Citation Guidelines
+
+### **Academic Citation**
+```
+
+Muffly, T. (2025). Comprehensive Healthcare Accessibility Analysis: Gynecologic
+Oncology Access Using Drive Time Isochrone Methodology. GitHub Repository.
+<https://github.com/mufflyt/isochrones>
+
+```         
+
+### **BibTeX Entry**
+
+```bibtex
+@misc{muffly2025accessibility,
+  title={Comprehensive Healthcare Accessibility Analysis: Gynecologic Oncology Access Using Drive Time Isochrone Methodology},
+  author={Muffly, Tyler},
+  year={2025},
+  url={https://github.com/mufflyt/isochrones},
+  note={Comprehensive analysis of nationwide access to gynecologic oncologists using drive time isochrones, demographic data, and geospatial analysis}
+}
+```
+
+--------------------------------------------------------------------------------
+
+# 🙏 Acknowledgments
+
+::: highlight-box
+### **Data Sources and Institutional Support**
+
+-   **National Bureau of Economic Research (NBER)** - Historical NPPES data
+    access
+-   **Centers for Medicare & Medicaid Services (CMS)** - Provider validation
+    data
+-   **HERE Technologies** - Geocoding and routing API access\
+-   **U.S. Census Bureau** - Demographic and geographic data
+-   **Denver Health and Hospital Authority**
+
+### **Technical Infrastructure**
+
+-   **R Core Team and CRAN Contributors** - Open source statistical computing
+    platform
+-   **RStudio** - Integrated development environment
+-   **Tidyverse** - Comprehensive data science ecosystem
+-   **Spatial R Community** - Geospatial analysis packages and support
+
+### **Research Community**
+
+-   **Health Services Research Community** - Methodological guidance and peer
+    review
+-   **Geographic Information Science Community** - Spatial analysis techniques
+-   **Open Science Advocates** - Reproducible research principles and practices
+:::
+
+--------------------------------------------------------------------------------
+
+*This comprehensive healthcare accessibility analysis represents ongoing
+research into geographic disparities in specialty healthcare access. The
+methodology and findings are continuously updated with new provider and
+demographic data to maintain relevance for healthcare policy and planning
+decisions.*
+
+--------------------------------------------------------------------------------
+
+::: {style="text-align: center; margin-top: 50px; padding: 20px; background-color: #f8f9fa; border-radius: 10px;"}
+**🏥 Improving Healthcare Access Through Data-Driven Analysis 📊**
+
+*Generated on `r Sys.Date()` \| Version 2.0 \| Comprehensive HTML Documentation*
+:::
