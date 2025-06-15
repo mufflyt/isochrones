@@ -55,6 +55,7 @@ library(ggplot2)
 library(ggthemes)
 library(maps)
 library(forcats)
+source("R/here_api_utils.R")
 
 #Of note this is a personal package with some bespoke functions and data that we will use occasionally.  It is still under development and it is normal for it to give multiple warnings at libary(tyler).
 # devtools::install_github("mufflyt/tyler")
@@ -62,9 +63,9 @@ library(forcats)
 
 # Store tidycensus data on cache
 options(tigris_use_cache = TRUE)
-Sys.setenv(HERE_API_KEY = "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
-readRenviron("~/.Renviron")
-hereR::set_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
+
+
+initialize_here_api_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
 
 
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
@@ -291,8 +292,7 @@ search_and_process_npi <- memoise(function(input_file,
 #**************************
 create_geocode <- memoise::memoise(function(csv_file) {
   # Set your HERE API key
-  api_key <- "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM"
-  hereR::set_key(api_key)
+  initialize_here_api_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
 
   # Check if the CSV file exists
   if (!file.exists(csv_file)) {
