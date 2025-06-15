@@ -20,6 +20,29 @@ source("09-get-census-population.R")
       #######################################################
 
       # Change the sf object into lat and long columns
+
+# This is the old address approach.  
+# Method 1: Use explicit package prefixes (recommended)
+geocoded_data <- readr::read_csv("/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/NPPES/NPPES_November_filtered_data_for_geocoding_geocoded_addresses.csv") %>%
+  dplyr::mutate(id = 1:dplyr::n()) %>%
+  dplyr::mutate(postal_code = stringr::str_sub(postal_code, 1, 5)) %>%
+  dplyr::mutate(access = exploratory::str_remove(access, regex("^POINT \\(", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
+  dplyr::mutate(access = exploratory::str_remove(access, regex("\\)$", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
+  tidyr::separate(access, into = c("lat", "long"), sep = "\\s+", convert = TRUE) %>%
+  dplyr::select(-id, -rank, -type, -district, -state) %>%  # Explicitly use dplyr::select
+  dplyr::filter(country %in% c("United States", "Puerto Rico")) %>%
+  dplyr::mutate(postal_code = stringr::str_sub(postal_code, 1, 5)) %>%
+  dplyr::rename(zip = postal_code) %>%
+  dplyr::mutate(dplyr::across(c(lat, long), readr::parse_number)) %>%
+  dplyr::filter(!is.na(lat))
+
+# Then create the map
+create_and_save_physician_dot_map(
+  physician_data = geocoded_data, 
+  color_palette = "magma", 
+  popup_var = "name"
+)
+
 geocoded_data <- readr::read_csv("/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/NPPES/NPPES_November_filtered_data_for_geocoding_geocoded_addresses.csv") %>%
         mutate(id = 1:n()) %>%
         mutate(postal_code = stringr::str_sub(postal_code,1 ,5)) %>%

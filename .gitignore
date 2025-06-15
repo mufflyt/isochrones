@@ -111,6 +111,7 @@ data/tabulated_all_years_clean_*.xlsx
 *auth*
 *config.json
 *config.yml
+01-setup.R
 #--------------------------------------
 # OS specific files
 #--------------------------------------
@@ -154,4 +155,5 @@ tyler_*.tar.gz
 .~lock.*
 tmp/
 temp/
-.temp/
+.temp/data/
+
