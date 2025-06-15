@@ -211,6 +211,7 @@ minutes.
 do I have to travel for specialized care? - **Policy perspective**: Which
 populations are underserved? - **Planning perspective**: Where should new
 providers practice?
+For a quick check on the resulting polygons you can view them interactively in R with `mapview::mapview(isochrones_sf)`. For more customized maps, use the `leaflet` package.
 
 ## Enhanced Census Tract Map
 
