@@ -23,6 +23,9 @@ scrape_physicians_data_with_tor <- function(startID, endID, torPort) {
   cat("Starting scrape_physicians_data_with_tor...\n")
   cat("Parameters - startID:", startID, "endID:", endID, "torPort:", torPort, "\n")
 
+  # Directory for temporary output files
+  temp_dir <- tempdir()
+
   # Create a sequence of IDs from startID to endID
   id_list <- seq(startID, endID)
   cat("ID list:", paste(id_list, collapse = ", "), "\n")
@@ -56,7 +59,7 @@ scrape_physicians_data_with_tor <- function(startID, endID, torPort) {
     cat("API URL:", url, "\n")
 
     # Send a GET request through Tor
-    ph_r <- httr::GET(url, use_proxy(paste0("socks5://localhost:", torPort)))
+    ph_r <- httr::GET(url, httr::use_proxy(paste0("socks5://localhost:", torPort)))
 
     # Check if the request was successful
     if (ph_r$status_code == 200) {

@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 # This file defines a comprehensive R function called analyze_isochrone_data() for analyzing healthcare accessibility data, specifically focusing on isochrone analysis (areas accessible within certain travel times).
 # The function is designed to process datasets that contain information about population access to healthcare services at different time thresholds (like 30, 60, 120, and 180 minutes). It performs several key operations:
 #   

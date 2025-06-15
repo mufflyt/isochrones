@@ -28,7 +28,6 @@ library(npi)
 library(tidyr)
 library(leaflet)
 library(tigris)
-library(ggplot2)
 library(censusapi)
 library(htmlwidgets)
 library(webshot)
@@ -37,8 +36,9 @@ library(wesanderson) # color palettes
 library(mapview)
 library(shiny) # creation of GUI, needed to change leaflet layers with dropdowns
 library(htmltools) # added for saving html widget
-devtools::install_github('ramnathv/htmlwidgets')
-remotes::install_github("andrewallenbruce/provider")
+## Installation commands removed to avoid side effects
+## devtools::install_github('ramnathv/htmlwidgets')
+## remotes::install_github("andrewallenbruce/provider")
 library(provider)
 library(readxl)
 library(leaflet.extras)
@@ -55,6 +55,7 @@ library(ggplot2)
 library(ggthemes)
 library(maps)
 library(forcats)
+source("R/here_api_utils.R")
 
 #Of note this is a personal package with some bespoke functions and data that we will use occasionally.  It is still under development and it is normal for it to give multiple warnings at libary(tyler).
 # devtools::install_github("mufflyt/tyler")
@@ -62,18 +63,19 @@ library(forcats)
 
 # Store tidycensus data on cache
 options(tigris_use_cache = TRUE)
-
 readRenviron("~/.Renviron")
 source("R/api_utils.R")
+
 # Initialize HERE API using a key stored in the environment
 api_key <- get_env_or_stop("HERE_API_KEY")
 hereR::set_key(api_key)
+
 
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 #####  Directory structure with here
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 here::set_here(path = ".", verbose = TRUE)
-here::i_am(path = "isochrones.Rproj")
+here::i_am("isochrones.Rproj")
 data_folder <- here::here("data")
 results_folder <- here::here("results")
 images_folder <- here::here("figures")
@@ -85,16 +87,20 @@ code_folder <- here::here("R")
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 `%nin%`<-Negate(`%in%`)
 
+
 #' Search NPI Database by Taxonomy
-#' Search NPI Database by Taxonomy
+#'
+#' @param taxonomy_to_search A character vector of taxonomy descriptions
+#' @return A cleaned and filtered data frame of matched NPIs
 search_by_taxonomy <- function(taxonomy_to_search) {
-  # Create an empty data frame to store search results
-  data <- data.frame()
+  logger::log_info("Starting taxonomy search for {length(taxonomy_to_search)} terms.")
   
-  # Loop over each taxonomy description
+  data <- dplyr::tibble()
+  
   for (taxonomy in taxonomy_to_search) {
+    logger::log_info("Searching for taxonomy: {taxonomy}")
+    
     tryCatch({
-      # Perform the search for the current taxonomy
       result <- npi::npi_search(
         taxonomy_description = taxonomy,
         country_code = "US",
@@ -103,104 +109,89 @@ search_by_taxonomy <- function(taxonomy_to_search) {
       )
       
       if (!is.null(result)) {
-        # First flatten the result to get the data frame
-        flattened_result <- npi::npi_flatten(result)
+        flattened <- npi::npi_flatten(result)
         
-        # Continue only if there are results
-        if (nrow(flattened_result) > 0) {
-          # Add search term
-          flattened_result$search_term <- taxonomy
+        if (nrow(flattened) > 0) {
+          flattened$search_term <- taxonomy
           
-          # Filter by country if the column exists
-          if ("addresses_country_name" %in% names(flattened_result)) {
-            flattened_result <- flattened_result %>%
-              dplyr::filter(addresses_country_name == "United States")
+          if ("addresses_country_name" %in% names(flattened)) {
+            flattened <- dplyr::filter(flattened, addresses_country_name == "United States")
           }
           
-          # Process basic_credential if it exists
-          if ("basic_credential" %in% names(flattened_result)) {
-            flattened_result <- flattened_result %>%
-              dplyr::mutate(basic_credential = stringr::str_remove_all(basic_credential, "[[\\p{P}][\\p{S}]]")) %>%
+          if ("basic_credential" %in% names(flattened)) {
+            flattened <- flattened %>%
+              dplyr::mutate(
+                basic_credential = stringr::str_remove_all(basic_credential, "[[\\p{P}][\\p{S}]]")
+              ) %>%
               dplyr::filter(stringr::str_to_lower(basic_credential) %in% stringr::str_to_lower(c("MD", "DO")))
           }
           
-          # Filter by taxonomy description if it exists
-          if ("taxonomies_desc" %in% names(flattened_result)) {
-            flattened_result <- flattened_result %>%
-              dplyr::filter(stringr::str_detect(taxonomies_desc, taxonomy))
+          if ("taxonomies_desc" %in% names(flattened)) {
+            flattened <- dplyr::filter(flattened, stringr::str_detect(taxonomies_desc, taxonomy))
           }
           
-          # Sort by last name if it exists
-          if ("basic_last_name" %in% names(flattened_result)) {
-            flattened_result <- flattened_result %>%
-              dplyr::arrange(basic_last_name)
+          if ("basic_last_name" %in% names(flattened)) {
+            flattened <- dplyr::arrange(flattened, basic_last_name)
           }
           
-          # Create full name if both first and last name exist
-          if (all(c("basic_first_name", "basic_last_name") %in% names(flattened_result))) {
-            flattened_result <- flattened_result %>%
+          if (all(c("basic_first_name", "basic_last_name") %in% names(flattened))) {
+            flattened <- flattened %>%
               dplyr::mutate(full_name = paste(
                 stringr::str_to_lower(basic_first_name),
                 stringr::str_to_lower(basic_last_name)
               ))
           }
           
-          # Select only columns that exist in the data frame
-          cols_to_remove <- c("basic_last_updated", "basic_status", "basic_name_prefix", 
-                              "basic_name_suffix", "basic_certification_date", "other_names_type", 
-                              "other_names_code", "other_names_credential", "other_names_first_name", 
-                              "other_names_last_name", "other_names_prefix", "other_names_suffix", 
-                              "other_names_middle_name", "identifiers_code", "identifiers_desc", 
-                              "identifiers_identifier", "identifiers_state", "identifiers_issuer", 
-                              "taxonomies_code", "taxonomies_taxonomy_group", "taxonomies_state", 
-                              "taxonomies_license", "addresses_country_code", "addresses_country_name", 
-                              "addresses_address_purpose", "addresses_address_type", "addresses_address_2", 
-                              "addresses_fax_number", "endpoints_endpointType", "endpoints_endpointTypeDescription", 
-                              "endpoints_endpoint", "endpoints_affiliation", "endpoints_useDescription", 
-                              "endpoints_contentTypeDescription", "endpoints_country_code", 
-                              "endpoints_country_name", "endpoints_address_type", "endpoints_address_1", 
-                              "endpoints_city", "endpoints_state", "endpoints_postal_code", 
-                              "endpoints_use", "endpoints_endpointDescription", "endpoints_affiliationName", 
-                              "endpoints_contentType", "endpoints_contentOtherDescription", 
-                              "endpoints_address_2", "endpoints_useOtherDescription")
-          
-          # Only remove columns that actually exist in the data frame
-          cols_to_remove <- intersect(cols_to_remove, names(flattened_result))
-          
-          if (length(cols_to_remove) > 0) {
-            flattened_result <- flattened_result %>%
-              dplyr::select(-all_of(cols_to_remove))
-          }
-          
-          # Distinct rows
-          flattened_result <- flattened_result %>%
+          cols_to_remove <- c(
+            "basic_last_updated", "basic_status", "basic_name_prefix", "basic_name_suffix",
+            "basic_certification_date", "other_names_type", "other_names_code",
+            "other_names_credential", "other_names_first_name", "other_names_last_name",
+            "other_names_prefix", "other_names_suffix", "other_names_middle_name",
+            "identifiers_code", "identifiers_desc", "identifiers_identifier", "identifiers_state",
+            "identifiers_issuer", "taxonomies_code", "taxonomies_taxonomy_group",
+            "taxonomies_state", "taxonomies_license", "addresses_country_code",
+            "addresses_country_name", "addresses_address_purpose", "addresses_address_type",
+            "addresses_address_2", "addresses_fax_number", "endpoints_endpointType",
+            "endpoints_endpointTypeDescription", "endpoints_endpoint", "endpoints_affiliation",
+            "endpoints_useDescription", "endpoints_contentTypeDescription",
+            "endpoints_country_code", "endpoints_country_name", "endpoints_address_type",
+            "endpoints_address_1", "endpoints_city", "endpoints_state", "endpoints_postal_code",
+            "endpoints_use", "endpoints_endpointDescription", "endpoints_affiliationName",
+            "endpoints_contentType", "endpoints_contentOtherDescription", "endpoints_address_2",
+            "endpoints_useOtherDescription"
+          )
+          flattened <- flattened %>%
+            dplyr::select(-tidyselect::any_of(intersect(cols_to_remove, names(flattened)))) %>%
             dplyr::distinct(npi, .keep_all = TRUE)
           
-          # Distinct by more columns if they exist
-          if (all(c("basic_first_name", "basic_last_name", "basic_middle_name", 
-                    "basic_sole_proprietor", "basic_gender", "basic_enumeration_date", 
-                    "addresses_state") %in% names(flattened_result))) {
-            flattened_result <- flattened_result %>%
-              dplyr::distinct(basic_first_name, basic_last_name, basic_middle_name, 
-                              basic_sole_proprietor, basic_gender, basic_enumeration_date, 
-                              addresses_state, .keep_all = TRUE)
+          if (all(c(
+            "basic_first_name", "basic_last_name", "basic_middle_name", "basic_sole_proprietor",
+            "basic_gender", "basic_enumeration_date", "addresses_state"
+          ) %in% names(flattened))) {
+            flattened <- flattened %>%
+              dplyr::distinct(
+                basic_first_name, basic_last_name, basic_middle_name,
+                basic_sole_proprietor, basic_gender, basic_enumeration_date,
+                addresses_state, .keep_all = TRUE
+              )
           }
           
-          # Append to the main data frame
-          data <- dplyr::bind_rows(data, flattened_result)
+          data <- dplyr::bind_rows(data, flattened)
         }
       }
     }, error = function(e) {
-      message(sprintf("Error in search for %s:\n%s", taxonomy, e$message))
+      logger::log_warn("Error for taxonomy '{taxonomy}': {e$message}")
     })
   }
   
-  # Write the combined data frame to an RDS file
-  filename <- paste("data/search_taxonomy", format(Sys.time(), format = "%Y-%m-%d_%H-%M-%S"), ".rds", sep = "_")
+  filename <- paste0("data/search_taxonomy_", format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".rds")
   readr::write_rds(data, filename)
+  logger::log_info("Saved search results to {filename}")
+  beepr::beep(2)
   
   return(data)
 }
+
 
 ##############################
 ###############################
@@ -595,12 +586,13 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25,
 ###############################
 
 # THIS FUNCTION IS NOW WORKING.  
-us_fips <- tigris::fips_codes %>%
+us_fips_list <- tigris::fips_codes %>%
   dplyr::select(state_code, state_name) %>%
   dplyr::distinct(state_code, .keep_all = TRUE) %>%
   dplyr::filter(state_code < 56) %>%
   dplyr::select(state_code) %>%
   dplyr::pull()
+
 
 get_census_data <- function (us_fips_list)
 {
@@ -608,8 +600,9 @@ get_census_data <- function (us_fips_list)
   census_key <- get_env_or_stop("CENSUS_API_KEY")
   for (f in us_fips) {
     us_fips <- tyler::fips
+
     print(f)
-    stateget <- paste("state:", f, "&in=county:*&in=tract:*", 
+    stateget <- paste("state:", f, "&in=county:*&in=tract:*",
                       sep = "")
       state_data[[f]] <- getCensus(name = "acs/acs5", vintage = 2019,
                                    vars = c("NAME", paste0("B01001_0", c("01", 26, 33:49),
@@ -739,6 +732,7 @@ postico_database_obgyns_by_year <- function(year, db_details) {
   # Write the processed data to a CSV file
   #write_csv(nppes_data, paste0("data/02.5-subspecialists_over_time.R/Postico_output_", year, "_nppes_data_filtered.csv"))
   write_csv(nppes_data, paste0("Postico_output_", year, "_nppes_data_filtered.csv"))
+  return(nppes_data)
 }
 
 # Example usage
@@ -750,41 +744,6 @@ postico_database_obgyns_by_year <- function(year, db_details) {
 #   password = "????"
 # )
 
-#########
-#Function 1: validate_and_remove_invalid_npi
-validate_and_remove_invalid_npi <- function(input_data) {
-  
-  if (is.data.frame(input_data)) {
-    # Input is a dataframe
-    df <- input_data
-  } else if (is.character(input_data)) {
-    # Input is a file path to a CSV
-    df <- readr::read_csv(input_data)
-  } else {
-    stop("Input must be a dataframe or a file path to a CSV.")
-  }
-  
-  # Remove rows with missing or empty NPIs
-  df <- df %>%
-    #head(5) %>%. #for testing only
-    dplyr::filter(!is.na(npi) & npi != "")
-  
-  # Add a new column "npi_is_valid" to indicate NPI validity
-  df <- df %>%
-    dplyr::mutate(npi_is_valid = sapply(npi, function(x) {
-      if (is.numeric(x) && nchar(x) == 10) {
-        npi::npi_is_valid(as.character(x))
-      } else {
-        FALSE
-      }
-    })) %>%
-    dplyr::filter(!is.na(npi_is_valid) & npi_is_valid)
-  
-  # Return the valid dataframe with the "npi_is_valid" column
-  return(df)
-}
-
-############
 validate_and_remove_invalid_npi <- function(input_data) {
   
   if (is.data.frame(input_data)) {
@@ -838,7 +797,6 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
     stop("Input must be a dataframe or a file path to a CSV.")
   }
   
-  df <- df %>% head(100) # for testing
   
   # Remove duplicate NPIs
   df <- df %>% dplyr::distinct(npi, .keep_all = TRUE)

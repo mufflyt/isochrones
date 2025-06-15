@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 #The check_physician_presence function is a well-designed utility for tracking physicians across temporal data. It efficiently analyzes a dataset containing physician information to determine when specific providers appear in the records. The function accepts a list of National Provider Identifiers (NPIs), optionally paired with provider names, and methodically examines each NPI's presence throughout different years. It returns a structured data frame summarizing each provider's representation in the dataset, including their total record count and a chronological listing of years in which they appear. This function is particularly valuable for longitudinal analyses of healthcare provider data, enabling researchers to identify patterns in physician presence, track career trajectories, or validate data completeness across multiple years of NPI records.
 
 invisible(gc())

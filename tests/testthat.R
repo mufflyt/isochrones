@@ -7,6 +7,6 @@
 # * https://testthat.r-lib.org/articles/special-files.html
 
 library(testthat)
-library(isochrones)
 
-test_check("isochrones")
+# There is no installed isochrones package. Run tests directly from this folder.
+testthat::test_dir("testthat")

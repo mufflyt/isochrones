@@ -1,6 +1,11 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 
 
 library(tidyverse)
+source("R/01-setup.R")
 library(readxl)
 
 # Read the deactivated NPI file, skipping the first row and assigning column names
