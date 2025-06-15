@@ -60,7 +60,7 @@ iso_datetime_yearly <- c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-
 
 isochrones_sf <- process_and_save_isochrones(input_file_no_error_rows, 
                                              chunk_size = 25, 
-                                             iso_datetime = "2023-10-20 09:00:00",
+                                             iso_datetime = as.POSIXct("2023-10-20 09:00:00"),
                                              iso_ranges = c(30*60, 60*60, 120*60, 180*60),
                                              crs = 4326, 
                                              transport_mode = "car",
@@ -105,8 +105,11 @@ end_isochrones_sf_clipped <- sf::st_read("data/06-isochrones/end_isochrones_sf_c
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering.
 
 # Create a basic Leaflet map
+north_arrow <- "<svg width='30' height='30' viewBox='0 0 30 30'><polygon points='15,2 18,12 15,10 12,12' fill='black'/><text x='15' y='25' text-anchor='middle' font-size='10'>N</text></svg>"
 map <- leaflet() %>%
-  addTiles() # Add the default map tiles
+  addTiles() %>% # Add the default map tiles
+  addScaleBar(position = "bottomleft") %>%
+  addControl(html = north_arrow, position = "topright")
 
 # Define a cooler color palette (e.g., "viridis")
 cool_palette <- viridis::magma(length(end_isochrones_sf_clipped$range))

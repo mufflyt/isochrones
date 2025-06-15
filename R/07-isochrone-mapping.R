@@ -21,7 +21,7 @@ subspecialists_lat_long <- read_csv("data/04-geocode/end_completed_clinician_dat
   rename(zip = postal_code) %>%
   mutate(across(c(lat, long), parse_number)) %>%
   filter(!is.na(lat)) %>%
-  mutate(as.factor(ACOG_District)) %>%
+  mutate(ACOG_District = as.factor(ACOG_District)) %>%
   distinct(address, .keep_all = TRUE)
 
 #**********************************************
@@ -135,10 +135,13 @@ invisible(gc())
 #******************************* 
 end_isochrones_sf_clipped$range <- as.factor(end_isochrones_sf_clipped$range)
 color_palette <- viridis::magma(length(unique(end_isochrones_sf_clipped$range)))
+north_arrow <- "<svg width='30' height='30' viewBox='0 0 30 30'><polygon points='15,2 18,12 15,10 12,12' fill='black'/><text x='15' y='25' text-anchor='middle' font-size='10'>N</text></svg>"
 isochrone_map <- leaflet() %>%
   addProviderTiles("CartoDB.Positron", group = "Greyscale") %>%
   addProviderTiles(providers$CartoDB.Positron, group = "Thunderforest") %>%
   addProviderTiles("Esri.WorldStreetMap", group = "ESRI") %>%
+  addScaleBar(position = "bottomleft") %>%
+  addControl(html = north_arrow, position = "topright") %>%
 
   addPolygons(
     data = end_isochrones_sf_clipped,
@@ -161,7 +164,7 @@ isochrone_map <- leaflet() %>%
     fillOpacity = 0.1,
     color = "#1f77b4",
     popup = ~paste0("<strong>Address:</strong> ", address, "<br />",
-                    "<strong>Location:</strong> ", city, ", ", state_code)#,
+                    "<strong>Location:</strong> ", city, ", ", state_code)
     # group = "Obstetrician/Gynecologist Subspecialist"
   ) %>%
   

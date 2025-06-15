@@ -1,5 +1,3 @@
-# Load helper functions
-source("R/01-setup.R")
 library(testthat)
 
 test_that("format_pct rounds and formats numbers", {

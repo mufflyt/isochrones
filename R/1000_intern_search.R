@@ -1,4 +1,5 @@
 
+source("R/01-setup.R")
 
 search_and_process_npi <- memoise(function(input_file,
                                            enumeration_type = "ind",
@@ -39,28 +40,22 @@ search_and_process_npi <- memoise(function(input_file,
   # Define the list of taxonomies to filter
   vc <- c("Student in an Organized Health Care Education/Training Program")
 
-  bc <- c("Student in an Organized Health Care Education/Training Program")
 
   # Create a function to search NPI based on first and last names
   search_npi <- function(first_name, last_name) {
     cat("Searching NPI for:", first_name, last_name, "\n")
-    tryCatch(
+    result <- tryCatch(
       {
-        # NPI search object
         npi_obj <- npi::npi_search(first_name = first_name, last_name = last_name)
-
-        # Retrieve basic and taxonomy data from npi objects
         t <- npi::npi_flatten(npi_obj, cols = c("basic", "taxonomies"))
-
-        # Subset results with taxonomy that matches taxonomies in the lists
-        t <- t %>% dplyr::filter(taxonomies_desc %in% vc | taxonomies_desc %in% bc)
+        t %>% dplyr::filter(taxonomies_desc %in% vc)
       },
       error = function(e) {
         cat("ERROR:", conditionMessage(e), "\n")
-        return(NULL)  # Return NULL for error cases
+        return(NULL)
       }
     )
-    return(t)
+    return(result)
   }
 
   # Create an empty list to receive the data

@@ -1,4 +1,6 @@
 #' Process Open Payments Data Using DuckDB
+# Load global setup
+source("R/01-setup.R")
 #'
 #' This function reads Open Payments CSV files (General, Research, or Ownership payments)
 #' into a DuckDB database, normalizes the schema across years, and merges them into a

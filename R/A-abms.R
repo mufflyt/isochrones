@@ -1,4 +1,5 @@
 #ABMS
+source("R/01-setup.R")
 
 
 library(tidyverse)
