@@ -21,7 +21,7 @@ subspecialists_lat_long <- read_csv("data/04-geocode/end_completed_clinician_dat
   rename(zip = postal_code) %>%
   mutate(across(c(lat, long), parse_number)) %>%
   filter(!is.na(lat)) %>%
-  mutate(as.factor(ACOG_District)) %>%
+  mutate(ACOG_District = as.factor(ACOG_District)) %>%
   distinct(address, .keep_all = TRUE)
 
 #**********************************************
@@ -117,7 +117,7 @@ write_csv(result, "data/result.csv")
 
 # Filter out feature 188562 from the result
 filtered_result <- result %>%
-  filter(row_number != 188562)
+  filter(dplyr::row_number() != 188562)
 
 sf::st_write(result,
              dsn = "data/07-isochrone-mapping",
@@ -157,7 +157,7 @@ isochrone_map <- leaflet() %>%
   leaflet::addCircleMarkers(
     data = subspecialists_lat_long_copy,
     radius = 2,
-    fill = T,
+    fill = TRUE,
     fillOpacity = 0.1,
     color = "#1f77b4",
     popup = ~paste0("<strong>Address:</strong> ", address, "<br />",

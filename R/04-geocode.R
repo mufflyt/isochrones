@@ -10,7 +10,6 @@ readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspeciali
   #head(10) %>% #for testing.
   readr::write_csv(., "data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv") -> a
 
-a$address
 
 #**************************
 #* GEOCODE THE DATA USING HERE API.  The key is hard coded into the function.  
