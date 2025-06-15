@@ -60,7 +60,7 @@ iso_datetime_yearly <- c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-
 
 isochrones_sf <- process_and_save_isochrones(input_file_no_error_rows, 
                                              chunk_size = 25, 
-                                             iso_datetime = "2023-10-20 09:00:00",
+                                             iso_datetime = as.POSIXct("2023-10-20 09:00:00"),
                                              iso_ranges = c(30*60, 60*60, 120*60, 180*60),
                                              crs = 4326, 
                                              transport_mode = "car",
@@ -70,7 +70,9 @@ isochrones_sf <- process_and_save_isochrones(input_file_no_error_rows,
 dim(isochrones_sf)
 class(isochrones_sf)
 
-isochrones_df <- sf::st_read("data/06-isochrones/isochrones_ 20231223111020 _chunk_ 1 _to_ 4/isochrones.shp") %>%
+isochrones_df <- sf::st_read(
+  "data/06-isochrones/isochrones_20231223111020_chunk_1_to_4/isochrones.shp"
+) %>%
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering in the leaflet map later on.
 
 # Clip the isochrones to the USA border.

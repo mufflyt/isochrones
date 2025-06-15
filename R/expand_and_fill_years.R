@@ -64,7 +64,7 @@ transform_to_fill_in_correct <- function(input_data, start_year = 2008, end_year
   expanded_data <- input_data %>%
     dplyr::arrange(lastupdatestr) %>%
     dplyr::distinct(npi, lastupdatestr, .keep_all = TRUE) %>% # Keep only unique npi, lastupdatestr rows
-    tidyr::expand(npi, year = year_sequence) %>%
+    tidyr::expand(., npi, year = year_sequence) %>%
     dplyr::left_join(input_data, by = c("npi", "year" = "lastupdatestr")) %>% # Join back the original data
     dplyr::group_by(npi) %>%
     fill(everything(), .direction = "down") %>%
