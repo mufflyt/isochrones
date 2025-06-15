@@ -5,6 +5,33 @@ db_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/unzipped
 # Connect to the DuckDB database
 con <- dbConnect(duckdb::duckdb(), db_path)
 
+#' Create simple indexes on common columns to improve query speed
+add_basic_indexes <- function(con, table_year_mapping) {
+  for (table in table_year_mapping$table_name) {
+    fields <- DBI::dbListFields(con, table)
+    safe_name <- gsub("[^A-Za-z0-9_]", "_", table)
+    if ("NPI" %in% fields) {
+      DBI::dbExecute(con, sprintf(
+        "CREATE INDEX IF NOT EXISTS idx_%s_npi ON \"%s\"(NPI)",
+        safe_name, table
+      ))
+    }
+    if ("Entity Type Code" %in% fields) {
+      DBI::dbExecute(con, sprintf(
+        "CREATE INDEX IF NOT EXISTS idx_%s_entity ON \"%s\"(\"Entity Type Code\")",
+        safe_name, table
+      ))
+    }
+    tax_col <- "Healthcare Provider Taxonomy Code_1"
+    if (tax_col %in% fields) {
+      DBI::dbExecute(con, sprintf(
+        "CREATE INDEX IF NOT EXISTS idx_%s_tax1 ON \"%s\"(\"%s\")",
+        safe_name, table, tax_col
+      ))
+    }
+  }
+}
+
 
 # Make table to year mapping automatic because the names of the files are so fucking long
 create_nppes_table_mapping <- function(con) {
@@ -105,6 +132,9 @@ find_physicians_across_years <- function(con,
   validate_inputs(con, table_year_mapping, taxonomy_codes, years_to_include)
   
   filtered_mapping <- filter_year_mapping(table_year_mapping, years_to_include)
+
+  # Create basic indexes to speed up subsequent queries
+  add_basic_indexes(con, filtered_mapping)
   
   if (nrow(filtered_mapping) == 0) {
     logger::log_warn("No matching years found in the mapping")
