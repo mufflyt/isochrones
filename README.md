@@ -831,6 +831,9 @@ census_api_key("your_census_api_key_here", install = TRUE)
 
 -   GitHub LFS (Large File Storage) for managing large files
 -   DuckDB for efficient data querying
+    - Use `tbl()` to create lazy references to tables and keep data in DuckDB
+    - Perform filtering with `duckplyr`/`dplyr` verbs and call `collect()` only on final results
+    - When pipelines grow complex, use `compute()` to write intermediate tables in DuckDB
 -   PostgreSQL database for year-specific physician data
 
 ### Auxiliary Tools

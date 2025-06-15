@@ -21,8 +21,8 @@ table_names <- c(
 dbListTables(con)
 
 process_open_payments_tables <- function(con, table_names, output_csv_path) {
-  # Initialize an empty data frame to store merged data
-  all_data <- data.frame()
+  # Track names of temporary filtered tables stored in DuckDB
+  filtered_table_names <- character()
   
   # Check if the directory exists, create it if not
   if (!dir.exists(dirname(output_csv_path))) {
@@ -64,12 +64,12 @@ process_open_payments_tables <- function(con, table_names, output_csv_path) {
           "Allopathic & Osteopathic Physicians|Obstetrics & Gynecology|Reproductive Endocrinology"
         ))
       
-      # Collect the filtered data
-      filtered_data_df <- duckplyr::collect(filtered_data)
-      message("Collected filtered data for table: ", table_name)
-      
-      # Append the processed data to the merged data frame
-      all_data <- dplyr::bind_rows(all_data, filtered_data_df)
+      # Materialize results to a temporary table to avoid repeated computation
+      temp_table <- paste0(table_name, "_filtered")
+      filtered_data %>%
+        duckplyr::compute(name = temp_table, temporary = TRUE)
+      filtered_table_names <- c(filtered_table_names, temp_table)
+      message("Wrote filtered data to temp table: ", temp_table)
       
     }, error = function(e) {
       message("Error processing table: ", table_name)
@@ -78,7 +78,12 @@ process_open_payments_tables <- function(con, table_names, output_csv_path) {
   }
   
   message("All tables processed.")
-  
+
+  # Combine the temporary tables inside DuckDB and collect the result
+  combined_ref <- dplyr::bind_rows(lapply(filtered_table_names, function(nm) tbl(con, nm)))
+  message("Collecting combined data")
+  all_data <- duckplyr::collect(combined_ref)
+
   # Write the merged data frame to disk
   tryCatch({
     readr::write_csv(all_data, output_csv_path)
