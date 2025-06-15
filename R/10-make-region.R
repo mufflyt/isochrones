@@ -71,7 +71,7 @@ regions <- counties %>% st_drop_geometry() %>%
   rename(fips_county = GEOID, fips_state = STATEFP, county_name = NAME)
 regions <- as.data.frame(regions)
 
-write.csv(regions, "data/fips-appalachia-delta.csv", na = "", row.names = F)
+write.csv(regions, "data/fips-appalachia-delta.csv", na = "", row.names = FALSE)
 
 # Remove AK and HI for mapping
 counties <- counties %>% filter(!(STATEFP %in% c("02", "15")))

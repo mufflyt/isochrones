@@ -1,0 +1,14 @@
+Package: isochrones
+Type: Package
+Title: Utilities for Isochrone Analysis
+Version: 0.1.0
+Authors@R: c(person(given = "Tyler", family = "Muffly", role = c("aut", "cre"), email = "tyler.muffly@dhha.org"))
+Description: Helper functions used in the isochrones project.
+License: MIT
+Encoding: UTF-8
+LazyData: true
+Imports:
+    DBI,
+    assertthat,
+    stringr,
+    tibble

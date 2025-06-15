@@ -131,7 +131,6 @@ year_by_year_nppes_data_collected <- exploratory::searchAndReadDelimFiles(folder
   readr::type_convert() %>%
   exploratory::clean_data_frame() %>%
   mutate(year_1 = list_to_text(str_extract_all(id.new, "[:digit:]+")), .after = ifelse("id.new" %in% names(.), "id.new", last_col())) %>%
-  rename() %>%
   select(-id.new) %>%
   arrange(NPI) %>%
   mutate(`Primary Specialty` = coalesce(`Primary Specialty`, `Primary Speciality`)) %>%
