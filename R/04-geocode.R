@@ -28,7 +28,7 @@ write_csv(geocoded_data, "data/04-geocode/end_completed_clinician_data_geocoded_
 mean(geocoded_data$score) #accuracy of the geocode
 
 # Found in the isochrones/ path.  
-state_data <- read_csv("state_data.csv")
+state_data <- readr::read_csv(here::here("state_data.csv"))
 
 # Step 1: Aggregate your data by state_code and subspecialist count
 state_data <- geocoded_data %>%
@@ -40,16 +40,11 @@ us_states <- rnaturalearth::ne_states(country = "United States of America", retu
 
 #TODO: take a look at this.  
 merged_data <- state_data %>%
-  exploratory::left_join(`us_states`, by = join_by(`state_code` == `postal`), target_columns = c("postal", "geometry"))
+  dplyr::left_join(us_states, by = c("state_code" = "postal"))
 
-class(us_states$postal)
-class(state_data$state_code)
+merged_data_sf <- sf::st_as_sf(merged_data)
+merged_data_sp <- as(merged_data_sf, "Spatial")
 
-# TODO:  This throws an error:  Error in as(merged_data, "Spatial") : 
-#no method or default for coercing “tbl_df” to “Spatial”
-
-# Convert merged_data to SpatialPolygonsDataFrame
-merged_data_sp <- as(merged_data, "Spatial") 
 
 # TODO: Does not work with sf
 # Replace 'geometry' with your actual geometry column name

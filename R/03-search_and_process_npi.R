@@ -42,8 +42,10 @@ output_result <- search_and_process_npi(input_file) #Runs the function to get da
 
 searched_npi_numbers <- output_result %>%
   dplyr::distinct(npi, .keep_all = TRUE) %>%
-  dplyr::mutate(across(c(basic_first_name, basic_last_name, basic_credential),
-                .fns = ~sstringr::tr_remove_all(., "[[\\p{P}][\\p{S}]]"))) %>%
+  dplyr::mutate(across(
+    c(basic_first_name, basic_last_name, basic_credential),
+    .fns = ~stringr::str_remove_all(., "[[\\p{P}][\\p{S}]]")
+  )) %>%
   dplyr::mutate(basic_credential = stringr::str_to_upper(basic_credential)) %>%
   dplyr::filter(stringr::str_detect(basic_credential, "MD|DO")) %>%
   dplyr::mutate(basic_credential = stringr::str_sub(basic_credential,1 ,2)) %>%

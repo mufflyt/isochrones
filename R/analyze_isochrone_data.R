@@ -562,12 +562,13 @@ create_visualization_plots <- function(isochrone_data, group_column, time_thresh
 
 
 ##
+if (FALSE) {
 library(tidyverse)
 
 # Custom function to clean percentage columns
 clean_percentage_column <- function(column) {
   # Extract numeric values from strings like "72362517 (44.49%)"
-  as.numeric(str_extract(column, "^\\d+"))
+  as.numeric(stringr::str_extract(column, "^\\d+"))
 }
 
 # Read and clean the data first
@@ -620,3 +621,4 @@ isochrone_results$trend_analysis
 # Migration patterns
 # Socioeconomic transformations
 # Differential urban/rural development
+}
