@@ -797,7 +797,7 @@ ABMS - scraped.
     blocks
 -   `fips_isochrones_population_intersect.R` - Examines population within
     isochrones
--   `zzzPostico.R` - Used Postico originally. Able to use duckDB later on.\
+-   `@deprecated/R/zzzPostico.R` - Used Postico originally. Able to use duckDB later on.\
 -   `Postico_database_pull.R` - Extracts physician data from PostgreSQL
     database, enabling year-by-year analysis of physician practice locations
     from 2013 to 2022. Pulls "GYNECOLOGIC ONCOLOGY" from the Primary Specialty.
@@ -817,7 +817,7 @@ ABMS - scraped.
     data
 -   `03a-search_and_process_extra.R` - Additional NPI processing for edge cases
 -   `04-geocode.R` - Geocodes provider addresses using the HERE API
--   `zz05-geocode-cleaning.R` - Old technique with postmaster pulling apart the
+-   `@deprecated/R/zz05-geocode-cleaning.R` - Old technique with postmaster pulling apart the
     address.
 
 #### 2. Isochrone Generation and Analysis
@@ -874,7 +874,7 @@ order:
 5.  `03-search_and_process_npi.R` - When did physicians start practicing?
 6.  `03a-search_and_process_extra.R`
 7.  `04-geocode.R`
-8.  `zz05-geocode-cleaning.R`
+8.  `@deprecated/R/zz05-geocode-cleaning.R`
 9.  `retirement.R`/`retirement_adjusted.R` - When did physicians retire? (if
     physician retirement analysis is needed)
 
@@ -1755,10 +1755,10 @@ order:
 23. `walker_isochrone_maps.R` - Creates a faceted map of the US, HI, AK, and PR
     with the isochrones in place.
 
-24. `zzzcalculate_population_in_isochrones_by_race.R` - I'm unsure if it is
+24. `@deprecated/R/zzzcalculate_population_in_isochrones_by_race.R` - I'm unsure if it is
     needed.\
 
-25. `zzzfor_every_year_script_rmd.Rmd` - This is THE SAME MAP THAT WALKER DID IN
+25. `@deprecated/R/zzzfor_every_year_script_rmd.Rmd` - This is THE SAME MAP THAT WALKER DID IN
     `walker_isochrone_maps.R` BUT HE DID IT BETTER. Creates a map of the
     isochrones for every year.
 
