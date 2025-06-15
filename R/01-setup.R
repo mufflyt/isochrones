@@ -28,7 +28,6 @@ library(npi)
 library(tidyr)
 library(leaflet)
 library(tigris)
-library(ggplot2)
 library(censusapi)
 library(htmlwidgets)
 library(webshot)
@@ -37,8 +36,9 @@ library(wesanderson) # color palettes
 library(mapview)
 library(shiny) # creation of GUI, needed to change leaflet layers with dropdowns
 library(htmltools) # added for saving html widget
-devtools::install_github('ramnathv/htmlwidgets')
-remotes::install_github("andrewallenbruce/provider")
+## Installation commands removed to avoid side effects
+## devtools::install_github('ramnathv/htmlwidgets')
+## remotes::install_github("andrewallenbruce/provider")
 library(provider)
 library(readxl)
 library(leaflet.extras)
@@ -71,7 +71,7 @@ hereR::set_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
 #####  Directory structure with here
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 here::set_here(path = ".", verbose = TRUE)
-here::i_am(path = "isochrones.Rproj")
+here::i_am("isochrones.Rproj")
 data_folder <- here::here("data")
 results_folder <- here::here("results")
 images_folder <- here::here("figures")
@@ -600,11 +600,9 @@ us_fips <- tigris::fips_codes %>%
   dplyr::select(state_code) %>%
   dplyr::pull()
 
-get_census_data <- function (us_fips_list) 
-{
+get_census_data <- function(us_fips_list) {
   state_data <- list()
-  for (f in us_fips) {
-    us_fips <- tyler::fips
+  for (f in us_fips_list) {
     print(f)
     stateget <- paste("state:", f, "&in=county:*&in=tract:*", 
                       sep = "")
@@ -736,6 +734,7 @@ postico_database_obgyns_by_year <- function(year, db_details) {
   # Write the processed data to a CSV file
   #write_csv(nppes_data, paste0("data/02.5-subspecialists_over_time.R/Postico_output_", year, "_nppes_data_filtered.csv"))
   write_csv(nppes_data, paste0("Postico_output_", year, "_nppes_data_filtered.csv"))
+  return(nppes_data)
 }
 
 # Example usage
@@ -747,41 +746,6 @@ postico_database_obgyns_by_year <- function(year, db_details) {
 #   password = "????"
 # )
 
-#########
-#Function 1: validate_and_remove_invalid_npi
-validate_and_remove_invalid_npi <- function(input_data) {
-  
-  if (is.data.frame(input_data)) {
-    # Input is a dataframe
-    df <- input_data
-  } else if (is.character(input_data)) {
-    # Input is a file path to a CSV
-    df <- readr::read_csv(input_data)
-  } else {
-    stop("Input must be a dataframe or a file path to a CSV.")
-  }
-  
-  # Remove rows with missing or empty NPIs
-  df <- df %>%
-    #head(5) %>%. #for testing only
-    dplyr::filter(!is.na(npi) & npi != "")
-  
-  # Add a new column "npi_is_valid" to indicate NPI validity
-  df <- df %>%
-    dplyr::mutate(npi_is_valid = sapply(npi, function(x) {
-      if (is.numeric(x) && nchar(x) == 10) {
-        npi::npi_is_valid(as.character(x))
-      } else {
-        FALSE
-      }
-    })) %>%
-    dplyr::filter(!is.na(npi_is_valid) & npi_is_valid)
-  
-  # Return the valid dataframe with the "npi_is_valid" column
-  return(df)
-}
-
-############
 validate_and_remove_invalid_npi <- function(input_data) {
   
   if (is.data.frame(input_data)) {
@@ -835,7 +799,6 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
     stop("Input must be a dataframe or a file path to a CSV.")
   }
   
-  df <- df %>% head(100) # for testing
   
   # Remove duplicate NPIs
   df <- df %>% dplyr::distinct(npi, .keep_all = TRUE)

@@ -60,8 +60,6 @@ searched_npi_numbers <- output_result %>%
 subspecialists_only <- read_csv("data/03-search_and_process_npi/subspecialists_only.csv") %>%
   mutate(NPI = as.numeric(NPI))
 
-class(subspecialists_only$NPI) == class(searched_npi_numbers$npi)
-
 # Coalesce NPI numbers to fill NA gaps in `subspecialists_only`
 all_NPI_numbers_we_will_ever_find <-
   subspecialists_only %>%

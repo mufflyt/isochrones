@@ -8,9 +8,7 @@ source("R/01-setup.R")
 readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds") %>%
   tidyr::unite(address, city, state, zip, sep = ", ", remove = FALSE, na.rm = FALSE) %>%
   #head(10) %>% #for testing.
-  readr::write_csv(., "data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv") -> a
-
-a$address
+  readr::write_csv(., "data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv")
 
 #**************************
 #* GEOCODE THE DATA USING HERE API.  The key is hard coded into the function.  
@@ -18,7 +16,7 @@ a$address
 csv_file <- "data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv"
 
 geocoded_data <- create_geocode(csv_file)
-write_csv(geocoded_data, "data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv")
+readr::write_csv(geocoded_data, "data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv")
 # geocoded_data <- readr::read_csv("data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv") #for testing
 
 
