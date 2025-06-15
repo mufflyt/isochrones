@@ -20,7 +20,7 @@ crosswalk <- left_join(crosswalk, fips_state, by = "state_name")
 crosswalk <- crosswalk %>% select(state_code, fips_county, region)
 
 
-crosswalk <- left_join(state_fips, crosswalk, by = join_by("fips_state" == "state_name"))
+crosswalk <- left_join(state_fips, crosswalk, by = "state_code")
 
 # Make two columns for regions
 crosswalk %>% count(region)

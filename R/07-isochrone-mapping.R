@@ -113,11 +113,11 @@ result <- result %>%
   # arrange(rank)
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering.
 
-write_csv(result, "data/result.csv")
+readr::write_csv(result, "data/result.csv")
 
 # Filter out feature 188562 from the result
 filtered_result <- result %>%
-  filter(dplyr::row_number() != 188562)
+filter(row_number() != 188562)
 
 sf::st_write(result,
              dsn = "data/07-isochrone-mapping",

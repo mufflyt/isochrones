@@ -28,7 +28,6 @@ library(npi)
 library(tidyr)
 library(leaflet)
 library(tigris)
-library(ggplot2)
 library(censusapi)
 library(htmlwidgets)
 library(webshot)
@@ -37,8 +36,9 @@ library(wesanderson) # color palettes
 library(mapview)
 library(shiny) # creation of GUI, needed to change leaflet layers with dropdowns
 library(htmltools) # added for saving html widget
-devtools::install_github('ramnathv/htmlwidgets')
-remotes::install_github("andrewallenbruce/provider")
+## Installation commands removed to avoid side effects
+## devtools::install_github('ramnathv/htmlwidgets')
+## remotes::install_github("andrewallenbruce/provider")
 library(provider)
 library(readxl)
 library(leaflet.extras)
@@ -76,7 +76,7 @@ if (nzchar(here_api_key)) {
 #####  Directory structure with here
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 here::set_here(path = ".", verbose = TRUE)
-here::i_am(path = "isochrones.Rproj")
+here::i_am("isochrones.Rproj")
 data_folder <- here::here("data")
 results_folder <- here::here("results")
 images_folder <- here::here("figures")
@@ -727,6 +727,7 @@ postico_database_obgyns_by_year <- function(year, db_details) {
   # Write the processed data to a CSV file
   #write_csv(nppes_data, paste0("data/02.5-subspecialists_over_time.R/Postico_output_", year, "_nppes_data_filtered.csv"))
   write_csv(nppes_data, paste0("Postico_output_", year, "_nppes_data_filtered.csv"))
+  return(nppes_data)
 }
 
 # Example usage
@@ -791,7 +792,6 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
     stop("Input must be a dataframe or a file path to a CSV.")
   }
   
-  df <- df %>% head(100) # for testing
   
   # Remove duplicate NPIs
   df <- df %>% dplyr::distinct(npi, .keep_all = TRUE)

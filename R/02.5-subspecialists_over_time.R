@@ -14,7 +14,7 @@ db_details <- list(
   port = 5433,
   name = "template1",
   user = "postgres",
-  password = "????"
+  password = ""
 )
 #postico_database_obgyns_by_year(year = 2023, db_details)
 
@@ -107,7 +107,7 @@ db_details <- list(
   port = 5433,
   name = "template1",
   user = "postgres",
-  password = "????"
+  password = ""
 )
 
 postico_database_obgyns_by_year(year = 2023, db_details)
