@@ -107,8 +107,11 @@ end_isochrones_sf_clipped <- sf::st_read("data/06-isochrones/end_isochrones_sf_c
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering.
 
 # Create a basic Leaflet map
+north_arrow <- "<svg width='30' height='30' viewBox='0 0 30 30'><polygon points='15,2 18,12 15,10 12,12' fill='black'/><text x='15' y='25' text-anchor='middle' font-size='10'>N</text></svg>"
 map <- leaflet() %>%
-  addTiles() # Add the default map tiles
+  addTiles() %>% # Add the default map tiles
+  addScaleBar(position = "bottomleft") %>%
+  addControl(html = north_arrow, position = "topright")
 
 # Define a cooler color palette (e.g., "viridis")
 cool_palette <- viridis::magma(length(end_isochrones_sf_clipped$range))

@@ -135,10 +135,13 @@ invisible(gc())
 #******************************* 
 end_isochrones_sf_clipped$range <- as.factor(end_isochrones_sf_clipped$range)
 color_palette <- viridis::magma(length(unique(end_isochrones_sf_clipped$range)))
+north_arrow <- "<svg width='30' height='30' viewBox='0 0 30 30'><polygon points='15,2 18,12 15,10 12,12' fill='black'/><text x='15' y='25' text-anchor='middle' font-size='10'>N</text></svg>"
 isochrone_map <- leaflet() %>%
   addProviderTiles("CartoDB.Positron", group = "Greyscale") %>%
   addProviderTiles(providers$CartoDB.Positron, group = "Thunderforest") %>%
   addProviderTiles("Esri.WorldStreetMap", group = "ESRI") %>%
+  addScaleBar(position = "bottomleft") %>%
+  addControl(html = north_arrow, position = "topright") %>%
 
   addPolygons(
     data = end_isochrones_sf_clipped,
