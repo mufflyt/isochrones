@@ -42,7 +42,7 @@ demographics_bg <- all_census_data %>%
 
 head(demographics_bg)
  
-# And finally! Multiply the population of each block group by its overlap percent to calculate population within and not within ???45???-minutes of a gynecologic oncologist.
+# And finally! Multiply the population of each block group by its overlap percent to calculate population within and not within 45-minutes of a gynecologic oncologist.
 #
 # First, make a flat non-sf dataframe with the overlap information and join to population. Then multiply and summarize. This is the easiest part of the project.
 

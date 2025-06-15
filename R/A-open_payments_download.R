@@ -1,6 +1,7 @@
 # Simple script to download Open Payments data files
 # Simple script to download Open Payments data files
 # Load required packages
+source("R/01-setup.R")
 library(logger)
 library(tidyverse)
 library(fs)

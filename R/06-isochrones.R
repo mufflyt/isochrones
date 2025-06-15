@@ -70,9 +70,7 @@ isochrones_sf <- process_and_save_isochrones(input_file_no_error_rows,
 dim(isochrones_sf)
 class(isochrones_sf)
 
-isochrones_df <- sf::st_read(
-  "data/06-isochrones/isochrones_20231223111020_chunk_1_to_4/isochrones.shp"
-) %>%
+isochrones_df <- sf::st_read("data/06-isochrones/isochrones_20231223111020_chunk_1_to_4/isochrones.shp") %>%
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering in the leaflet map later on.
 
 # Clip the isochrones to the USA border.
@@ -107,8 +105,11 @@ end_isochrones_sf_clipped <- sf::st_read("data/06-isochrones/end_isochrones_sf_c
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering.
 
 # Create a basic Leaflet map
+north_arrow <- "<svg width='30' height='30' viewBox='0 0 30 30'><polygon points='15,2 18,12 15,10 12,12' fill='black'/><text x='15' y='25' text-anchor='middle' font-size='10'>N</text></svg>"
 map <- leaflet() %>%
-  addTiles() # Add the default map tiles
+  addTiles() %>% # Add the default map tiles
+  addScaleBar(position = "bottomleft") %>%
+  addControl(html = north_arrow, position = "topright")
 
 # Define a cooler color palette (e.g., "viridis")
 cool_palette <- viridis::magma(length(end_isochrones_sf_clipped$range))
