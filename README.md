@@ -2715,7 +2715,8 @@ MIT (allows commercial and academic use with attribution)
 
 # 🤝 Contributing
 
-We welcome contributions!
+-   We welcome contributions!
+-   For tips on naming and organizing new functions, see [docs/function_naming_and_organization.md](docs/function_naming_and_organization.md).
 
 # 📜 Citation
 
