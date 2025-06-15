@@ -52,7 +52,6 @@ library(stringr)
 library(stringi)
 library(exploratory)
 library(humaniformat)
-library(ggplot2)
 library(ggthemes)
 library(maps)
 library(forcats)
@@ -64,6 +63,9 @@ library(forcats)
 # Store tidycensus data on cache
 options(tigris_use_cache = TRUE)
 
+# Load any keys from ~/.Renviron first
+readRenviron("~/.Renviron")
+
 # Retrieve HERE API key from the environment
 api_key <- Sys.getenv("HERE_API_KEY")
 if (nzchar(api_key)) {
@@ -72,7 +74,6 @@ if (nzchar(api_key)) {
 } else {
   warning("HERE_API_KEY not set; some functions may fail")
 }
-readRenviron("~/.Renviron")
 
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 #####  Directory structure with here
