@@ -1,3 +1,6 @@
+# Needed for message formatting
+library(glue)
+
 expand_and_fill_years <- function(input_data, start_year = 2008, end_year = 2023) {
   # Log the function call with arguments
   message(glue::glue("Function expand_and_fill_years called with start_year: {start_year}, end_year: {end_year}"))

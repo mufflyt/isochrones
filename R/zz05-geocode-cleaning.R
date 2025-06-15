@@ -145,7 +145,7 @@ leaflet::leaflet(data = inner_join_postmastr_clinician_data) %>%
   # Add ACOG district boundaries
   leaflet::addPolygons(
     data = acog_districts_sf,
-    color = district_colors[as.numeric(inner_join_postmastr_clinician_data$ACOG_District)],      # Boundary color
+    color = district_colors[as.numeric(acog_districts_sf$ACOG_District)],      # Boundary color
     weight = 2,         # Boundary weight
     fill = TRUE,       # No fill
     opacity = 0.1,      # Boundary opacity
@@ -154,7 +154,7 @@ leaflet::leaflet(data = inner_join_postmastr_clinician_data) %>%
   #Add a legend
   leaflet::addLegend(
     position = "bottomright",   # Position of the legend on the map
-    colors = district_colors,   # Colors for the legend
-    labels = levels(inner_join_postmastr_clinician_data$ACOG_District),   # Labels for legend items
-    title = "ACOG Districts"   # Title for the legend
+    colors = district_colors,
+    labels = levels(factor(acog_districts_sf$ACOG_District)),
+    title = "ACOG Districts"
   )

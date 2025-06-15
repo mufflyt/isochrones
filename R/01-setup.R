@@ -215,10 +215,12 @@ search_and_process_npi <- memoise(function(input_file,
 
   # Check if the input file exists
   if (!file.exists(input_file)) {
-    stop(
-      "The specified file with the NAMES to search'", input_file, "' does not exist.\n",
+    stop(paste0(
+      "The specified file with the NAMES to search '",
+      input_file,
+      "' does not exist.\n",
       "Please provide the full path to the file."
-    )
+    ))
   }
   cat("Input file found.\n")
 
