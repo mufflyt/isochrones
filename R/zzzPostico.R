@@ -29,7 +29,10 @@ db_host <- "localhost"
 db_port <- 5433  # Default PostgreSQL port
 db_name <- "template1"
 db_user <- "postgres"
-db_password <- "fatbastard"
+db_password <- Sys.getenv("DB_PASSWORD")
+if (db_password == "") {
+  stop("DB_PASSWORD environment variable is not set. Please add it to your .Renviron or .env file")
+}
 
 ################
 ## Create a database connection
@@ -112,7 +115,7 @@ db_details <- list(
   port = 5433,
   name = "template1",
   user = "postgres",
-  password = "fatbastard"
+  password = Sys.getenv("DB_PASSWORD")
 )
 postico_database_obgyns_by_year(year = 2023, db_details)
 postico_database_obgyns_by_year(year = 2022, db_details)
