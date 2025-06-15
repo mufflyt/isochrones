@@ -34,7 +34,7 @@ calculate_intersection_overlap_and_save <- function(block_groups, isochrones_joi
   }
 
   # Filter isochrones for the specified drive time
-  isochrones_filtered <- sf::filter(isochrones_joined, drive_time == drive_time)
+  isochrones_filtered <- dplyr::filter(isochrones_joined, drive_time == drive_time)
 
   # Calculate intersection
   intersect <- sf::st_intersection(block_groups, isochrones_filtered) %>%
