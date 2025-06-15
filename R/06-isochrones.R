@@ -70,6 +70,7 @@ isochrones_sf <- process_and_save_isochrones(input_file_no_error_rows,
 dim(isochrones_sf)
 class(isochrones_sf)
 
+
 isochrones_df <- sf::st_read(
   "data/06-isochrones/isochrones_20231223111020_chunk_1_to_4/isochrones.shp"
 ) %>%

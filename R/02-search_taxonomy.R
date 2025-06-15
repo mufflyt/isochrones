@@ -14,6 +14,10 @@ source("R/01-setup.R")
 ##########################################################################
 # search_by_taxonomy
 # This will allow us to get subspecialty names and NPI numbers as a starting point.  FYI the limit is 1,200 physicians.  
+
+go_search_by_taxonomy_data <- search_by_taxonomy("Gynecologic Oncology")
+fpmrs_search_by_taxonomy_data <- search_by_taxonomy("Female Pelvic Medicine and Reconstructive Surgery")
+
 # Search the NPI Registry database using npi_search.  Taxonomy description from the NUCC: https://taxonomy.nucc.org/ 
 
 go_search_by_taxonomy_data <- search_by_taxonomy("Gynecologic Oncology")
@@ -49,11 +53,13 @@ cleaned_all_taxonomy_search_data <-
   mutate(basic_middle_name = str_sub(basic_middle_name,1 ,1)) %>%
   mutate(across(c(basic_first_name, basic_last_name, basic_middle_name), .fns = ~str_remove_all(., "[[\\p{P}][\\p{S}]]"))) %>%
   # Get data ready to add these taxonomy rows to the `search_npi`/GOBA data set.
-  rename(NPI = npi, first_name = basic_first_name, last_name = basic_last_name, middle_name = basic_middle_name, GenderPhysicianCompare = basic_sex, sub1 = taxonomies_desc, city = addresses_city, state = addresses_state, name.x = full_name, `Zip CodePhysicianCompare` = addresses_postal_code) %>%
+
+  rename(NPI = npi, first_name = basic_first_name, last_name = basic_last_name, middle_name = basic_middle_name, GenderPhysicianCompare = basic_gender, sub1 = taxonomies_desc, city = addresses_city, state = addresses_state, name.x = full_name, `Zip CodePhysicianCompare` = addresses_postal_code) %>%
   mutate(GenderPhysicianCompare = recode(GenderPhysicianCompare, "F" = "Female", "M" = "Male")) %>%
 
   # Show the subspecialty from goba.
-  mutate(sub1 = recode(sub1, "Obstetrics & Gynecology, Urogynecology and Reconstructive Pelvic Surgery" = "FPM", "Obstetrics & Gynecology, Gynecologic Oncology" = "ONC", "Obstetrics & Gynecology, Maternal & Fetal Medicine" = "MFM", "Obstetrics & Gynecology, Reproductive Endocrinology" = "REI"))
+  mutate(sub1 = recode(sub1, "Obstetrics & Gynecology, Female Pelvic Medicine and Reconstructive Surgery" = "FPM", "Obstetrics & Gynecology, Gynecologic Oncology" = "ONC", "Obstetrics & Gynecology, Maternal & Fetal Medicine" = "MFM", "Obstetrics & Gynecology, Reproductive Endocrinology" = "REI"))
+
  
 write_rds(cleaned_all_taxonomy_search_data, "data/02-search_taxonomy/end_cleaned_all_taxonomy_search_data.rds")
 
