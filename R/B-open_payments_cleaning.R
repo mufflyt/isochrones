@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 #' Process Open Payments Data Using DuckDB
 #'
 #' This function reads Open Payments CSV files (General, Research, or Ownership payments)

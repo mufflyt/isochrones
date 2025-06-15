@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 #............................................................................................................................................................................... info task
 # I am working on how to find when a physician retires or dies and translate that into the year they stopped working. I think we have three
 # sources for this. 

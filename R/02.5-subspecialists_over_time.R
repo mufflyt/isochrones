@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 # Not used locally but on a different machine with a Postico database.  Here we are trying to get year-specific physicians.  
 
 #######################

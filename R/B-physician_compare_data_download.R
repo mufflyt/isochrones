@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 # https://www.openicpsr.org/openicpsr/project/149961/version/V1/view?path=/openicpsr/149961/fcr:versions/V1&type=project
 # You have to download this file manually.  
 

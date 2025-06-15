@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 # Connect to the existing database
 library(duckdb)
 library(dplyr)

@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 #' Standardize CMS Physician Data Across Years
 #'
 #' @description

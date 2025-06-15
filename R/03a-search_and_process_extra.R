@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 ##########################################################################
 # NOT USED TYPICALLY.  
 ### RUN on search_and_process_npi second machine overnight ### OR ### Run against the database ####
