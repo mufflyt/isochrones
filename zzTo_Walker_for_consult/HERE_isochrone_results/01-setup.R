@@ -744,10 +744,14 @@ get_census_data <- function (us_fips_list)
     print(f)
     stateget <- paste("state:", f, "&in=county:*&in=tract:*", 
                       sep = "")
-    state_data[[f]] <- getCensus(name = "acs/acs5", vintage = 2019, 
-                                 vars = c("NAME", paste0("B01001_0", c("01", 26, 33:49), 
-                                                         "E")), region = "block group:*", regionin = stateget, 
-                                 key = "485c6da8987af0b9829c25f899f2393b4bb1a4fb")
+      census_key <- Sys.getenv("CENSUS_API_KEY")
+      if (census_key == "") {
+        stop("CENSUS_API_KEY environment variable is not set. Please add it to your .Renviron or .env file")
+      }
+      state_data[[f]] <- getCensus(name = "acs/acs5", vintage = 2019,
+                                   vars = c("NAME", paste0("B01001_0", c("01", 26, 33:49),
+                                                           "E")), region = "block group:*", regionin = stateget,
+                                   key = census_key)
   }
   acs_raw <- dplyr::bind_rows(state_data)
   Sys.sleep(1)
@@ -1420,10 +1424,14 @@ get_acs_data <- function(us_fips_list, vintage = 2019, acs_variables) {
   state_data <- list()
   for (fips_code in us_fips_list) {
     stateget <- paste("state:", fips_code, "&in=county:*&in=tract:*", sep = "")
-    state_data[[fips_code]] <- getCensus(name = "acs/acs5", vintage = vintage,
-                                         vars = c("NAME", acs_variables),
-                                         region = "block group:*", regionin = stateget,
-                                         key = "485c6da8987af0b9829c25f899f2393b4bb1a4fb")
+      census_key <- Sys.getenv("CENSUS_API_KEY")
+      if (census_key == "") {
+        stop("CENSUS_API_KEY environment variable is not set. Please add it to your .Renviron or .env file")
+      }
+      state_data[[fips_code]] <- getCensus(name = "acs/acs5", vintage = vintage,
+                                           vars = c("NAME", acs_variables),
+                                           region = "block group:*", regionin = stateget,
+                                           key = census_key)
   }
   acs_raw <- dplyr::bind_rows(state_data)
   acs_raw <- acs_raw %>%

@@ -607,18 +607,22 @@ us_fips <- tigris::fips_codes %>%
   dplyr::select(state_code) %>%
   dplyr::pull()
 
-get_census_data <- function (us_fips_list) 
+get_census_data <- function (us_fips_list)
 {
   state_data <- list()
+  census_key <- Sys.getenv("CENSUS_API_KEY")
+  if (census_key == "") {
+    stop("CENSUS_API_KEY environment variable is not set. Please add it to your .Renviron or .env file")
+  }
   for (f in us_fips) {
     us_fips <- tyler::fips
     print(f)
     stateget <- paste("state:", f, "&in=county:*&in=tract:*", 
                       sep = "")
-    state_data[[f]] <- getCensus(name = "acs/acs5", vintage = 2019, 
-                                 vars = c("NAME", paste0("B01001_0", c("01", 26, 33:49), 
-                                                         "E")), region = "block group:*", regionin = stateget, 
-                                 key = "485c6da8987af0b9829c25f899f2393b4bb1a4fb")
+      state_data[[f]] <- getCensus(name = "acs/acs5", vintage = 2019,
+                                   vars = c("NAME", paste0("B01001_0", c("01", 26, 33:49),
+                                                           "E")), region = "block group:*", regionin = stateget,
+                                   key = census_key)
   }
   acs_raw <- dplyr::bind_rows(state_data)
   Sys.sleep(1)
