@@ -33,7 +33,7 @@ demographics_bg <- all_census_data %>%
     county,
     str_pad(tract, width = 6, pad = "0"),
     block_group
-  ),) %>%
+  )) %>%
   dplyr::arrange(fips_state) %>%
   dplyr::select(fips_block_group, name, population)
 
@@ -49,7 +49,7 @@ head(demographics_bg)
 bg_overlap <- block_groups %>% dplyr::select(geoid = GEOID, overlap) %>%
 	sf::st_drop_geometry()
 bg_overlap <- as.data.frame(bg_overlap)
-write.csv(bg_overlap, "data/09-get-census-population/block-group-isochrone-overlap.csv", na = "", row.names = F)
+write.csv(bg_overlap, "data/09-get-census-population/block-group-isochrone-overlap.csv", na = "", row.names = FALSE)
 write_rds(bg_overlap, "data/09-get-census-population/bg_overlap.rds")
 
 write_rds(demographics_bg, "data/09-get-census-population/demographics_bg.rds") #Census Block Group Code

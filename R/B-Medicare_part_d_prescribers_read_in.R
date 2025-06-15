@@ -1,6 +1,7 @@
 # ------------------------------------------------------------------------------
 # Medicare Part D Prescribers Data Processing Script
 # ------------------------------------------------------------------------------
+source("R/01-setup.R")
 # Source: https://data.cms.gov/resources/medicare-part-d-prescribers-methodology
 
 # ------------------------------------------------------------------------------

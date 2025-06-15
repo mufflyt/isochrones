@@ -1,6 +1,8 @@
 # ------------------------------------------------------------------------------
 # 1. Initial Setup
 # ------------------------------------------------------------------------------
+# Load global setup
+source("R/01-setup.R")
 # Libraries loaded include logging (logger), data handling (duckdb, dplyr, readr),
 # string manipulation (stringr), and validation (assertthat). The logger is set
 # up to document each operation clearly, facilitating troubleshooting and auditing.

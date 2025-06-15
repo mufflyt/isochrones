@@ -6,6 +6,430 @@
 source("R/01-setup.R")
 #######################
 
+
+#' Process National Provider Identifier (NPI) Database for Gynecologic Oncologists
+#'
+#' This script identifies gynecologic oncologists from multiple data sources:
+#' 1. Existing subspecialists database with missing NPI numbers
+#' 2. NPPES API search for missing providers
+#' 3. Taxonomy-based search results
+#' 
+#' The final output combines all sources to create a comprehensive database
+#' of gynecologic oncologists with complete NPI and location information.
+#'
+#' @importFrom readr read_csv write_csv write_rds
+#' @importFrom dplyr rename filter mutate distinct select bind_rows coalesce
+#' @importFrom tidyr unite
+#' @importFrom stringr str_remove_all str_to_upper str_detect str_sub
+#' @importFrom logger log_info log_threshold
+#' @importFrom assertthat assert_that
+
+# Load required packages
+library(readr)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(logger)
+library(assertthat)
+library(exploratory)
+
+# Set up logging
+verbose <- TRUE
+if (verbose) {
+  logger::log_threshold(logger::INFO)
+  logger::log_info("Starting NPI database processing for gynecologic oncologists")
+}
+
+# Define file paths as constants for easier maintenance
+SUBSPECIALISTS_INPUT_FILE <- "data/03-search_and_process_npi/subspecialists_only.csv"
+FILTERED_SUBSPECIALISTS_OUTPUT <- "data/03-search_and_process_npi/filtered_subspecialists_only.csv"
+SEARCHED_NPI_OUTPUT <- "data/03-search_and_process_npi/searched_npi_numbers.csv"
+FINAL_OUTPUT_FILE <- "data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds"
+
+# Define credential patterns for validation
+VALID_CREDENTIALS <- c("MD", "DO")
+GYNECOLOGY_TAXONOMY_PATTERN <- "Gyn"
+
+# =============================================================================
+# STEP 1: IDENTIFY SUBSPECIALISTS WITH MISSING NPI NUMBERS
+# =============================================================================
+
+if (verbose) {
+  logger::log_info("Step 1: Reading subspecialists database and identifying missing NPI numbers")
+}
+
+# Read the original subspecialists database
+original_subspecialists_database <- readr::read_csv(SUBSPECIALISTS_INPUT_FILE)
+
+# Validate input data
+assertthat::assert_that(is.data.frame(original_subspecialists_database))
+assertthat::assert_that(nrow(original_subspecialists_database) > 0)
+assertthat::assert_that("NPI" %in% names(original_subspecialists_database))
+
+if (verbose) {
+  logger::log_info("Original database contains {nrow(original_subspecialists_database)} subspecialists")
+  logger::log_info("Missing NPI count: {sum(is.na(original_subspecialists_database$NPI))}")
+}
+
+# Filter to subspecialists without NPI numbers for API search
+subspecialists_missing_npi <- original_subspecialists_database %>%
+  dplyr::rename(
+    first = first_name,
+    last = last_name
+  ) %>%
+  dplyr::filter(is.na(NPI))
+
+# Validate filtered data
+assertthat::assert_that(nrow(subspecialists_missing_npi) > 0)
+
+if (verbose) {
+  logger::log_info("Found {nrow(subspecialists_missing_npi)} subspecialists without NPI numbers")
+}
+
+# Save filtered data for API processing
+subspecialists_missing_npi %>%
+  readr::write_csv(FILTERED_SUBSPECIALISTS_OUTPUT)
+
+if (verbose) {
+  logger::log_info("Saved filtered subspecialists to: {FILTERED_SUBSPECIALISTS_OUTPUT}")
+}
+
+# =============================================================================
+# STEP 2: SEARCH NPPES API FOR MISSING NPI NUMBERS
+# =============================================================================
+
+if (verbose) {
+  logger::log_info("Step 2: Searching NPPES API for missing NPI numbers")
+}
+
+# Search NPPES API using custom function
+api_search_results <- search_and_process_npi(FILTERED_SUBSPECIALISTS_OUTPUT)
+
+# Validate API results
+assertthat::assert_that(is.data.frame(api_search_results))
+
+if (verbose) {
+  logger::log_info("API search returned {nrow(api_search_results)} potential matches")
+}
+
+# Process and filter API search results with detailed validation
+if (verbose) {
+  logger::log_info("Processing API search results through validation pipeline")
+}
+
+# Step 2a: Remove duplicate NPI numbers from API results
+api_results_deduplicated <- api_search_results %>%
+  dplyr::distinct(npi, .keep_all = TRUE)
+
+if (verbose) {
+  logger::log_info("After deduplication: {nrow(api_results_deduplicated)} unique NPI records")
+}
+
+# Step 2b: Clean name and credential fields by removing punctuation
+api_results_cleaned <- api_results_deduplicated %>%
+  dplyr::mutate(
+    dplyr::across(
+      c(basic_first_name, basic_last_name, basic_credential),
+      .fns = ~stringr::str_remove_all(., "[[\\p{P}][\\p{S}]]")  # Fixed: was sstringr::tr_remove_all
+    )
+  )
+
+if (verbose) {
+  logger::log_info("Name and credential fields cleaned of punctuation")
+}
+
+# Step 2c: Standardize credentials and filter to physicians only
+physician_records_only <- api_results_cleaned %>%
+  # Convert credentials to uppercase for standardization
+  dplyr::mutate(basic_credential = stringr::str_to_upper(basic_credential)) %>%
+  
+  # Initial filter for MD/DO pattern
+  dplyr::filter(stringr::str_detect(basic_credential, "MD|DO")) %>%
+  
+  # Extract first 2 characters for precise matching
+  dplyr::mutate(basic_credential = stringr::str_sub(basic_credential, 1, 2)) %>%
+  
+  # Keep only exact MD or DO matches
+  dplyr::filter(basic_credential %in% VALID_CREDENTIALS)
+
+if (verbose) {
+  logger::log_info("After physician credential filtering: {nrow(physician_records_only)} records")
+  credential_counts <- table(physician_records_only$basic_credential)
+  md_count <- ifelse("MD" %in% names(credential_counts), credential_counts[["MD"]], 0)
+  do_count <- ifelse("DO" %in% names(credential_counts), credential_counts[["DO"]], 0)
+  logger::log_info("Credential breakdown: MD={md_count}, DO={do_count}")
+}
+
+# Step 2d: Filter to gynecology-related specialties
+gynecology_specialists <- physician_records_only %>%
+  dplyr::filter(stringr::str_detect(taxonomies_desc, fixed(GYNECOLOGY_TAXONOMY_PATTERN, ignore_case = TRUE)))
+
+if (verbose) {
+  logger::log_info("After gynecology taxonomy filtering: {nrow(gynecology_specialists)} specialists")
+  unique_taxonomies <- unique(gynecology_specialists$taxonomies_desc)
+  logger::log_info("Taxonomy codes found: {paste(unique_taxonomies, collapse = ', ')}")
+}
+
+# Step 2e: Final deduplication and data type conversion
+validated_npi_numbers <- gynecology_specialists %>%
+  # Final deduplication by NPI
+  dplyr::distinct(npi, .keep_all = TRUE) %>%
+  
+  # Convert NPI to numeric for database consistency
+  dplyr::mutate(npi = as.numeric(npi))
+
+# Validate processed results
+assertthat::assert_that(nrow(validated_npi_numbers) > 0)
+assertthat::assert_that(all(!is.na(validated_npi_numbers$npi)))
+
+if (verbose) {
+  logger::log_info("After validation: {nrow(validated_npi_numbers)} gynecologic oncologists found")
+  credential_counts <- table(validated_npi_numbers$basic_credential)
+  md_count <- ifelse("MD" %in% names(credential_counts), credential_counts[["MD"]], 0)
+  do_count <- ifelse("DO" %in% names(credential_counts), credential_counts[["DO"]], 0)
+  logger::log_info("Credential distribution: MD={md_count}, DO={do_count}")
+}
+
+# Save validated NPI search results
+validated_npi_numbers %>%
+  readr::write_csv(SEARCHED_NPI_OUTPUT)
+
+if (verbose) {
+  logger::log_info("Saved validated NPI search results to: {SEARCHED_NPI_OUTPUT}")
+}
+
+# =============================================================================
+# STEP 3: MERGE NPI NUMBERS WITH ORIGINAL DATABASE
+# =============================================================================
+
+if (verbose) {
+  logger::log_info("Step 3: Merging new NPI numbers with original subspecialists database")
+}
+
+# Prepare original database for merging (keeping original column names)
+original_subspecialists_numeric_npi <- original_subspecialists_database %>%
+  dplyr::mutate(NPI = as.numeric(NPI))
+
+# Note: original database has 'first_name'/'last_name' columns
+# validated_npi_numbers has 'basic_first_name'/'basic_last_name' columns
+
+# Verify data types match for joining
+assertthat::assert_that(class(original_subspecialists_numeric_npi$NPI) == class(validated_npi_numbers$npi))
+
+if (verbose) {
+  logger::log_info("Data types validated for NPI joining")
+}
+
+# Merge original database with newly found NPI numbers
+if (verbose) {
+  logger::log_info("Starting left join between original database and validated NPI numbers")
+  logger::log_info("Original database columns: {paste(names(original_subspecialists_numeric_npi), collapse = ', ')}")
+  logger::log_info("Validated NPI columns: {paste(names(validated_npi_numbers), collapse = ', ')}")
+}
+
+# Perform the join
+subspecialists_after_join <- original_subspecialists_numeric_npi %>%
+  # Left join to preserve all original records
+  # Note: original database has 'first_name'/'last_name', validated data has 'basic_first_name'/'basic_last_name'
+  exploratory::left_join(
+    validated_npi_numbers,
+    by = c("first_name" = "basic_first_name", "last_name" = "basic_last_name"),
+    ignorecase = TRUE
+  )
+
+if (verbose) {
+  logger::log_info("After join: {nrow(subspecialists_after_join)} records")
+  logger::log_info("Columns after join: {paste(names(subspecialists_after_join), collapse = ', ')}")
+  
+  # Check how many NPI numbers were filled
+  original_na_count <- sum(is.na(original_subspecialists_numeric_npi$NPI))
+  joined_na_count <- sum(is.na(subspecialists_after_join$NPI))
+  logger::log_info("NPI filling check: Original NA count = {original_na_count}")
+}
+
+# Fill missing NPI numbers with newly found ones and clean up columns
+subspecialists_with_complete_npi <- subspecialists_after_join %>%
+  # Fill missing NPI numbers with newly found ones
+  dplyr::mutate(NPI = dplyr::coalesce(NPI, npi)) %>%
+  
+  # Identify which API-added columns actually exist to remove
+  {
+    api_columns_to_remove <- c(
+      "npi", "basic_credential", "basic_sole_proprietor", "basic_gender",
+      "basic_enumeration_date", "basic_last_updated", "basic_status",
+      "basic_name_prefix", "taxonomies_code", "taxonomies_taxonomy_group",
+      "taxonomies_desc", "taxonomies_state", "taxonomies_license",
+      "taxonomies_primary", "basic_middle_name", "basic_name_suffix",
+      "basic_certification_date"
+    )
+    
+    # Only remove columns that actually exist
+    existing_columns_to_remove <- intersect(api_columns_to_remove, names(.))
+    
+    if (verbose) {
+      logger::log_info("API columns to remove: {paste(existing_columns_to_remove, collapse = ', ')}")
+    }
+    
+    # Remove only existing columns
+    if (length(existing_columns_to_remove) > 0) {
+      dplyr::select(., -all_of(existing_columns_to_remove))
+    } else {
+      . # Return unchanged if no columns to remove
+    }
+  }
+
+if (verbose) {
+  original_missing <- sum(is.na(original_subspecialists_numeric_npi$NPI))
+  final_missing <- sum(is.na(subspecialists_with_complete_npi$NPI))
+  logger::log_info("NPI completion: {original_missing - final_missing} new NPI numbers added")
+  logger::log_info("Remaining missing NPIs: {final_missing}")
+}
+
+# =============================================================================
+# STEP 4: COMBINE WITH TAXONOMY SEARCH DATA (IF AVAILABLE)
+# =============================================================================
+
+if (verbose) {
+  logger::log_info("Step 4: Checking for taxonomy search data to combine")
+}
+
+# Check if taxonomy search data exists from previous processing steps
+if (exists("all_taxonomy_search_data") && is.data.frame(all_taxonomy_search_data)) {
+  
+  if (verbose) {
+    logger::log_info("Taxonomy search data found with {nrow(all_taxonomy_search_data)} records")
+    logger::log_info("Combining with taxonomy search data for comprehensive coverage")
+  }
+  
+  # Combine with taxonomy search results to include younger subspecialists
+  # (Those who have taxonomy codes but may not yet have board certification)
+  comprehensive_subspecialists_database <- subspecialists_with_complete_npi %>%
+    exploratory::bind_rows(
+      all_taxonomy_search_data,
+      id_column_name = "ID",
+      current_df_name = "subspecialists_only",
+      force_data_type = TRUE
+    ) %>%
+    
+    # Remove duplicates based on NPI number
+    dplyr::distinct(NPI, .keep_all = TRUE)
+  
+  if (verbose) {
+    logger::log_info("After combining with taxonomy data: {nrow(comprehensive_subspecialists_database)} total records")
+  }
+  
+} else {
+  
+  if (verbose) {
+    logger::log_warn("Taxonomy search data not found - skipping taxonomy combination step")
+    logger::log_info("To include taxonomy search data, run R/02-search_taxonomy.R first")
+    logger::log_info("Proceeding with current subspecialists database only")
+  }
+  
+  # Use the current database without taxonomy additions
+  comprehensive_subspecialists_database <- subspecialists_with_complete_npi
+  
+  if (verbose) {
+    logger::log_info("Current database contains: {nrow(comprehensive_subspecialists_database)} records")
+  }
+}
+
+# =============================================================================
+# STEP 5: FINAL DATA CLEANING AND STANDARDIZATION
+# =============================================================================
+
+if (verbose) {
+  logger::log_info("Step 5: Final data cleaning and address standardization")
+}
+
+final_gynecologic_oncologists_database <- comprehensive_subspecialists_database %>%
+  # Remove unnecessary columns from various data sources (only if they exist)
+  {
+    # Define all potential columns to remove from various processing steps
+    potential_columns_to_remove <- c(
+      "ID", "userid", "startDate", "certStatus", "sub1startDate", "sub1certStatus",
+      "honorrific_end", "Medical school namePhysicianCompare",
+      "Graduation yearPhysicianCompare", "Organization legal namePhysicianCompare",
+      "Number of Group Practice membersPhysicianCompare",
+      "Professional accepts Medicare AssignmentPhysicianCompare",
+      "search_term", "basic_sole_proprietor", "basic_enumeration_date",
+      "taxonomies_primary", "addresses_address_1", "addresses_telephone_number",
+      "npi", "name.x", "basic_first_name", "basic_last_name", "basic_middle_name",
+      "basic_gender", "taxonomies_desc", "addresses_city", "addresses_state",
+      "addresses_postal_code", "full_name"
+    )
+    
+    # Only remove columns that actually exist
+    existing_columns_to_remove <- intersect(potential_columns_to_remove, names(.))
+    
+    if (verbose) {
+      logger::log_info("Available columns to clean: {paste(existing_columns_to_remove, collapse = ', ')}")
+      logger::log_info("Current column count: {ncol(.)}")
+    }
+    
+    # Remove only existing columns
+    if (length(existing_columns_to_remove) > 0) {
+      dplyr::select(., -all_of(existing_columns_to_remove))
+    } else {
+      if (verbose) {
+        logger::log_info("No unnecessary columns found to remove")
+      }
+      . # Return unchanged if no columns to remove
+    }
+  } %>%
+  
+  # Add unique row identifier
+  dplyr::mutate(row_number = dplyr::row_number()) %>%
+  
+  # Standardize ZIP codes to 5 digits (if ZIP code column exists)
+  {
+    if ("Zip CodePhysicianCompare" %in% names(.)) {
+      dplyr::mutate(.,
+                    zip = stringr::str_sub(`Zip CodePhysicianCompare`, 1, 5),
+                    .after = "Zip CodePhysicianCompare"
+      )
+    } else {
+      if (verbose) {
+        logger::log_warn("Zip CodePhysicianCompare column not found - skipping ZIP standardization")
+      }
+      # Create empty zip column for consistency
+      dplyr::mutate(., zip = "")
+    }
+  } %>%
+  
+  # Filter to records with complete location information
+  dplyr::filter(!is.na(state) & !is.na(city)) %>%
+  
+  # Handle missing ZIP codes (temporary solution - TODO: improve this)
+  dplyr::mutate(zip = ifelse(is.na(zip) | zip == "", "", zip)) %>%
+  
+  # Create standardized address field for geocoding
+  tidyr::unite(address, city, state, zip, sep = ", ", remove = FALSE, na.rm = FALSE) %>%
+  
+  # Remove duplicate addresses (same practice location)
+  dplyr::distinct(address, .keep_all = TRUE)
+
+# Final validation
+assertthat::assert_that(nrow(final_gynecologic_oncologists_database) > 0)
+assertthat::assert_that(all(!is.na(final_gynecologic_oncologists_database$address)))
+
+if (verbose) {
+  logger::log_info("Final database statistics:")
+  logger::log_info("- Total gynecologic oncologists: {nrow(final_gynecologic_oncologists_database)}")
+  logger::log_info("- Unique addresses: {length(unique(final_gynecologic_oncologists_database$address))}")
+  logger::log_info("- States represented: {length(unique(final_gynecologic_oncologists_database$state))}")
+  logger::log_info("- Complete NPI numbers: {sum(!is.na(final_gynecologic_oncologists_database$NPI))}")
+}
+
+# Save final comprehensive database
+final_gynecologic_oncologists_database %>%
+  readr::write_rds(FINAL_OUTPUT_FILE)
+
+if (verbose) {
+  logger::log_info("Final gynecologic oncologists database saved to: {FINAL_OUTPUT_FILE}")
+  logger::log_info("NPI processing complete!")
+}
+
 # Read and Rename Columns: It begins by reading a CSV file that contains information about subspecialists. The code renames specific columns in this dataset to more convenient names.
 # 
 # Filter Rows: Rows in the dataset are filtered to select only those where the National Provider Identifier (NPI) number is missing (NA), indicating subspecialists without NPI numbers. The filtered data is then saved as a new CSV file.

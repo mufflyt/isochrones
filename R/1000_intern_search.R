@@ -1,4 +1,5 @@
 
+source("R/01-setup.R")
 
 search_and_process_npi <- memoise(function(input_file,
                                            enumeration_type = "ind",
@@ -41,6 +42,7 @@ search_and_process_npi <- memoise(function(input_file,
 
   # Define the list of taxonomies to filter
   vc <- c("Student in an Organized Health Care Education/Training Program")
+
 
   # Create a function to search NPI based on first and last names
   search_npi <- function(first_name, last_name) {
