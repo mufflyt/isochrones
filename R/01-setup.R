@@ -62,7 +62,10 @@ library(forcats)
 
 # Store tidycensus data on cache
 options(tigris_use_cache = TRUE)
+Sys.setenv(HERE_API_KEY = "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
 readRenviron("~/.Renviron")
+hereR::set_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
+
 
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 #####  Directory structure with here
@@ -80,54 +83,111 @@ code_folder <- here::here("R")
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 `%nin%`<-Negate(`%in%`)
 
-#' Search NPI Database by Taxonomy
-search_by_taxonomy <- function(taxonomy_to_search) {
-  # Create an empty data frame to store search results
-  data <- data.frame()
 
-  # Loop over each taxonomy description
+#' Search NPI Database by Taxonomy
+#'
+#' @param taxonomy_to_search A character vector of taxonomy descriptions
+#' @return A cleaned and filtered data frame of matched NPIs
+search_by_taxonomy <- function(taxonomy_to_search) {
+  logger::log_info("Starting taxonomy search for {length(taxonomy_to_search)} terms.")
+  
+  data <- dplyr::tibble()
+  
   for (taxonomy in taxonomy_to_search) {
+    logger::log_info("Searching for taxonomy: {taxonomy}")
+    
     tryCatch({
-      # Perform the search for the current taxonomy
       result <- npi::npi_search(
         taxonomy_description = taxonomy,
         country_code = "US",
         enumeration_type = "ind",
         limit = 1200
       )
-
+      
       if (!is.null(result)) {
-        # Process and filter the data for the current taxonomy
-        data_taxonomy <- npi::npi_flatten(result) %>%
-          dplyr::distinct(npi, .keep_all = TRUE) %>%
-          dplyr::mutate(search_term = taxonomy) %>%
-          dplyr::filter(addresses_country_name == "United States") %>%
-          dplyr::mutate(basic_credential = stringr::str_remove_all(basic_credential, "[[\\p{P}][\\p{S}]]")) %>%
-          dplyr::filter(stringr::str_to_lower(basic_credential) %in% stringr::str_to_lower(c("MD", "DO"))) %>%
-          dplyr::arrange(basic_last_name) %>%
-          dplyr::filter(stringr::str_detect(taxonomies_desc, taxonomy)) %>%
-          dplyr::select(-basic_credential, -basic_last_updated, -basic_status, -basic_name_prefix, -basic_name_suffix, -basic_certification_date, -other_names_type, -other_names_code, -other_names_credential, -other_names_first_name, -other_names_last_name, -other_names_prefix, -other_names_suffix, -other_names_middle_name, -identifiers_code, -identifiers_desc, -identifiers_identifier, -identifiers_state, -identifiers_issuer, -taxonomies_code, -taxonomies_taxonomy_group, -taxonomies_state, -taxonomies_license, -addresses_country_code, -addresses_country_name, -addresses_address_purpose, -addresses_address_type, -addresses_address_2, -addresses_fax_number, -endpoints_endpointType, -endpoints_endpointTypeDescription, -endpoints_endpoint, -endpoints_affiliation, -endpoints_useDescription, -endpoints_contentTypeDescription, -endpoints_country_code, -endpoints_country_name, -endpoints_address_type, -endpoints_address_1, -endpoints_city, -endpoints_state, -endpoints_postal_code, -endpoints_use, -endpoints_endpointDescription, -endpoints_affiliationName, -endpoints_contentType, -endpoints_contentOtherDescription, -endpoints_address_2, -endpoints_useOtherDescription) %>%
-          dplyr::distinct(npi, .keep_all = TRUE) %>%
-          dplyr::distinct(basic_first_name, basic_last_name, basic_middle_name, basic_sole_proprietor, basic_gender, basic_enumeration_date, addresses_state, .keep_all = TRUE) %>%
-          dplyr::mutate(full_name = paste(
-            stringr::str_to_lower(basic_first_name),
-            stringr::str_to_lower(basic_last_name)
-          ))
-
-        # Append the data for the current taxonomy to the main data frame
-        data <- dplyr::bind_rows(data, data_taxonomy)
+        flattened <- npi::npi_flatten(result)
+        
+        if (nrow(flattened) > 0) {
+          flattened$search_term <- taxonomy
+          
+          if ("addresses_country_name" %in% names(flattened)) {
+            flattened <- dplyr::filter(flattened, addresses_country_name == "United States")
+          }
+          
+          if ("basic_credential" %in% names(flattened)) {
+            flattened <- flattened %>%
+              dplyr::mutate(
+                basic_credential = stringr::str_remove_all(basic_credential, "[[\\p{P}][\\p{S}]]")
+              ) %>%
+              dplyr::filter(stringr::str_to_lower(basic_credential) %in% stringr::str_to_lower(c("MD", "DO")))
+          }
+          
+          if ("taxonomies_desc" %in% names(flattened)) {
+            flattened <- dplyr::filter(flattened, stringr::str_detect(taxonomies_desc, taxonomy))
+          }
+          
+          if ("basic_last_name" %in% names(flattened)) {
+            flattened <- dplyr::arrange(flattened, basic_last_name)
+          }
+          
+          if (all(c("basic_first_name", "basic_last_name") %in% names(flattened))) {
+            flattened <- flattened %>%
+              dplyr::mutate(full_name = paste(
+                stringr::str_to_lower(basic_first_name),
+                stringr::str_to_lower(basic_last_name)
+              ))
+          }
+          
+          cols_to_remove <- c(
+            "basic_last_updated", "basic_status", "basic_name_prefix", "basic_name_suffix",
+            "basic_certification_date", "other_names_type", "other_names_code",
+            "other_names_credential", "other_names_first_name", "other_names_last_name",
+            "other_names_prefix", "other_names_suffix", "other_names_middle_name",
+            "identifiers_code", "identifiers_desc", "identifiers_identifier", "identifiers_state",
+            "identifiers_issuer", "taxonomies_code", "taxonomies_taxonomy_group",
+            "taxonomies_state", "taxonomies_license", "addresses_country_code",
+            "addresses_country_name", "addresses_address_purpose", "addresses_address_type",
+            "addresses_address_2", "addresses_fax_number", "endpoints_endpointType",
+            "endpoints_endpointTypeDescription", "endpoints_endpoint", "endpoints_affiliation",
+            "endpoints_useDescription", "endpoints_contentTypeDescription",
+            "endpoints_country_code", "endpoints_country_name", "endpoints_address_type",
+            "endpoints_address_1", "endpoints_city", "endpoints_state", "endpoints_postal_code",
+            "endpoints_use", "endpoints_endpointDescription", "endpoints_affiliationName",
+            "endpoints_contentType", "endpoints_contentOtherDescription", "endpoints_address_2",
+            "endpoints_useOtherDescription"
+          )
+          flattened <- flattened %>%
+            dplyr::select(-tidyselect::any_of(intersect(cols_to_remove, names(flattened)))) %>%
+            dplyr::distinct(npi, .keep_all = TRUE)
+          
+          if (all(c(
+            "basic_first_name", "basic_last_name", "basic_middle_name", "basic_sole_proprietor",
+            "basic_gender", "basic_enumeration_date", "addresses_state"
+          ) %in% names(flattened))) {
+            flattened <- flattened %>%
+              dplyr::distinct(
+                basic_first_name, basic_last_name, basic_middle_name,
+                basic_sole_proprietor, basic_gender, basic_enumeration_date,
+                addresses_state, .keep_all = TRUE
+              )
+          }
+          
+          data <- dplyr::bind_rows(data, flattened)
+        }
       }
     }, error = function(e) {
-      message(sprintf("Error in search for %s:\n%s", taxonomy, e$message))
+      logger::log_warn("Error for taxonomy '{taxonomy}': {e$message}")
     })
   }
-
-  # Write the combined data frame to an RDS file
-  filename <- paste("data/search_taxonomy", format(Sys.time(), format = "%Y-%m-%d_%H-%M-%S"), ".rds", sep = "_")
+  
+  filename <- paste0("data/search_taxonomy_", format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".rds")
   readr::write_rds(data, filename)
-
+  logger::log_info("Saved search results to {filename}")
+  beepr::beep(2)
+  
   return(data)
 }
+
 
 ##############################
 ###############################
@@ -481,7 +541,15 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25,
       # Create the file name with the current date and time
       current_datetime <- format(Sys.time(), "%Y%m%d%H%M%S")
 
-      file_name <- paste(file_path_prefix, current_datetime, "_chunk_", min(chunk_data$id), "_to_", max(chunk_data$id))
+      file_name <- paste0(
+        file_path_prefix,
+        current_datetime,
+        "_chunk_",
+        min(chunk_data$id),
+        "_to_",
+        max(chunk_data$id)
+      )
+      dir.create(file_name, recursive = TRUE, showWarnings = FALSE)
 
       # Assuming "arrival" field is originally in character format with both date and time
       # Convert it to a DateTime object
@@ -514,7 +582,7 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25,
 ###############################
 
 # THIS FUNCTION IS NOW WORKING.  
-us_fips <- tigris::fips_codes %>%
+us_fips_list <- tigris::fips_codes %>%
   dplyr::select(state_code, state_name) %>%
   dplyr::distinct(state_code, .keep_all = TRUE) %>%
   dplyr::filter(state_code < 56) %>%

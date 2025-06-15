@@ -1,0 +1,297 @@
+---
+title: "isochrones"
+author: "Tyler Muffly, MD"
+date: "2024-08-31"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+source("/Users/tylermuffly/Dropbox (Personal)/isochrones/R/01-setup.R")
+library(dplyr)
+library(tidycensus)
+library(sf)
+library(purrr)
+library(lubridate)
+library(tidycensus)
+library(dplyr)
+library(lme4)
+library(DT)
+
+conflicted::conflicts_prefer(dplyr::filter)
+conflicted::conflicts_prefer(lubridate::year)
+conflicted::conflicts_prefer(exploratory::str_remove_all)
+conflicted::conflicts_prefer(dplyr::recode)
+
+options(tigris_use_cache = TRUE)
+```
+
+
+```{r}
+knitr::opts_chunk$set(
+  message=FALSE, echo=FALSE, include = TRUE, fig.width = 6, fig.height = 4, progress = TRUE, warning = FALSE, collapse = FALSE)
+
+options(scipen=999)
+```
+
+# Dates and Times For Isochrones
+```{r, include = FALSE}
+destination_dir <- "/Volumes/Video Projects Muffly 1/isochrones_data/walker_script"
+iso_datetime_yearly <- tibble(
+  date = c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-16 09:00:00",
+           "2016-10-21 09:00:00", "2017-10-20 09:00:00", "2018-10-19 09:00:00",
+           "2019-10-18 09:00:00", "2020-10-16 09:00:00", "2021-10-15 09:00:00",
+           "2022-10-21 09:00:00", "2023-10-20 09:00:00"),
+  year = c("2013", "2014", "2015", "2016", "2017", "2018", "2019", "2020", "2021", "2022", "2023")
+)
+```
+
+# Physician Locations
+```{r, include = TRUE}
+# Let's build the physician location table; presumably you have a separate table you can plug in
+# for this step.
+# Your physician locations data
+physician_locations <- data.frame(
+  name = c("Alpha, MD", "Beta, MD", "Delta, MD", "Gamma, MD", "Zulu, MD", "Xray, MD", "Yankee, MD", "Alpha, MD"),
+  Latitude = c(39.7392, 41.8781, 40.7128, 39.7294, 42.3314, 48.7519, 18.4655, 39.7392),
+  Longitude = c(-104.9903, -87.6298, -74.0060, -104.8319, -83.0458, -122.4787, -66.1057, -104.9903),
+  year = c(2023, 2023, 2023, 2023, 2023, 2023, 2023, 2023)
+)
+```
+
+# Create Isochrones from Physician Locations
+```{r, include = FALSE, eval = FALSE}
+# We'll want to convert our table to an sf object to calculate the isochrones.
+physician_sf <- physician_locations %>%
+  st_as_sf(coords = c("Longitude", "Latitude"),
+           crs = 4326)
+
+# Function to calculate isochrones for a specific year
+calculate_isochrones <- function(date, year, physician_sf) {
+  log_message <- paste("Calculating isochrones for year:", year)
+  print(log_message)
+  
+  result <- physician_sf %>%
+    dplyr::filter(year == year) %>%
+    isoline(
+      datetime = as.POSIXct(date, tz = "UTC"),
+      range = c(30, 60, 120, 180) * 60
+    ) %>%
+    dplyr::mutate(year = year)
+  
+  return(result)
+}
+
+# Iterate over each year and calculate isochrones
+physician_isos_all_years <- iso_datetime_yearly %>%
+  purrr::pmap_dfr(~calculate_isochrones(..1, ..2, physician_sf))
+
+# Extract the year from the departure column and add it as a new column
+physician_isos_all_years <- physician_isos_all_years %>%
+  dplyr::mutate(Year = year(ymd_hms(departure)))
+
+# Check the resulting combined sf object
+print(physician_isos_all_years)
+
+# physician_isos_all_years <- read_rds("data/physician_isos_all_years.rds")
+write_rds(physician_isos_all_years, "data/physician_isos_all_years.rds")
+
+#physician_isos_all_years <- read_rds("data/physician_isos_all_years.rds")
+```
+
+```{r, include = TRUE}
+physician_isos_unique <- physician_isos_all_years %>%
+  group_by(year, range) %>%
+  summarise()
+```
+
+# Interactive Map of Physicians
+```{r, include = TRUE}
+# Adjust the number of colors to match the number of unique years
+unique_years <- length(unique(physician_isos_unique$year))
+unique_range <- length(unique(physician_isos_unique$range))
+physician_isos_all_years <- physician_isos_unique %>%
+  select(-Year) %>%
+  arrange(year, range)
+
+fancy_map <- mapview(
+  physician_isos_all_years,
+  zcol = "range",
+  burst = TRUE,
+  legend = TRUE,
+  layer.name = "Physician ISOs",
+  alpha.regions = 0.6,
+  col.regions = viridis::viridis(unique_range), # Adjust number of colors
+  homebutton = TRUE,
+  basemaps = c("CartoDB.Positron", "OpenStreetMap", "Esri.WorldImagery")
+); fancy_map
+```
+
+```{r cars}
+# Function to pull ACS data for each year listed in iso_datetime_yearly and process it
+pull_acs_data_by_year <- function(iso_datetime_yearly, all_vars, destination_dir, geography = "county") {
+  
+  # Set tigris to use cache
+  options(tigris_use_cache = TRUE)
+  
+  # Ensure the destination directory exists
+  if (!dir.exists(destination_dir)) {
+    dir.create(destination_dir, recursive = TRUE)
+    message(paste("Created directory:", destination_dir))
+  }
+  
+  # Create an empty list to store the results
+  results_list <- list()
+  
+  # Iterate over each row in iso_datetime_yearly to pull ACS data for each year
+  for (i in seq_along(iso_datetime_yearly$year)) {
+    current_year <- as.integer(iso_datetime_yearly$year[i])
+    
+    log_message <- paste("Starting to pull ACS data for year:", current_year, "and geography:", geography)
+    print(log_message)
+    
+    # Try to pull ACS data for the current year
+    acs_data <- tryCatch({
+      get_acs(
+        geography = geography,
+        variables = all_vars,
+        state = c(state.abb, "DC", "PR"), # Grab for the US
+        year = current_year,
+        geometry = TRUE,
+        output = "wide"
+      )
+    }, error = function(e) {
+      error_message <- paste("Error retrieving data for year:", current_year, "-", e$message)
+      message(error_message)
+      return(NULL)
+    })
+    
+    # Skip if the data retrieval failed
+    if (is.null(acs_data)) {
+      message(paste("Skipping year", current_year, "due to errors"))
+      next
+    }
+    
+    # Add the year column to the data
+    acs_data <- acs_data %>%
+      mutate(year = current_year)
+    
+    log_message <- paste("Successfully pulled ACS data for year:", current_year, "and geography:", geography)
+    print(log_message)
+    
+    # Append the data to the results list
+    results_list[[i]] <- acs_data
+  }
+  
+  # Combine all the results into a single data frame
+  combined_data <- dplyr::bind_rows(results_list)
+  
+  # Define the output file path
+  timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
+  output_file <- file.path(destination_dir, paste0("combined_acs_data_", geography, "_", timestamp, ".rds"))
+  
+  # Save the combined data to a file
+  tryCatch({
+    saveRDS(combined_data, output_file)
+    message(paste("Data successfully saved to:", output_file))
+  }, error = function(e) {
+    error_message <- paste("Failed to save data to file:", output_file, "-", e$message)
+    message(error_message)
+  })
+  
+  return(combined_data)
+}
+```
+
+```{r pressure, echo=FALSE}
+combined_acs_data <- pull_acs_data_by_year(iso_datetime_yearly, all_vars, destination_dir, geography = "county")
+
+combined_acs_data1 <- combined_acs_data %>%
+  select(!ends_with("M")) %>%
+  rename_with(.fn = ~stringr::str_remove(.x, "E$")) %>%
+  st_transform("ESRI:102003"); combined_acs_data1
+
+readr::write_rds(combined_acs_data1, "/Volumes/Video Projects Muffly 1/isochrones_data/walker_script/acs_data_us_all_years.rds")
+
+#combined_acs_data1 <- readr::read_rds("/Volumes/Video Projects Muffly 1/isochrones_data/walker_script/acs_data_us_all_years.rds")
+```
+
+All of USA
+```{r}
+years <- 2013:2022 # Replace with the years you're interested in
+
+# Function to pull ACS data for a given year and geography
+pull_acs_data_for_year <- function(year, variables, geography) {
+  get_acs(
+    geography = geography,
+    variables = variables,
+    year = year,
+    survey = "acs5"
+  ) %>%
+    mutate(year = year, geography = geography)
+}
+
+# Initialize an empty dataframe
+acs_data_us_all_years <- tibble()
+
+# Loop through each year and bind the results
+for (year in years) {
+  acs_data_year <- pull_acs_data_for_year(year, all_vars, geography = "us")
+  acs_data_us_all_years <- dplyr::bind_rows(acs_data_us_all_years, acs_data_year)
+}; acs_data_us_all_years
+
+
+combined_acs_data1 <- combined_acs_data %>%
+  select(!ends_with("M")) %>%
+  rename_with(.fn = ~stringr::str_remove(.x, "E$")) %>%
+  sf::st_transform("ESRI:102003"); combined_acs_data1
+
+write_rds(combined_acs_data1, "/Volumes/Video Projects Muffly 1/isochrones_data/walker_script/acs_data_us_all_years.rds")
+
+```
+
+ACS Variables That were Downloaded with tidycensus
+```{r}
+DT::datatable(head(combined_acs_data1, 100))
+```
+
+The st_centroid(combined_acs_data1) function is used to calculate the geometric centroid (center point) of each feature in a spatial object. In this case, combined_acs_data1 is a spatial data frame (likely an sf object), which contains geographic features represented as polygons.  Gets the ACS data ready for mapping.  
+```{r}
+centroids_2020 <- st_centroid(combined_acs_data1)
+```
+
+```{r}
+# List to store tabulated results for all years
+tabulated_all_years_list <- list()
+
+# Loop through each year present in physician_isos_unique
+for (current_year in unique(physician_isos_unique$year)) {
+  
+  # Filter data for the current year
+  centroids_year <- combined_acs_data1 %>%
+    filter(year == current_year)
+  
+  physician_isos_year <- physician_isos_unique %>%
+    filter(year == current_year)
+  
+  # Transform, join, and keep the year column
+  tabulated_year <- physician_isos_year %>%
+    st_transform("ESRI:102003") %>%
+    st_join(centroids_year, left = FALSE) %>%
+    st_drop_geometry() %>%
+    mutate(year = current_year) %>%  # Ensure the year column is present
+    group_by(year, range) %>%
+    summarize(across(total_female_026:total_female_hipi, .fns = ~sum(.x, na.rm = TRUE))) %>%
+    ungroup()
+  
+  # Add the result to the list
+  tabulated_all_years_list[[current_year]] <- tabulated_year
+}
+
+# Combine the results into a single dataframe
+tabulated_all_years <- dplyr::bind_rows(tabulated_all_years_list)
+
+readr::write_rds(tabulated_all_years, "/Volumes/Video Projects Muffly 1/isochrones_data/walker_script/county_centroid_tabulated_2020.rds")
+```
+

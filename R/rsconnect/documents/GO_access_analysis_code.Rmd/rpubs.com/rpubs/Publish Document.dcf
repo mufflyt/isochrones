@@ -1,0 +1,10 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/1311935/62b175f0a3a54fe0977e825b98592f1f
+bundleId: https://api.rpubs.com/api/v1/document/1311935/62b175f0a3a54fe0977e825b98592f1f
+url: http://rpubs.com/tmuffly/1311935
+version: 1
