@@ -3,6 +3,7 @@ source("R/01-setup.R")
 #######################
 
 
+source("R/01-setup.R")
 
 search_and_process_npi <- memoise(function(input_file,
                                            enumeration_type = "ind",
@@ -15,8 +16,11 @@ search_and_process_npi <- memoise(function(input_file,
   # Check if the input file exists
   if (!file.exists(input_file)) {
     stop(
-      "The specified file with the NAMES to search'", input_file, "' does not exist.\n",
-      "Please provide the full path to the file."
+      paste0(
+        "The specified file with the NAMES to search '",
+        input_file,
+        "' does not exist.\nPlease provide the full path to the file."
+      )
     )
   }
   cat("Input file found.\n")
@@ -42,6 +46,7 @@ search_and_process_npi <- memoise(function(input_file,
 
   # Define the list of taxonomies to filter
   vc <- c("Student in an Organized Health Care Education/Training Program")
+
 
   # Create a function to search NPI based on first and last names
   search_npi <- function(first_name, last_name) {

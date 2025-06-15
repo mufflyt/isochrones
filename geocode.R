@@ -32,12 +32,12 @@
 #' @import dplyr
 #'
 #' @export
+source("R/here_api_utils.R")
 #'
 
 create_geocode <- function(csv_file, output_file) {
   # Set your HERE API key
-  api_key <- "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM"
-  hereR::set_key(api_key)
+  initialize_here_api_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
 
   # Check if the CSV file exists
   if (!file.exists(csv_file)) {
