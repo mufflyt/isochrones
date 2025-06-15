@@ -21,7 +21,7 @@ subspecialists_lat_long <- read_csv("data/04-geocode/end_completed_clinician_dat
   rename(zip = postal_code) %>%
   mutate(across(c(lat, long), parse_number)) %>%
   filter(!is.na(lat)) %>%
-  mutate(as.factor(ACOG_District)) %>%
+  mutate(ACOG_District = as.factor(ACOG_District)) %>%
   distinct(address, .keep_all = TRUE)
 
 #**********************************************
@@ -161,7 +161,7 @@ isochrone_map <- leaflet() %>%
     fillOpacity = 0.1,
     color = "#1f77b4",
     popup = ~paste0("<strong>Address:</strong> ", address, "<br />",
-                    "<strong>Location:</strong> ", city, ", ", state_code)#,
+                    "<strong>Location:</strong> ", city, ", ", state_code)
     # group = "Obstetrician/Gynecologist Subspecialist"
   ) %>%
   

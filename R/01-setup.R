@@ -63,9 +63,13 @@ library(forcats)
 # Store tidycensus data on cache
 options(tigris_use_cache = TRUE)
 
-Sys.setenv(HERE_API_KEY = "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
 readRenviron("~/.Renviron")
-hereR::set_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
+here_api_key <- Sys.getenv("HERE_API_KEY")
+if (nzchar(here_api_key)) {
+  hereR::set_key(here_api_key)
+} else {
+  stop("HERE_API_KEY not set in environment.")
+}
 
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 #####  Directory structure with here
