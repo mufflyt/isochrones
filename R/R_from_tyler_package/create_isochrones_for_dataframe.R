@@ -19,10 +19,8 @@ create_isochrones_for_dataframe <- function(input_file, breaks = c(1800, 3600, 7
   #input_file <- "data/test_short_inner_join_postmastr_clinician_data_sf.csv"
 
   readRenviron("~/.Renviron")
-  api_key <- Sys.getenv("HERE_API_KEY")
-  if (api_key == "") {
-    stop("HERE_API_KEY environment variable is not set. Please add it to your .Renviron")
-  }
+  source("R/api_utils.R")
+  api_key <- get_env_or_stop("HERE_API_KEY")
   hereR::set_key(api_key)
 
   library(tidyverse)
