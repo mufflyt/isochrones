@@ -1,5 +1,10 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 # Must download by hand from https://data.cms.gov/provider-data/dataset/27ea-46a8
-# Facility Affiliation CMS Data was first published by the Centers for Medicare & Medicaid Services (CMS) in August 2023. The most recent dataset was released to the public on April 17, 2025. 
+# Facility Affiliation CMS Data was first published by the Centers for Medicare & Medicaid Services (CMS) in August 2023. The most recent dataset was released to the public on April 17, 2025.
+source("R/01-setup.R")
 
 library(tidyverse)
 

@@ -32,6 +32,7 @@
 #' @import dplyr
 #'
 #' @export
+source("R/here_api_utils.R")
 #'
 
 create_geocode <- function(csv_file, output_file) {
@@ -40,7 +41,9 @@ create_geocode <- function(csv_file, output_file) {
   if (identical(api_key, "")) {
     stop("HERE_API_KEY environment variable is not set.")
   }
+
   hereR::set_key(api_key)
+
 
   # Check if the CSV file exists
   if (!file.exists(csv_file)) {

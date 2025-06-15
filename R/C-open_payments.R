@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 #' Explore Open Payments Merged Table in DuckDB
 #'
 #' This script connects to the specified DuckDB database, inspects the

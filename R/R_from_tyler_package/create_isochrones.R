@@ -39,6 +39,7 @@ create_isochrones <- memoise::memoise(function(location, range, posix_time = as.
   hereR::set_key(Sys.getenv("HERE_API_KEY"))
 
 
+
   cat("\033[Display setup instructions:\033[0m\n")
   cat("\033[34mTo create isochrones for a specific point(s) use the following code:\033[0m\n")
   cat("\033[34mtryLocationMemo(location = location, range = c(1800, 3600, 7200, 10800))\n")
@@ -49,7 +50,7 @@ create_isochrones <- memoise::memoise(function(location, range, posix_time = as.
   # }
 
   # Check if HERE_API_KEY is set in Renviron
-  if (Sys.getenv("HERE_API_KEY") == "") {
+  if (api_key == "") {
     cat("Please set your HERE API key in your Renviron file using the following steps:\n")
     cat("1. Add key to .Renviron\n")
     cat("Sys.setenv(HERE_API_KEY = \"your_api_key_here\")\n")
@@ -60,7 +61,6 @@ create_isochrones <- memoise::memoise(function(location, range, posix_time = as.
 
   # Initialize HERE API securely using an environment variable for the API key
   cat("Setting up the hereR access...\n")
-  api_key <- Sys.getenv("HERE_API_KEY")
 
   hereR::set_freemium(ans = FALSE)
   hereR::set_key(api_key)

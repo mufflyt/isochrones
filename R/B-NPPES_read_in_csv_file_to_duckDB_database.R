@@ -1,8 +1,13 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 # NPPES
 
 # The process_nppes_data function efficiently imports, filters, and processes National Provider Identifier (NPI) data from a CSV file into a DuckDB database while focusing on individual US-based healthcare providers. It provides robust database management with comprehensive logging and validation, creating and managing optimized database tables specifically for healthcare provider analytics. Additionally, it offers the flexibility to export the processed data to an RDS file for further analysis in R, returning a connection to the database for immediate use in subsequent operations.
 
 library(duckplyr)
+source("R/01-setup.R")
 library(dbplyr)
 library(dplyr)
 library(DBI)  # This is required for connecting to the database

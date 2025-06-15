@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 #............................................................................................................................................................................... info task
 # I am working on how to find when a physician retires or dies and translate that into the year they stopped working. I think we have three
 # sources for this. 
@@ -31,11 +35,11 @@ def_dir
 data_dir = file.path(def_dir, 'data_retirement')
 if (!dir.exists(data_dir)) stop(glue::glue("The directory '{data_dir}' does not exist!"))
 
-your_data_frame = data.table::fread(file = file.path(data_dir, "processed_nips.csv"), stringsAsFactors = F, header = T, nThread = parallel::detectCores())
-retirement_data_frame = data.table::fread(file = file.path(data_dir, "retirement_NPPES Deactivated NPI Report 20240408.csv"), stringsAsFactors = F, header = T, nThread = parallel::detectCores())
-duckdb_npi_all = data.table::fread(file = file.path(data_dir, 'end_sp_duckdb_npi_all.csv'), stringsAsFactors = F, header = T, nThread = parallel::detectCores())
-goba_df = data.table::fread(file = file.path(data_dir, 'goba_unique_goba_deceased_retired.csv'), stringsAsFactors = F, header = T, nThread = parallel::detectCores())
-phys_medic = data.table::fread(file = file.path(data_dir, 'physician_compare_retirement_years.csv'), stringsAsFactors = F, header = T, nThread = parallel::detectCores())
+your_data_frame = data.table::fread(file = file.path(data_dir, "processed_nips.csv"), header = TRUE, nThread = parallel::detectCores())
+retirement_data_frame = data.table::fread(file = file.path(data_dir, "retirement_NPPES Deactivated NPI Report 20240408.csv"), header = TRUE, nThread = parallel::detectCores())
+duckdb_npi_all = data.table::fread(file = file.path(data_dir, 'end_sp_duckdb_npi_all.csv'), header = TRUE, nThread = parallel::detectCores())
+goba_df = data.table::fread(file = file.path(data_dir, 'goba_unique_goba_deceased_retired.csv'), header = TRUE, nThread = parallel::detectCores())
+phys_medic = data.table::fread(file = file.path(data_dir, 'physician_compare_retirement_years.csv'), header = TRUE, nThread = parallel::detectCores())
 
 #........................................................................................................... 1st. approach
 
@@ -56,7 +60,7 @@ if (LEN_npi_unq_proc != nrow(your_data_frame)) message(glue::glue("The unique NI
 df_subs = subset(your_data_frame, data_exist == TRUE)
 df_subs_spl = split(df_subs, by = 'npi')
 df_keep_recent = lapply(df_subs_spl, function(x) {
-  x = x[order(x$lastupdatestr, decreasing = T), ]
+  x = x[order(x$lastupdatestr, decreasing = TRUE), ]
   x = x[1, , drop = F]
   x
 }) |>

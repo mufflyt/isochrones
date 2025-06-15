@@ -1,6 +1,11 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 #==============================================================================
 # NPPES Data Acquisition and Processing Pipeline
 #==============================================================================
+source("R/01-setup.R")
 # 
 # PART 1: Data Acquisition from NBER
 # This script downloads National Provider Identifier (NPI) data files from

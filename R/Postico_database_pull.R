@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 
 # Postico database ----
 #**************************
@@ -11,7 +15,7 @@ db_details <- list(
   port = 5433,
   name = "template1",
   user = "postgres",
-  password = "????"
+  password = ""
 )
 #postico_database_obgyns_by_year(year = 2023, db_details)
 
@@ -62,7 +66,7 @@ db_host <- "localhost"
 db_port <- 5433  # Default PostgreSQL port
 db_name <- "template1"
 db_user <- "postgres"
-db_password <- "???"
+db_password <- ""
 
 ################
 ## Create a database connection
@@ -104,7 +108,7 @@ db_details <- list(
   port = 5433,
   name = "template1",
   user = "postgres",
-  password = "????"
+  password = ""
 )
 
 postico_database_obgyns_by_year(year = 2023, db_details)
