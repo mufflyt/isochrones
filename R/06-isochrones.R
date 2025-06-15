@@ -70,10 +70,7 @@ isochrones_sf <- process_and_save_isochrones(input_file_no_error_rows,
 dim(isochrones_sf)
 class(isochrones_sf)
 
-
-isochrones_df <- sf::st_read(
-  "data/06-isochrones/isochrones_20231223111020_chunk_1_to_4/isochrones.shp"
-) %>%
+isochrones_df <- sf::st_read("data/06-isochrones/isochrones_20231223111020_chunk_1_to_4/isochrones.shp") %>%
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering in the leaflet map later on.
 
 # Clip the isochrones to the USA border.
