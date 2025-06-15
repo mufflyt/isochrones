@@ -63,12 +63,12 @@ source("R/here_api_utils.R")
 
 # Store tidycensus data on cache
 options(tigris_use_cache = TRUE)
-readRenviron("~/.Renviron")
-source("R/api_utils.R")
 
-# Initialize HERE API using a key stored in the environment
-api_key <- get_env_or_stop("HERE_API_KEY")
-hereR::set_key(api_key)
+if (!nzchar(Sys.getenv("HERE_API_KEY"))) {
+  stop("HERE_API_KEY environment variable is not set.")
+}
+readRenviron("~/.Renviron")
+hereR::set_key(Sys.getenv("HERE_API_KEY"))
 
 
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
@@ -294,8 +294,13 @@ search_and_process_npi <- memoise(function(input_file,
 #* create_geocode: 04-geocode.R.  GEOCODE THE DATA USING HERE API.  The key is hard coded into the function.  
 #**************************
 create_geocode <- memoise::memoise(function(csv_file) {
-  # Retrieve HERE API key from the environment
-  api_key <- get_env_or_stop("HERE_API_KEY")
+
+  # Set your HERE API key from environment variable
+  api_key <- Sys.getenv("HERE_API_KEY")
+  if (identical(api_key, "")) {
+    stop("HERE_API_KEY environment variable is not set.")
+  }
+
   hereR::set_key(api_key)
 
   # Check if the CSV file exists

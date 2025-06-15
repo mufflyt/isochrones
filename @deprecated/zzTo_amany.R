@@ -4,12 +4,12 @@ library(progress)
 
 ## Geocode
 create_geocode <- memoise::memoise(function(csv_file) {
-  # Retrieve HERE API key from the environment
-  api_key <- Sys.getenv("HERE_API_KEY")
-  if (api_key == "") {
-    stop("HERE_API_KEY environment variable is not set. Please add it to your .Renviron")
-  }
 
+  # Set your HERE API key from environment variable
+  api_key <- Sys.getenv("HERE_API_KEY")
+  if (identical(api_key, "")) {
+    stop("HERE_API_KEY environment variable is not set.")
+  }
   hereR::set_key(api_key)
 
   # Check if the CSV file exists
@@ -68,12 +68,12 @@ if (interactive()) View(geocoded_data)
 
 create_isochrones <- memoise::memoise(function(location, range, posix_time = as.POSIXct("2023-10-20 08:00:00", format = "%Y-%m-%d %H:%M:%S")) {
 
-  readRenviron("~/.Renviron")
-  api_key <- Sys.getenv("HERE_API_KEY")
-  if (api_key == "") {
-    stop("HERE_API_KEY environment variable is not set. Please add it to your .Renviron")
+  if (!nzchar(Sys.getenv("HERE_API_KEY"))) {
+    stop("HERE_API_KEY environment variable is not set.")
   }
-  hereR::set_key(api_key)
+  readRenviron("~/.Renviron")
+  hereR::set_key(Sys.getenv("HERE_API_KEY"))
+
 
   cat("\033[Display setup instructions:\033[0m\n")
   cat("\033[34mTo create isochrones for a specific point(s) use the following code:\033[0m\n")
@@ -150,12 +150,13 @@ create_isochrones <- memoise::memoise(function(location, range, posix_time = as.
 
 create_isochrones_for_dataframe <- function(input_file, breaks = c(30*60, 60*60, 120*60, 180*60)) {
 
-  readRenviron("~/.Renviron")
-  api_key <- Sys.getenv("HERE_API_KEY")
-  if (api_key == "") {
-    stop("HERE_API_KEY environment variable is not set. Please add it to your .Renviron")
+
+  if (!nzchar(Sys.getenv("HERE_API_KEY"))) {
+    stop("HERE_API_KEY environment variable is not set.")
   }
-  hereR::set_key(api_key)
+  readRenviron("~/.Renviron")
+  hereR::set_key(Sys.getenv("HERE_API_KEY"))
+
 
   dataframe <- easyr::read.any(input_file) %>%
     filter(!is.na(lat) & !is.na(long))

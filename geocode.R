@@ -36,9 +36,12 @@ source("R/here_api_utils.R")
 #'
 
 create_geocode <- function(csv_file, output_file) {
-  # Retrieve HERE API key from the environment
-  source("R/api_utils.R")
-  api_key <- get_env_or_stop("HERE_API_KEY")
+  # Set your HERE API key from environment variable
+  api_key <- Sys.getenv("HERE_API_KEY")
+  if (identical(api_key, "")) {
+    stop("HERE_API_KEY environment variable is not set.")
+  }
+
   hereR::set_key(api_key)
 
 

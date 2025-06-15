@@ -32,10 +32,12 @@
 #' @importFrom hereR set_freemium set_key set_verbose isoline
 create_isochrones <- memoise::memoise(function(location, range, posix_time = as.POSIXct("2023-10-20 08:00:00", format = "%Y-%m-%d %H:%M:%S")) {
 
+  if (!nzchar(Sys.getenv("HERE_API_KEY"))) {
+    stop("HERE_API_KEY environment variable is not set.")
+  }
   readRenviron("~/.Renviron")
-  source("R/api_utils.R")
-  api_key <- get_env_or_stop("HERE_API_KEY")
-  hereR::set_key(api_key)
+  hereR::set_key(Sys.getenv("HERE_API_KEY"))
+
 
 
   cat("\033[Display setup instructions:\033[0m\n")

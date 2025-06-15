@@ -31,8 +31,9 @@ iso_datetime_yearly <- tibble(
 
 # We can do this in R with the hereR package.  I grabbed my own key for this.
 key <- Sys.getenv("HERE_API_KEY")
-if (key == "") {
-  stop("HERE_API_KEY environment variable is not set. Please add it to your .Renviron")
+if (identical(key, "")) {
+  stop("HERE_API_KEY environment variable is not set.")
+
 }
 set_key(key)
 
