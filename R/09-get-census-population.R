@@ -33,7 +33,7 @@ demographics_bg <- all_census_data %>%
     county,
     str_pad(tract, width = 6, pad = "0"),
     block_group
-  ),) %>%
+  )) %>%
   dplyr::arrange(fips_state) %>%
   dplyr::select(fips_block_group, name, population)
 
@@ -42,7 +42,7 @@ demographics_bg <- all_census_data %>%
 
 head(demographics_bg)
  
-# And finally! Multiply the population of each block group by its overlap percent to calculate population within and not within ???45???-minutes of a gynecologic oncologist.
+# And finally! Multiply the population of each block group by its overlap percent to calculate population within and not within 45-minutes of a gynecologic oncologist.
 #
 # First, make a flat non-sf dataframe with the overlap information and join to population. Then multiply and summarize. This is the easiest part of the project.
 
@@ -71,4 +71,4 @@ head(state_sums)
 within_total_pct <- round(state_sums[[3]]*100, 2)
 n_population <- format(round(state_sums[[1]], 0), big.mark = ",")
 
-paste0(within_total_pct, "% (N = ", n_population, ") of US female residents live within ??45?? minutes of a gynecologic oncologist, while the remaining", 100L - within_total_pct, "% live further away.")
+paste0(within_total_pct, "% (N = ", n_population, ") of US female residents live within 45 minutes of a gynecologic oncologist, while the remaining ", 100L - within_total_pct, "% live further away.")

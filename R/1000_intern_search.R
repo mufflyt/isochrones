@@ -1,4 +1,5 @@
 
+source("R/01-setup.R")
 
 search_and_process_npi <- memoise(function(input_file,
                                            enumeration_type = "ind",

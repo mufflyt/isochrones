@@ -413,7 +413,6 @@ obgyn_geocoding_data <- prepare_addresses_for_geocoding(
   deduplicate_by_address_only = TRUE #Gets unique addresses
 )
 
-
 #**************************
 #* GEOCODE THE DATA USING HERE API.  The key is hard coded into the function.  
 #**************************
