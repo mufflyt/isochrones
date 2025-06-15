@@ -155,15 +155,21 @@ invisible(gc())
 #------------------------------------------------------------------------------
 # Example: Load NUCC Taxonomy Codes into Database (For Reference)
 #------------------------------------------------------------------------------
+nucc_dir <- Sys.getenv("NUCC_PATH")
+if (nucc_dir == "") {
+  stop("NUCC_PATH environment variable is not set. It should point to the directory containing nucc_taxonomy_201.csv")
+}
+nucc_file <- file.path(nucc_dir, "nucc_taxonomy_201.csv")
+
 # First check if DuckDB can see the file
-file_exists <- file.exists("/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/nucc/nucc_taxonomy_201.csv")
+file_exists <- file.exists(nucc_file)
 print(paste("File exists:", file_exists))
 
 # Import the CSV file into DuckDB if it exists
 if(file_exists) {
   # Read the CSV into R first
-  nucc_data <- read.csv("/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/nucc/nucc_taxonomy_201.csv", 
-                        stringsAsFactors = FALSE, 
+  nucc_data <- read.csv(nucc_file,
+                        stringsAsFactors = FALSE,
                         na.strings = c("", "NA", "<NA>"))
   
   # Write to DuckDB
