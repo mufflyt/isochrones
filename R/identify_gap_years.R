@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 # 1434 version ----
 #' Identify Physician Retirement Based on Medicare Part D Prescription Gaps
 #'

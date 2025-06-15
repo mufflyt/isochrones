@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 ##########################################################################
 # tyler::search_and_process_npi
 # Filter the subspecialists_only.csv file/goba file to those without NPI numbers.  Then send those names into the search_and_process_npi

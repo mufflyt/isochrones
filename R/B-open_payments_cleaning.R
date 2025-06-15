@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 #' Process Open Payments Data Using DuckDB
 # Load global setup
 source("R/01-setup.R")

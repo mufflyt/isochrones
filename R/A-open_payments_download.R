@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 # Simple script to download Open Payments data files
 # Simple script to download Open Payments data files
 # Load required packages

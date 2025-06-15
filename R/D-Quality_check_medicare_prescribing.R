@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 # Load required packages
 library(logger)
 library(dplyr)

@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 
 # Define database path
 db_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/unzipped_p_files/nppes_my_duckdb.duckdb"

@@ -1,3 +1,7 @@
+#######################
+source("R/01-setup.R")
+#######################
+
 #' Analyze Gynecologic Oncologist Accessibility Along I-95
 #'
 #' This function analyzes how many miles along I-95 have access to a 
