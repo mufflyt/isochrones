@@ -38,7 +38,6 @@ renv/
 # Images and media
 figures/
 output/
-results/
 *.mp4
 *.mp3
 *.wav

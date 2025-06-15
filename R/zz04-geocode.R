@@ -1,5 +1,6 @@
 
 #######################
+# This script loads provider data, geocodes addresses, and summarizes counts by state.
 source("R/01-setup.R")
 #######################
 
@@ -29,7 +30,7 @@ write_csv(geocoded_data, "data/04-geocode/end_completed_clinician_data_geocoded_
 mean(geocoded_data$score) #accuracy of the geocode
 
 # Found in the isochrones/ path.  
-state_data <- read_csv("state_data.csv")
+state_data <- read_csv("results/state_data.csv")
 
 # Step 1: Aggregate your data by state_code and subspecialist count
 state_data <- geocoded_data %>%
