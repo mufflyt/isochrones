@@ -1,7 +1,9 @@
 
 
+library(progress)
+
 ## Geocode
-create_geocode <- memoise::memoise(function(csv_file) {
+create_geocode <- memoise::memoise(function(csv_file, output_file) {
   # Set your HERE API key
   api_key <- "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM"
   hereR::set_key(api_key)
@@ -42,7 +44,7 @@ create_geocode <- memoise::memoise(function(csv_file) {
   data$longitude <- geocoded$longitude
 
   # Write the updated data frame with geocoded information back to a CSV file
-  write.csv(data, csv_file, row.names = FALSE)
+  write.csv(data, output_file, row.names = FALSE)
   cat("Updated CSV file with geocoded information.\n")
 
   cat("Geocoding complete.\n")
@@ -54,7 +56,8 @@ create_geocode <- memoise::memoise(function(csv_file) {
 csv_file <- "data/short_complete_npi_for_subspecialists.csv"
 output_file <- "data/geocoded_addresses.csv"
 geocoded_data <- create_geocode(csv_file, output_file)
-View(geocoded_data)
+# View the results if running interactively
+if (interactive()) View(geocoded_data)
 
 ###############################################################################
 ###############################################################################
@@ -133,8 +136,8 @@ create_isochrones <- memoise::memoise(function(location, range, posix_time = as.
   })
 
   # Return the result, whether it's isolines or an error message
+  cat("tryLocation complete.\n")
   return(out)
-  cat("\tryLocation complete.\n")
 })
 
 
@@ -145,7 +148,7 @@ create_isochrones_for_dataframe <- function(input_file, breaks = c(30*60, 60*60,
   hereR::set_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
 
   dataframe <- easyr::read.any(input_file) %>%
-    filter(!is.na(lat) | !is.na(long))
+    filter(!is.na(lat) & !is.na(long))
 
 
   # Check if "lat" and "long" columns exist
@@ -159,11 +162,10 @@ create_isochrones_for_dataframe <- function(input_file, breaks = c(30*60, 60*60,
     sf::st_as_sf(coords = c("long", "lat"), crs = 4326)
 
   # Ensure it's an sf object
-  if (!is(dataframe_sf, "sf")) {
+  if (!inherits(dataframe_sf, "sf")) {
     stop("FYI: The file is not an sf object.")
   }
 
-  class(dataframe_sf) #for testing
   dataframe <- dataframe_sf
 
   # Initialize isochrones as an empty data frame
