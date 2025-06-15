@@ -100,12 +100,16 @@ names(dat_all_isochr) = gsub(pattern = '.shp', replacement = '', x = lst_shp)
 # Function to GET THE ACS CENSUS VARIABLES
 get_acs_data <- function(us_fips_list, vintage = 2019, acs_variables) {
   state_data <- list()
+  census_key <- Sys.getenv("CENSUS_API_KEY")
+  if (census_key == "") {
+    stop("CENSUS_API_KEY environment variable is not set. Please add it to your .Renviron or .env file")
+  }
   for (fips_code in us_fips_list) {
     stateget <- paste("state:", fips_code, "&in=county:*&in=tract:*", sep = "")
     state_data[[fips_code]] <- censusapi::getCensus(name = "acs/acs5", vintage = vintage,
-                                                    vars = c("NAME", acs_variables),
-                                                    region = "block group:*", regionin = stateget,
-                                                    key = "485c6da8987af0b9829c25f899f2393b4bb1a4fb")
+                                                     vars = c("NAME", acs_variables),
+                                                     region = "block group:*", regionin = stateget,
+                                                     key = census_key)
   }
   
   acs_raw <- dplyr::bind_rows(state_data)

@@ -63,14 +63,13 @@ source("R/here_api_utils.R")
 
 # Store tidycensus data on cache
 options(tigris_use_cache = TRUE)
-
 readRenviron("~/.Renviron")
-here_api_key <- Sys.getenv("HERE_API_KEY")
-if (nzchar(here_api_key)) {
-  hereR::set_key(here_api_key)
-} else {
-  stop("HERE_API_KEY not set in environment.")
-}
+source("R/api_utils.R")
+
+# Initialize HERE API using a key stored in the environment
+api_key <- get_env_or_stop("HERE_API_KEY")
+hereR::set_key(api_key)
+
 
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 #####  Directory structure with here
@@ -295,8 +294,9 @@ search_and_process_npi <- memoise(function(input_file,
 #* create_geocode: 04-geocode.R.  GEOCODE THE DATA USING HERE API.  The key is hard coded into the function.  
 #**************************
 create_geocode <- memoise::memoise(function(csv_file) {
-  # Set your HERE API key
-  initialize_here_api_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
+  # Retrieve HERE API key from the environment
+  api_key <- get_env_or_stop("HERE_API_KEY")
+  hereR::set_key(api_key)
 
   # Check if the CSV file exists
   if (!file.exists(csv_file)) {
@@ -593,16 +593,21 @@ us_fips_list <- tigris::fips_codes %>%
   dplyr::select(state_code) %>%
   dplyr::pull()
 
-get_census_data <- function(us_fips_list) {
+
+get_census_data <- function (us_fips_list)
+{
   state_data <- list()
-  for (f in us_fips_list) {
+  census_key <- get_env_or_stop("CENSUS_API_KEY")
+  for (f in us_fips) {
+    us_fips <- tyler::fips
+
     print(f)
     stateget <- paste("state:", f, "&in=county:*&in=tract:*",
                       sep = "")
-    state_data[[f]] <- getCensus(name = "acs/acs5", vintage = 2019, 
-                                 vars = c("NAME", paste0("B01001_0", c("01", 26, 33:49), 
-                                                         "E")), region = "block group:*", regionin = stateget, 
-                                 key = "485c6da8987af0b9829c25f899f2393b4bb1a4fb")
+      state_data[[f]] <- getCensus(name = "acs/acs5", vintage = 2019,
+                                   vars = c("NAME", paste0("B01001_0", c("01", 26, 33:49),
+                                                           "E")), region = "block group:*", regionin = stateget,
+                                   key = census_key)
   }
   acs_raw <- dplyr::bind_rows(state_data)
   Sys.sleep(1)
