@@ -10,7 +10,6 @@ source("R/01-setup.R")
 #   #head(10) %>% #for testing.
 #   readr::write_csv(., "data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv") -> a
 
-# a$address
 
 # Prepare Address Data for Geocoding ----
 #'

@@ -117,7 +117,7 @@ write_csv(result, "data/result.csv")
 
 # Filter out feature 188562 from the result
 filtered_result <- result %>%
-  filter(row_number != 188562)
+  filter(dplyr::row_number() != 188562)
 
 sf::st_write(result,
              dsn = "data/07-isochrone-mapping",
@@ -160,7 +160,7 @@ isochrone_map <- leaflet() %>%
   leaflet::addCircleMarkers(
     data = subspecialists_lat_long_copy,
     radius = 2,
-    fill = T,
+    fill = TRUE,
     fillOpacity = 0.1,
     color = "#1f77b4",
     popup = ~paste0("<strong>Address:</strong> ", address, "<br />",
