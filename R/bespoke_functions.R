@@ -1,6 +1,9 @@
 
-# Define database path
-db_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/unzipped_p_files/nppes_my_duckdb.duckdb"
+# Define database path via environment variable
+db_path <- Sys.getenv("NPPES_DB_PATH")
+if (!nzchar(db_path)) {
+  stop("NPPES_DB_PATH environment variable not set")
+}
 
 # Connect to the DuckDB database
 con <- dbConnect(duckdb::duckdb(), db_path)

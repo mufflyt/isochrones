@@ -37,8 +37,9 @@ library(wesanderson) # color palettes
 library(mapview)
 library(shiny) # creation of GUI, needed to change leaflet layers with dropdowns
 library(htmltools) # added for saving html widget
-devtools::install_github('ramnathv/htmlwidgets')
-remotes::install_github("andrewallenbruce/provider")
+# Packages should be installed beforehand rather than within the script.
+# devtools::install_github('ramnathv/htmlwidgets')
+# remotes::install_github("andrewallenbruce/provider")
 library(provider)
 library(readxl)
 library(leaflet.extras)
@@ -63,9 +64,15 @@ library(forcats)
 # Store tidycensus data on cache
 options(tigris_use_cache = TRUE)
 
-Sys.setenv(HERE_API_KEY = "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
+# Retrieve HERE API key from the environment
+api_key <- Sys.getenv("HERE_API_KEY")
+if (nzchar(api_key)) {
+  Sys.setenv(HERE_API_KEY = api_key)
+  hereR::set_key(api_key)
+} else {
+  warning("HERE_API_KEY not set; some functions may fail")
+}
 readRenviron("~/.Renviron")
-hereR::set_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM")
 
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 #####  Directory structure with here
@@ -301,9 +308,13 @@ search_and_process_npi <- memoise(function(input_file,
 #* create_geocode: 04-geocode.R.  GEOCODE THE DATA USING HERE API.  The key is hard coded into the function.  
 #**************************
 create_geocode <- memoise::memoise(function(csv_file) {
-  # Set your HERE API key
-  api_key <- "VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM"
-  hereR::set_key(api_key)
+  # Set your HERE API key from the environment
+  api_key <- Sys.getenv("HERE_API_KEY")
+  if (nzchar(api_key)) {
+    hereR::set_key(api_key)
+  } else {
+    stop("HERE_API_KEY not set")
+  }
 
   # Check if the CSV file exists
   if (!file.exists(csv_file)) {
@@ -694,12 +705,6 @@ download_and_merge_block_groups <- function(year) {
 
 # Example usage: download data for the year 2020
 # combined_block_groups_2020 <- download_and_merge_block_groups(2020)
-
-##########
-format_pct <- function(x, my_digits = 0) {
-  format(x, digits = my_digits, nsmall = my_digits)
-}
-
 
 #########
 postico_database_obgyns_by_year <- function(year, db_details) {

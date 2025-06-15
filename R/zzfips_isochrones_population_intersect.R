@@ -9,8 +9,7 @@ library(data.table)
 library(mapview)
 
 
-# default directory
-setwd(dir = getwd())
+# default directory (working directory assumed current)
 
 # directory to save the results for each fips & minute-isochrones
 dir_save = file.path(getwd(), 'data', 'save_fips_isochrones')

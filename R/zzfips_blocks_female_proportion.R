@@ -8,8 +8,7 @@ library(doParallel)
 library(foreach)
 library(parallel)
 
-# set the working directory
-setwd(dir = getwd())
+# set the working directory (optional, default is current directory)
 
 # Store tidycensus data on cache
 options(tigris_use_cache = TRUE)
