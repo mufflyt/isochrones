@@ -16,8 +16,8 @@ expand_and_fill_years <- function(input_data, start_year = 2008, end_year = 2023
       lastupdatestr = ifelse(year >= lastupdatestr, lastupdatestr, NA_integer_),
       penumdatestr = ifelse(year >= penumdatestr, penumdatestr, NA_integer_)
     ) %>%
-    fill(lastupdatestr, penumdatestr, pfname, plname, address, plocline1, ploccityname,
-         plocstatename, ploczip, ploctel, pmailline1, .direction = "down") %>%  # Fill values down to subsequent years
+    tidyr::fill(lastupdatestr, penumdatestr, pfname, plname, address, plocline1, ploccityname,
+                plocstatename, ploczip, ploctel, pmailline1, .direction = "down") %>%  # Fill values down to subsequent years
     ungroup()
   
   # Keep only one unique record per NPI per year
@@ -67,12 +67,12 @@ transform_to_fill_in_correct <- function(input_data, start_year = 2008, end_year
     tidyr::expand(., npi, year = year_sequence) %>%
     dplyr::left_join(input_data, by = c("npi", "year" = "lastupdatestr")) %>% # Join back the original data
     dplyr::group_by(npi) %>%
-    fill(everything(), .direction = "down") %>%
+    tidyr::fill(everything(), .direction = "down") %>%
     # Ensure there is one distinct row per npi, year, lastupdatestr
     dplyr::distinct(., .keep_all = TRUE) %>%
     dplyr::ungroup() %>%
     # Replace remaining NAs with "unknown"
-    dplyr::mutate(across(c(address, plocline1, ploccityname, plocstatename, ploczip, ploctel), ~replace_na(., "unknown")))
+    dplyr::mutate(across(c(address, plocline1, ploccityname, plocstatename, ploczip, ploctel), ~tidyr::replace_na(., "unknown")))
   
   return(expanded_data)
 }

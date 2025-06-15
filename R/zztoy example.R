@@ -28,7 +28,7 @@ dataframe_final <- expanded_df %>%
     lastupdatestr = if_else(year >= lastupdatestr, lastupdatestr, NA_real_),
     is_update = if_else(is.na(lag(lastupdatestr)) | lastupdatestr != lag(lastupdatestr), TRUE, FALSE)
   ) %>%
-  fill(everything(), .direction = "down") %>%
+  tidyr::fill(everything(), .direction = "down") %>%
   filter(is_update) %>%
   select(-is_update) %>%
   ungroup() %>%

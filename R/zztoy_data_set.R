@@ -30,11 +30,11 @@ dataframe_final <- expanded_df %>%
   mutate(
     is_update = if_else(is.na(lag(lastupdatestr)) | lastupdatestr != lag(lastupdatestr), TRUE, FALSE),
     # Fill NA values for character and numeric columns to ensure no data gaps.
-    across(where(is.character), ~replace_na(., "")),
-    across(where(is.numeric), ~replace_na(., 0))
+    across(where(is.character), ~tidyr::replace_na(., "")),
+    across(where(is.numeric), ~tidyr::replace_na(., 0))
   ) %>%
   # Propagate the last known values downward to fill gaps in data.
-  fill(everything(), .direction = "down") %>%
+  tidyr::fill(everything(), .direction = "down") %>%
   # Only retain rows marked as updates to reduce data redundancy.
   filter(is_update) %>%
   select(-is_update) %>%
