@@ -1,5 +1,30 @@
 #######################
 source("R/01-setup.R")
+
+# ---------------------------------------------------------------------------
+# Constants for subspecialty searches and taxonomy descriptions
+# ---------------------------------------------------------------------------
+SUBSPECIALTIES <- c(
+  "Gynecologic Oncology",
+  "Urogynecology and Reconstructive Pelvic Surgery",
+  "Reproductive Endocrinology",
+  "Maternal & Fetal Medicine"
+)
+
+TAXONOMY_DESCRIPTIONS <- c(
+  "Obstetrics & Gynecology, Female Pelvic Medicine and Reconstructive Surgery",
+  "Obstetrics & Gynecology, Gynecologic Oncology",
+  "Obstetrics & Gynecology, Maternal & Fetal Medicine",
+  "Obstetrics & Gynecology, Reproductive Endocrinology",
+  "Obstetrics & Gynecology, Urogynecology and Reconstructive Pelvic Surgery"
+)
+
+TAXONOMY_RECODE_MAP <- c(
+  "Obstetrics & Gynecology, Female Pelvic Medicine and Reconstructive Surgery" = "FPM",
+  "Obstetrics & Gynecology, Gynecologic Oncology" = "ONC",
+  "Obstetrics & Gynecology, Maternal & Fetal Medicine" = "MFM",
+  "Obstetrics & Gynecology, Reproductive Endocrinology" = "REI"
+)
 #######################
 
 # The code you provided appears to be R code that performs the following tasks:
@@ -650,12 +675,9 @@ rei_search_by_taxonomy_data <- npi_search_all(taxonomy_description = "Reproducti
                                               filter_mode = "contains")
 mfm_search_by_taxonomy_data <- npi_search_all(taxonomy = "207VM0101X")
 
-# Merge all data frames of each of the four subspecialties into one
-all_taxonomy_search_data <- dplyr::bind_rows(
-  go_search_by_taxonomy_data,
-  fpmrs_search_by_taxonomy_data,
-  rei_search_by_taxonomy_data,
-  mfm_search_by_taxonomy_data) %>%
+
+# Merge all data frames of each of the subspecialties into one
+all_taxonomy_search_data <- dplyr::bind_rows(search_results_list) %>%
   dplyr::distinct(npi, .keep_all = TRUE)
 
 
@@ -664,14 +686,8 @@ cleaned_all_taxonomy_search_data <-
   distinct(npi, .keep_all = TRUE) %>%
   # Keep only the OBGYN subspecialist taxonomy descriptions.
   filter(
-    taxonomies_desc %in% c(
-      "Obstetrics & Gynecology, Female Pelvic Medicine and Reconstructive Surgery",
-      "Obstetrics & Gynecology, Gynecologic Oncology",
-      "Obstetrics & Gynecology, Maternal & Fetal Medicine",
-      "Obstetrics & Gynecology, Reproductive Endocrinology",
-      "Obstetrics & Gynecology, Urogynecology and Reconstructive Pelvic Surgery"
-    )
-  ) %>% 
+    taxonomies_desc %in% TAXONOMY_DESCRIPTIONS
+  ) %>%
   mutate(addresses_postal_code = str_sub(addresses_postal_code,1 ,5)) %>% # Extract the first five of the zip code
   mutate(basic_enumeration_date = ymd(basic_enumeration_date)) %>%
   mutate(basic_enumeration_date_year = year(basic_enumeration_date), .after = ifelse("basic_enumeration_date" %in% names(.), "basic_enumeration_date", last_col())) %>% # Pull the year out of the enumeration full data.
@@ -683,7 +699,7 @@ cleaned_all_taxonomy_search_data <-
   mutate(GenderPhysicianCompare = recode(GenderPhysicianCompare, "F" = "Female", "M" = "Male")) %>%
 
   # Show the subspecialty from goba.
-  mutate(sub1 = recode(sub1, "Obstetrics & Gynecology, Female Pelvic Medicine and Reconstructive Surgery" = "FPM", "Obstetrics & Gynecology, Gynecologic Oncology" = "ONC", "Obstetrics & Gynecology, Maternal & Fetal Medicine" = "MFM", "Obstetrics & Gynecology, Reproductive Endocrinology" = "REI"))
+  mutate(sub1 = recode(sub1, !!!TAXONOMY_RECODE_MAP))
 
  
 write_rds(cleaned_all_taxonomy_search_data, "data/02-search_taxonomy/end_cleaned_all_taxonomy_search_data.rds")
