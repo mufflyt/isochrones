@@ -2832,3 +2832,11 @@ decisions.*
 
 *Generated on 2025-06-14 \| Version 2.0 \| Comprehensive HTML Documentation*
 :::
+
+## Unlimited NPI Search
+A helper script `scripts/npi_search_all.R` uses the NPI Registry API directly and paginates to retrieve all matching records without the 1200 record cap. Example:
+
+```r
+results <- npi_search_all(taxonomy_description = "Obstetrics & Gynecology")
+```
+
