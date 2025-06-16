@@ -6,5 +6,5 @@
 #' @examples
 #' format_pct(0.1234, my_digits = 2)
 format_pct <- function(x, my_digits = 0) {
-  format(x, digits = my_digits, nsmall = my_digits)
+  formatC(x, format = "f", digits = my_digits)
 }
