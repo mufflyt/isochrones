@@ -2,9 +2,14 @@
 source("R/01-setup.R")
 #######################
 
-expand_and_fill_years <- function(input_data, start_year = 2008, end_year = 2023) {
+expand_and_fill_years <- function(input_data, start_year = 2008, end_year = 2023,
+                                  verbal = TRUE) {
   # Log the function call with arguments
-  message(glue::glue("Function expand_and_fill_years called with start_year: {start_year}, end_year: {end_year}"))
+  if (verbal) {
+    message(glue::glue(
+      "Function expand_and_fill_years called with start_year: {start_year}, end_year: {end_year}"
+    ))
+  }
   
   # Generate a sequence of years and create a dataframe
   years <- tibble(year = seq(start_year, end_year))
@@ -20,8 +25,9 @@ expand_and_fill_years <- function(input_data, start_year = 2008, end_year = 2023
       lastupdatestr = ifelse(year >= lastupdatestr, lastupdatestr, NA_integer_),
       penumdatestr = ifelse(year >= penumdatestr, penumdatestr, NA_integer_)
     ) %>%
-    fill(lastupdatestr, penumdatestr, pfname, plname, address, plocline1, ploccityname,
-         plocstatename, ploczip, ploctel, pmailline1, .direction = "down") %>%  # Fill values down to subsequent years
+    tidyr::fill(lastupdatestr, penumdatestr, pfname, plname, address, plocline1,
+          ploccityname, plocstatename, ploczip, ploctel, pmailline1,
+          .direction = "down") %>%  # Fill values down to subsequent years
     ungroup()
   
   # Keep only one unique record per NPI per year
@@ -60,7 +66,13 @@ print(expanded_filled_data, n = 100)
 library(dplyr)
 library(tidyr)
 
-transform_to_fill_in_correct <- function(input_data, start_year = 2008, end_year = 2023) {
+transform_to_fill_in_correct <- function(input_data, start_year = 2008,
+                                         end_year = 2023, verbal = TRUE) {
+  if (verbal) {
+    message(glue::glue(
+      "transform_to_fill_in_correct called with start_year: {start_year}, end_year: {end_year}"
+    ))
+  }
   # Create a sequence of years
   year_sequence <- seq(start_year, end_year)
   
@@ -71,7 +83,7 @@ transform_to_fill_in_correct <- function(input_data, start_year = 2008, end_year
     tidyr::expand(., npi, year = year_sequence) %>%
     dplyr::left_join(input_data, by = c("npi", "year" = "lastupdatestr")) %>% # Join back the original data
     dplyr::group_by(npi) %>%
-    fill(everything(), .direction = "down") %>%
+    tidyr::fill(everything(), .direction = "down") %>%
     # Ensure there is one distinct row per npi, year, lastupdatestr
     dplyr::distinct(., .keep_all = TRUE) %>%
     dplyr::ungroup() %>%
