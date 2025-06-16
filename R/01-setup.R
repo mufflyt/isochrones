@@ -844,5 +844,6 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
 }
 
 
+
 # fin
 print("Setup is complete!")
