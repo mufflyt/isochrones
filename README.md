@@ -5,7 +5,7 @@ author:
   - name: "Tyler Muffly, MD"
     affiliation: "Department of Obstetrics and Gynecology"
     email: "tyler.muffly@dhha.org"
-date: "2025-06-14"
+date: "2025-06-22"
 description: |
   This project analyzes nationwide access to gynecologic oncologists and other 
   OBGYN subspecialists using drive time isochrones, demographic data, and 
@@ -48,6 +48,10 @@ editor_options:
     wrap: 80
     canonical: true
 ---
+
+We need to use `postmastr` because a lot of the addresses are close but
+abbreviated in annoying ways. <https://pe.usps.com/text/pub28/welcome.htm> is a
+list of USPS address codes.
 
 <!-- Custom CSS for enhanced styling -->
 
@@ -116,7 +120,7 @@ source("R/01-setup.R")      # provides create_geocode()
 ## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
 ## ✔ dplyr     1.1.4     ✔ readr     2.1.5
 ## ✔ forcats   1.0.0     ✔ stringr   1.5.1
-## ✔ ggplot2   3.5.2     ✔ tibble    3.2.1
+## ✔ ggplot2   3.5.2     ✔ tibble    3.3.0
 ## ✔ lubridate 1.9.4     ✔ tidyr     1.3.1
 ## ✔ purrr     1.0.4     
 ## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
@@ -149,16 +153,6 @@ source("R/01-setup.R")      # provides create_geocode()
 ## in your R script or .Rprofile.
 ## 
 ## Loading required package: viridisLite
-## 
-## Using github PAT from envvar GITHUB_PAT. Use `gitcreds::gitcreds_set()` and unset GITHUB_PAT in .Renviron (or elsewhere) if you want to use the more secure git credential store instead.
-## 
-## Skipping install of 'htmlwidgets' from a github remote, the SHA1 (373eedef) has not changed since last install.
-##   Use `force = TRUE` to force installation
-## 
-## Using github PAT from envvar GITHUB_PAT. Use `gitcreds::gitcreds_set()` and unset GITHUB_PAT in .Renviron (or elsewhere) if you want to use the more secure git credential store instead.
-## 
-## Skipping install of 'provider' from a github remote, the SHA1 (80ce5ff6) has not changed since last install.
-##   Use `force = TRUE` to force installation
 ## 
 ## 
 ## Attaching package: 'exploratory'
@@ -456,7 +450,6 @@ minutes.
 do I have to travel for specialized care? - **Policy perspective**: Which
 populations are underserved? - **Planning perspective**: Where should new
 providers practice?
-For a quick check on the resulting polygons you can view them interactively in R with `mapview::mapview(isochrones_sf)`. For more customized maps, use the `leaflet` package.
 
 ## Enhanced Census Tract Map
 
@@ -798,7 +791,7 @@ ABMS - scraped.
     blocks
 -   `fips_isochrones_population_intersect.R` - Examines population within
     isochrones
--   `@deprecated/R/zzzPostico.R` - Used Postico originally. Able to use duckDB later on.\
+-   `zzzPostico.R` - Used Postico originally. Able to use duckDB later on.\
 -   `Postico_database_pull.R` - Extracts physician data from PostgreSQL
     database, enabling year-by-year analysis of physician practice locations
     from 2013 to 2022. Pulls "GYNECOLOGIC ONCOLOGY" from the Primary Specialty.
@@ -818,7 +811,7 @@ ABMS - scraped.
     data
 -   `03a-search_and_process_extra.R` - Additional NPI processing for edge cases
 -   `04-geocode.R` - Geocodes provider addresses using the HERE API
--   `@deprecated/R/zz05-geocode-cleaning.R` - Old technique with postmaster pulling apart the
+-   `zz05-geocode-cleaning.R` - Old technique with postmaster pulling apart the
     address.
 
 #### 2. Isochrone Generation and Analysis
@@ -875,7 +868,7 @@ order:
 5.  `03-search_and_process_npi.R` - When did physicians start practicing?
 6.  `03a-search_and_process_extra.R`
 7.  `04-geocode.R`
-8.  `@deprecated/R/zz05-geocode-cleaning.R`
+8.  `zz05-geocode-cleaning.R`
 9.  `retirement.R`/`retirement_adjusted.R` - When did physicians retire? (if
     physician retirement analysis is needed)
 
@@ -1756,10 +1749,10 @@ order:
 23. `walker_isochrone_maps.R` - Creates a faceted map of the US, HI, AK, and PR
     with the isochrones in place.
 
-24. `@deprecated/R/zzzcalculate_population_in_isochrones_by_race.R` - I'm unsure if it is
+24. `zzzcalculate_population_in_isochrones_by_race.R` - I'm unsure if it is
     needed.\
 
-25. `@deprecated/R/zzzfor_every_year_script_rmd.Rmd` - This is THE SAME MAP THAT WALKER DID IN
+25. `zzzfor_every_year_script_rmd.Rmd` - This is THE SAME MAP THAT WALKER DID IN
     `walker_isochrone_maps.R` BUT HE DID IT BETTER. Creates a map of the
     isochrones for every year.
 
@@ -2719,8 +2712,7 @@ MIT (allows commercial and academic use with attribution)
 
 # 🤝 Contributing
 
--   We welcome contributions!
--   For tips on naming and organizing new functions, see [docs/function_naming_and_organization.md](docs/function_naming_and_organization.md).
+We welcome contributions!
 
 # 📜 Citation
 
@@ -2830,13 +2822,5 @@ decisions.*
 ::: {style="text-align: center; margin-top: 50px; padding: 20px; background-color: #f8f9fa; border-radius: 10px;"}
 **🏥 Improving Healthcare Access Through Data-Driven Analysis 📊**
 
-*Generated on 2025-06-14 \| Version 2.0 \| Comprehensive HTML Documentation*
+*Generated on 2025-06-22 \| Version 2.0 \| Comprehensive HTML Documentation*
 :::
-
-## Unlimited NPI Search
-A helper script `scripts/npi_search_all.R` uses the NPI Registry API directly and paginates to retrieve all matching records without the 1200 record cap. Example:
-
-```r
-results <- npi_search_all(taxonomy_description = "Obstetrics & Gynecology")
-```
-

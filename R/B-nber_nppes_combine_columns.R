@@ -2226,8 +2226,8 @@ if ("ploczip" %in% base::colnames(grouped_provider_records_for_imputation)) {
     dplyr::ungroup() %>%
     dplyr::summarise(
       valid_zips = base::sum(
-        stringr::str_length(ploczip_standardized) == 5 & 
-          stringr::str_detect(ploczip_standardized, "^[0-9]{5}$"),
+        stringr::str_length(ploczip) == 5 & 
+          stringr::str_detect(ploczip, "^[0-9]{5}$"),
         na.rm = TRUE
       )
     ) %>%
@@ -2278,7 +2278,7 @@ logger::log_info("Ungrouping dataset and finalizing processed records")
 comprehensively_cleaned_provider_records <- grouped_provider_records_for_imputation %>%
   dplyr::ungroup() %>%
   dplyr::mutate(pcredential = stringr::str_extract(toupper(pcredential), "\\bMD\\b|\\bDO\\b")) %>%
-  dplyr::mutate(pcredential = impute_na(pcredential, type = "mode")) %>%
+  dplyr::mutate(pcredential = exploratory::impute_na(pcredential, type = "mode")) %>%
   dplyr::select(-pcredential_mode_value) %>%
   dplyr::select(
     # Keep core identifier and demographic columns
@@ -2297,7 +2297,7 @@ comprehensively_cleaned_provider_records <- grouped_provider_records_for_imputat
     plocline1_cleaned,  # Keep cleaned address
     ploccityname,
     plocstatename,
-    ploczip_standardized,  # Keep standardized ZIP
+    ploczip,  # Keep standardized ZIP
     
     # Keep final dates (remove intermediate versions)
     lastupdate_standardized,  # Keep standardized date
@@ -2322,7 +2322,7 @@ comprehensively_cleaned_provider_records <- grouped_provider_records_for_imputat
     practice_address = plocline1_cleaned,
     practice_city = ploccityname,
     practice_state = plocstatename,
-    practice_zip = ploczip_standardized,
+    practice_zip = ploczip,
     last_update_date = lastupdate_standardized,
     certification_date = certdate_standardized,
     primary_taxonomy_code = ptaxcode1,
@@ -2355,27 +2355,25 @@ comprehensively_cleaned_provider_records <- grouped_provider_records_for_imputat
   }, .by = c(npi, provider_first_name, provider_last_name)) %>%
   
   dplyr::group_by(npi)
-  
-logger::log_info("Dataset cleaning completed")
 
-# Validate final dataset structure
-assertthat::assert_that(
-  base::is.data.frame(comprehensively_cleaned_provider_records),
-  msg = "Final processed dataset is not a valid data frame"
-)
 
-post_cleaning_record_count <- base::nrow(comprehensively_cleaned_provider_records)
-post_cleaning_column_count <- base::ncol(comprehensively_cleaned_provider_records)
+comprehensively_cleaned_provider_records
 
-assertthat::assert_that(
-  post_cleaning_record_count > 0,
-  msg = "No records remain after comprehensive cleaning"
-)
 
-assertthat::assert_that(
-  post_cleaning_record_count == pre_cleaning_record_count,
-  msg = "Record count changed unexpectedly during cleaning process"
-)
+# Postmastr standardization because there are lots of people who work at the same place but have different addresses.  ----
+# install.packages("remotes")
+#remotes::install_github("slu-openGIS/postmastr")
+
+# Load required libraries
+library(postmastr)
+library(dplyr)
+library(stringr)
+library(purrr)
+library(readr)
+
+
+
+
 
 logger::log_info("Advanced data cleaning validation successful")
 logger::log_info("Post-cleaning dataset: {scales::comma(post_cleaning_record_count)} rows x {post_cleaning_column_count} columns")

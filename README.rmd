@@ -49,6 +49,10 @@ editor_options:
     canonical: true
 ---
 
+We need to use `postmastr` because a lot of the addresses are close but
+abbreviated in annoying ways. <https://pe.usps.com/text/pub28/welcome.htm> is a
+list of USPS address codes.
+
 <!-- Custom CSS for enhanced styling -->
 
 ```{=html}
