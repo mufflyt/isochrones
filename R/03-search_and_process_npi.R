@@ -1,10 +1,6 @@
-#######################
-source("R/01-setup.R")
-#######################
-
 ##########################################################################
 # tyler::search_and_process_npi
-# Filter the subspecialists_only.csv file/goba file to those without NPI numbers.  Then send those names into the search_and_process_npi
+# Filter the subspecialists_only.csv file/goba file to those without NPI numbers.  Then send those names into the search_and_process_npi to get NPI numbers.  
 
 #######################
 source("R/01-setup.R")
@@ -45,8 +41,8 @@ if (verbose) {
 }
 
 # Define file paths as constants for easier maintenance
-SUBSPECIALISTS_INPUT_FILE <- "data/03-search_and_process_npi/subspecialists_only.csv"
-FILTERED_SUBSPECIALISTS_OUTPUT <- "data/03-search_and_process_npi/filtered_subspecialists_only.csv"
+GOBA <- "data/03-search_and_process_npi/GOBA_Scrape_subspecialists_only.csv"
+FILTERED_SUBSPECIALISTS_OUTPUT <- "data/03-search_and_process_npi/GOBA_Scraoe_filtered_subspecialists_only.csv"
 SEARCHED_NPI_OUTPUT <- "data/03-search_and_process_npi/searched_npi_numbers.csv"
 FINAL_OUTPUT_FILE <- "data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds"
 
@@ -63,7 +59,7 @@ if (verbose) {
 }
 
 # Read the original subspecialists database
-original_subspecialists_database <- readr::read_csv(SUBSPECIALISTS_INPUT_FILE)
+original_subspecialists_database <- readr::read_csv(GOBA)
 
 # Validate input data
 assertthat::assert_that(is.data.frame(original_subspecialists_database))
@@ -99,7 +95,7 @@ if (verbose) {
 }
 
 # =============================================================================
-# STEP 2: SEARCH NPPES API FOR MISSING NPI NUMBERS
+# STEP 2: SEARCH NPPES API FOR MISSING NPI NUMBERS OF GOBA DATA
 # =============================================================================
 
 if (verbose) {
