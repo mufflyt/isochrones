@@ -20,7 +20,9 @@ keywords:
   - "geographic information systems"
 version: "1.0.0"
 license: "MIT"
-output: 
+lang: en
+encoding: UTF-8
+output:
   html_document:
     toc: true
     toc_depth: 3
@@ -2853,6 +2855,9 @@ Oncology Access Using Drive Time Isochrone Methodology. GitHub Repository.
   note={Comprehensive analysis of nationwide access to gynecologic oncologists using drive time isochrones, demographic data, and geospatial analysis}
 }
 ```
+
+For citation tools that support it, a `CITATION.cff` file is included in the
+repository root.
 
 --------------------------------------------------------------------------------
 
