@@ -2857,7 +2857,8 @@ Oncology Access Using Drive Time Isochrone Methodology. GitHub Repository.
 ```
 
 For citation tools that support it, a `CITATION.cff` file is included in the
-repository root.
+repository root. Machine-readable software metadata is also available in the
+`codemeta.json` file.
 
 --------------------------------------------------------------------------------
 
