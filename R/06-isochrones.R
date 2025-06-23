@@ -96,6 +96,7 @@ sf::st_write(
   layer = "isochrones",
   driver = "ESRI Shapefile",
   quiet = FALSE, append = FALSE)
+message("Saved clipped isochrones to data/06-isochrones/end_isochrones_sf_clipped")
 
 ######################################
 # SANITY CHECK

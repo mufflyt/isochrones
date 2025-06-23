@@ -114,6 +114,7 @@ result <- result %>%
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering.
 
 readr::write_csv(result, "data/result.csv")
+message("Saved result table to data/result.csv")
 
 # Filter out feature 188562 from the result
 filtered_result <- result %>%
@@ -123,8 +124,9 @@ sf::st_write(result,
              dsn = "data/07-isochrone-mapping",
              layer = "results_simplified_validated_isochrones",
              driver = "ESRI Shapefile",
-             quiet = FALSE, 
+             quiet = FALSE,
              append = FALSE)
+message("Saved isochrone mapping results to data/07-isochrone-mapping")
 
 plot(result[1])
 rm(filtered_result)

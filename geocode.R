@@ -63,6 +63,7 @@ create_geocode <- function(csv_file, output_file) {
 
   # Save the geocoded data to an output file
   write.csv(result, file = output_file, row.names = FALSE)
+  message(paste("Saved geocoded results to:", output_file))
 
   return(result)
 }

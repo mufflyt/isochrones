@@ -689,6 +689,7 @@ download_and_merge_block_groups <- function(year) {
   # Write to a shapefile
   shapefile_name <- paste0("block_groups_tigris_", year, ".shp")
   st_write(usa_block_groups, shapefile_name, append=FALSE)
+  message(paste("Saved merged block groups to", shapefile_name))
   
   return(usa_block_groups)
 }
@@ -736,7 +737,9 @@ postico_database_obgyns_by_year <- function(year, db_details) {
   
   # Write the processed data to a CSV file
   #write_csv(nppes_data, paste0("data/02.5-subspecialists_over_time.R/Postico_output_", year, "_nppes_data_filtered.csv"))
-  write_csv(nppes_data, paste0("Postico_output_", year, "_nppes_data_filtered.csv"))
+  output_csv <- paste0("Postico_output_", year, "_nppes_data_filtered.csv")
+  write_csv(nppes_data, output_csv)
+  message(paste("Saved NPPES data to", output_csv))
   return(nppes_data)
 }
 
