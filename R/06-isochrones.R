@@ -50,7 +50,6 @@ nrow(input_file_no_error_rows) * 4
 # non-spatial join
 #(iso_attr <- st_sf(merge(as.data.frame(poi), iso,  by = "id", all = TRUE)))
 
-# TODO I need to fix the process_and_save_isochrones function to give it a path to save.
 # Call the `process_and_save_isochrones` function with your input_file
 iso_datetime_yearly <- c("2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-16 09:00:00",
   "2016-10-21 09:00:00", "2017-10-20 09:00:00", "2018-10-19 09:00:00",
@@ -62,9 +61,9 @@ isochrones_sf <- process_and_save_isochrones(input_file_no_error_rows,
                                              chunk_size = 25, 
                                              iso_datetime = as.POSIXct("2023-10-20 09:00:00"),
                                              iso_ranges = c(30*60, 60*60, 120*60, 180*60),
-                                             crs = 4326, 
+                                             crs = 4326,
                                              transport_mode = "car",
-                                             file_path_prefix = "data/06-isochrones/isochrones_")
+                                             save_dir = "data/06-isochrones")
 
 # Check the dimensions of the final isochrones_data
 dim(isochrones_sf)
