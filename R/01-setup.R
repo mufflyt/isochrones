@@ -630,16 +630,14 @@ get_census_data <- function (us_fips_list)
 {
   state_data <- list()
   census_key <- get_env_or_stop("CENSUS_API_KEY")
-  for (f in us_fips) {
-    us_fips <- tyler::fips
-
+  for (f in us_fips_list) {
     print(f)
     stateget <- paste("state:", f, "&in=county:*&in=tract:*",
                       sep = "")
-      state_data[[f]] <- getCensus(name = "acs/acs5", vintage = 2019,
-                                   vars = c("NAME", paste0("B01001_0", c("01", 26, 33:49),
-                                                           "E")), region = "block group:*", regionin = stateget,
-                                   key = census_key)
+    state_data[[f]] <- getCensus(name = "acs/acs5", vintage = 2019,
+                                 vars = c("NAME", paste0("B01001_0", c("01", 26, 33:49),
+                                                         "E")), region = "block group:*", regionin = stateget,
+                                 key = census_key)
   }
   acs_raw <- dplyr::bind_rows(state_data)
   Sys.sleep(1)
