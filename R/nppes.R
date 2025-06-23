@@ -2,6 +2,13 @@
 #'
 #' @param con A DBI connection to the NPPES database
 #' @return Data frame with columns `table_name` and `year`
+#' @examples
+#' \dontrun{
+#' con <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+#' DBI::dbCreateTable(con, "NPPES_Data_Dissemination2019", data.frame(NPI=1))
+#' create_nppes_table_mapping(con)
+#' DBI::dbDisconnect(con)
+#' }
 create_nppes_table_mapping <- function(con) {
   all_tables <- DBI::dbListTables(con)
   nppes_tables <- all_tables[grepl("npidata|NPPES_Data_Dissemination", all_tables, ignore.case = TRUE)]
@@ -23,6 +30,19 @@ create_nppes_table_mapping <- function(con) {
 #' @param taxonomy_codes Character vector of taxonomy codes
 #' @param years_to_include Optional numeric vector of years to include
 #' @return A tibble with provider data
+#' @examples
+#' \dontrun{
+#' con <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+#' DBI::dbWriteTable(con, "NPPES_Data_Dissemination2019", data.frame(
+#'   NPI = 1,
+#'   `Healthcare Provider Taxonomy Code_1` = "207L00000X",
+#'   `Entity Type Code` = 1,
+#'   `Provider Business Practice Location Address Postal Code` = "80220"
+#' ))
+#' mapping <- create_nppes_table_mapping(con)
+#' find_physicians_across_years(con, mapping, "207L00000X")
+#' DBI::dbDisconnect(con)
+#' }
 find_physicians_across_years <- function(con, table_year_mapping, taxonomy_codes,
                                          years_to_include = NULL) {
   assertthat::assert_that(DBI::dbIsValid(con))

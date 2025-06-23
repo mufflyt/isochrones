@@ -10,6 +10,17 @@ db_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/unzipped
 con <- dbConnect(duckdb::duckdb(), db_path)
 
 #' Create simple indexes on common columns to improve query speed
+#'
+#' @param con A DBI connection
+#' @param table_year_mapping Data frame of table names and years
+#' @return NULL invisibly
+#' @examples
+#' \dontrun{
+#' con <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+#' mapping <- data.frame(table_name = "tbl", year = 2020)
+#' DBI::dbCreateTable(con, "tbl", data.frame(NPI = integer()))
+#' add_basic_indexes(con, mapping)
+#' }
 add_basic_indexes <- function(con, table_year_mapping) {
   for (table in table_year_mapping$table_name) {
     fields <- DBI::dbListFields(con, table)

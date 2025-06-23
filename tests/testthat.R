@@ -8,5 +8,7 @@
 
 library(testthat)
 
-# There is no installed isochrones package. Run tests directly from this folder.
-testthat::test_dir("testthat")
+# Source package R code so tests can run without installation
+source(file.path("R", "formatting.R"))
+source(file.path("R", "nppes.R"))
+testthat::test_dir("tests/testthat")
