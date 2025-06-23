@@ -12,3 +12,6 @@ Imports:
     assertthat,
     stringr,
     tibble
+Suggests:
+    RSQLite,
+    testthat
