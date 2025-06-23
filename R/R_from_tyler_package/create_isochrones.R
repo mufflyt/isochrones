@@ -32,10 +32,10 @@
 #' @importFrom hereR set_freemium set_key set_verbose isoline
 create_isochrones <- memoise::memoise(function(location, range, posix_time = as.POSIXct("2023-10-20 08:00:00", format = "%Y-%m-%d %H:%M:%S")) {
 
+  readRenviron("~/.Renviron")
   if (!nzchar(Sys.getenv("HERE_API_KEY"))) {
     stop("HERE_API_KEY environment variable is not set.")
   }
-  readRenviron("~/.Renviron")
   hereR::set_key(Sys.getenv("HERE_API_KEY"))
 
 
