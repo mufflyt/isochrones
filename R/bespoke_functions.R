@@ -1,13 +1,4 @@
-#######################
-source("R/01-setup.R")
-#######################
 
-
-# Define database path
-db_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/unzipped_p_files/nppes_my_duckdb.duckdb"
-
-# Connect to the DuckDB database
-con <- dbConnect(duckdb::duckdb(), db_path)
 
 #' Create simple indexes on common columns to improve query speed
 add_basic_indexes <- function(con, table_year_mapping) {
@@ -1329,7 +1320,7 @@ process_nppes_data <- function(csv_file_path,
   }
   
   # Setup database connection
-  nppes_db_connection <- setup_duckdb_connection(db_path)
+  nppes_db_connection <- connect_duckdb(db_path)
   
   # Import data to DuckDB
   import_nppes_to_duckdb(nppes_db_connection, csv_file_path, raw_table_name)
@@ -1413,18 +1404,19 @@ validate_table_name <- function(table_name) {
 #'
 #' @param db_path Path to DuckDB database file
 #'
-#' @noRd
-setup_duckdb_connection <- function(db_path) {
-  logger::log_info("Connecting to DuckDB at {db_path}")
-  tryCatch({
-    connection <- DBI::dbConnect(duckdb::duckdb(), dbdir = db_path)
-    logger::log_success("Successfully connected to DuckDB")
-    return(connection)
-  }, error = function(e) {
-    logger::log_error("Failed to connect to DuckDB: {e$message}")
-    stop("Failed to connect to DuckDB database", call. = FALSE)
-  })
-}
+#' Connect to a DuckDB database
+#'
+#' Provides a simple wrapper around `DBI::dbConnect` for creating a
+#' DuckDB connection. Users must call this explicitly and manage the
+#' resulting connection object themselves.
+#'
+#' @param db_path Path to the DuckDB database file.
+#' @param read_only Logical. Open the database in read-only mode?
+#'   Default `FALSE`.
+#'
+#' @return A `DBIConnection` to the specified DuckDB database.
+#' @export
+
 
 #' Import NPPES data to DuckDB
 #'

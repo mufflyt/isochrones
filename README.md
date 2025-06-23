@@ -58,7 +58,8 @@ Follow these steps to reproduce the analysis:
 1. Install required R packages and set up the project environment:
 
    ```r
-   source("R/01-setup.R")
+   isochrones::initialize_here_api_key()
+   con <- isochrones::connect_duckdb("path/to/nppes.duckdb")
    ```
 
 2. Execute the complete workflow:
@@ -183,7 +184,7 @@ count_paragraphs(paste(abstract_text, collapse = "\n"))
 
 
 ``` r
-source("R/01-setup.R")      # provides create_geocode()
+isochrones::initialize_here_api_key()
 ```
 
 ```
@@ -637,7 +638,7 @@ C-NPPES.R │ │ ├── C-open_payments.R │ │ ├── C-physician_comp
 │ │ ├── E-Medicare_part_d_retirement_analysis_processing.R │ │ ├──
 E-open_payments_export.R │ │ └── F-retirement_year_confirmation.R │ ├── 🗺️ Core
 Analysis Pipeline (00-10 Series) │ │ ├── 000-Control.R \# Master control script
-│ │ ├── 01-setup.R \# Environment and API setup │ │ ├── 02-search_taxonomy.R \#
+│ │ ├── initialize_here_api_key() \# Environment and API setup │ │ ├── 02-search_taxonomy.R \#
 NPPES taxonomy search │ │ ├── 02.5-subspecialists_over_time.R \# Temporal trends
 │ │ ├── 03-search_and_process_npi.R \# NPI data processing │ │ ├──
 03a-search_and_process_extra.R \# Additional NPI processing │ │ ├── 04-geocode.R
@@ -871,8 +872,8 @@ ABMS - scraped.
 #### 1. Setup and Data Preparation
 
 -   `000-control.R` - Auxiliary script for data compilation
--   `01-setup.R` - Loads packages, sets API keys, defines helper functions,
-    initializes directory structure
+-   `initialize_here_api_key()` helper sets the HERE API key and prepares the
+    environment
 -   `02-search_taxonomy.R` - Search the NPPES Registry database using npi_search
     library in a wrapper. Taxonomy description from the NUCC:
     <https://taxonomy.nucc.org/>. Note recent change in FPMRS to URPS.\
@@ -928,7 +929,7 @@ order:
 
 ### Setup Phase
 
-1.  `01-setup.R`
+1.  Call `isochrones::initialize_here_api_key()` to set credentials
 2.  `Postico_database_pull.R` (if external hardrive with the Positico database
     access is connected)
 
@@ -1682,8 +1683,7 @@ ABMS - scraped.
 #### 1. Setup and Data Preparation
 
 -   `000-control.R` - Auxiliary script for data compilation
--   `01-setup.R` - Loads packages, sets API keys, defines helper functions,
-    initializes directory structure
+-   `initialize_here_api_key()` - Sets API key and prepares the environment
 -   `02-search_taxonomy.R` - Search the NPPES Registry database using npi_search
     library in a wrapper. Taxonomy description from the NUCC:
     <https://taxonomy.nucc.org/>. Note recent change in FPMRS to URPS.\
@@ -1739,7 +1739,7 @@ order:
 
 ### Setup Phase
 
-1.  `01-setup.R`
+1.  Call `isochrones::initialize_here_api_key()`
 2.  `Postico_database_pull.R` (if external hardrive with the Positico database
     access is connected)
 
@@ -1780,7 +1780,7 @@ order:
 ## Prerequisites
 
 -   R 4.0.0 or higher
--   Required R packages (listed in `01-setup.R`)
+-   Required R packages (see `DESCRIPTION`)
 -   HERE Maps API key
 -   Census API key
 -   PostgreSQL database (optional, for historical physician data)
@@ -1928,7 +1928,7 @@ source("R/bespoke_functions.R")
 
 -   R 4.0.0 or higher
 -   8GB+ RAM recommended for large spatial datasets
--   Required R packages (listed in `01-setup.R`)
+-   Required R packages (see `DESCRIPTION`)
 -   HERE Maps API key
 -   US Census Bureau API key
 -   DuckDB database
