@@ -92,8 +92,9 @@ nucc_taxonomy_201 <- dplyr::tbl(db_connection, "nucc_taxonomy_201")
 physician_compare_data <- physician_compare_table %>%
   distinct(NPI, .keep_all = TRUE) %>%
   mutate(`Zip Code` = str_sub(`Zip Code`,1 ,5)) %>%
-  filter(`Primary Specialty` %in% c("GYNECOLOGICAL ONCOLOGY", "OBSTETRICS/GYNECOLOGY")) %>% 
+  filter(`Primary Specialty` %in% c("GYNECOLOGICAL ONCOLOGY", "OBSTETRICS/GYNECOLOGY")) %>%
   mutate(year = "2023") %>%
+  dplyr::compute() %>%
   collect()
 
 View(physician_compare_data)

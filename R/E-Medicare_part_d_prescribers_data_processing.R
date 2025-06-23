@@ -277,7 +277,9 @@ for (i in 1:length(table_names)) {
       dplyr::mutate(year = table_name)
     
     logger::log_info("Collecting processed data from table: {table_name}")
-    processed_data_df <- processed_data %>% collect()
+    processed_data_df <- processed_data %>%
+      dplyr::compute() %>%
+      collect()
     logger::log_info("Collected {nrow(processed_data_df)} rows from {table_name}")
     
     # Store results
@@ -313,6 +315,7 @@ for (npi in npi_list) {
   
   npi_check <- first_processed_table %>%
     dplyr::filter(PRSCRBR_NPI == npi_numeric) %>%
+    dplyr::compute() %>%
     collect() %>%
     as.data.frame()
   
@@ -328,7 +331,10 @@ for (npi in npi_list) {
 # --------------------------------------------------------------------------
 logger::log_info("Creating combined dataframe with clean year values")
 medicare_part_d_prescribers_combined <- lapply(processed_tables, function(tbl) {
-  tbl %>% collect() %>% as.data.frame()
+  tbl %>%
+    dplyr::compute() %>%
+    collect() %>%
+    as.data.frame()
 }) %>%
   dplyr::bind_rows() %>%
   dplyr::mutate(year = stringr::str_extract(year, "DY\\d+")) %>%

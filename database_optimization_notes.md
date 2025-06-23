@@ -22,4 +22,6 @@ The following list summarizes 19 potential optimizations that can help speed up 
 18. **Avoid writing large intermediary CSV files** when they can be stored in DuckDB directly, as seen around line 168 in `zzC-Extracting_and_Processing_NPPES.R`.
 19. **Profile query plans** with `EXPLAIN` in DuckDB to spot slow joins—add optional diagnostics in `R/bespoke_functions.R` before complex queries.
 
+20. **Call `compute()` before `collect()`** to materialize intermediate results in DuckDB, reducing memory use and improving performance when transferring data back into R.
+
 These suggestions target common bottlenecks in reading and writing large datasets. Implementing them can substantially speed up data preparation and analysis.

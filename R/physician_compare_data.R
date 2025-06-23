@@ -619,6 +619,7 @@ yearly_counts <- tbl(con, "physician_data_standardized") %>%
   group_by(year) %>%
   summarize(count = n()) %>%
   arrange(year) %>%
+  dplyr::compute() %>%
   collect()
 
 print(yearly_counts)

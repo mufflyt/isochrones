@@ -57,7 +57,8 @@ filtered_doctors_data <- payments_tbl %>%
   dplyr::filter(Payment_Amount_Numeric > 1) %>%
   # Sort by the numeric column
   dplyr::arrange(desc(Payment_Amount_Numeric)) %>%
-  # Pull the data into R
+  # Materialize then pull the data into R
+  dplyr::compute() %>%
   dplyr::collect()
 
 View(filtered_doctors_data)
