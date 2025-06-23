@@ -2334,8 +2334,6 @@ comprehensively_cleaned_provider_records <- grouped_provider_records_for_imputat
   # fill in the most complete first names.  **provider\_first\_name** (for initials vs full names)
   dplyr::mutate(provider_first_name = dplyr::coalesce(provider_first_name[which.max(stringr::str_length(provider_first_name))][1], provider_first_name), .by = c(npi, provider_last_name)) %>%
   
-  dplyr::mutate(provider_first_name = dplyr::coalesce(provider_first_name[which.max(stringr::str_length(provider_first_name))][1], provider_first_name), .by = c(npi, provider_last_name)) %>%
-  
   # This will catch cases like:
   # 
   # *   "361 HOSPITAL RD" vs "351 HOSPITAL RD" (1 character difference)
@@ -2354,9 +2352,6 @@ comprehensively_cleaned_provider_records <- grouped_provider_records_for_imputat
     }
   }, .by = c(npi, provider_first_name, provider_last_name)) %>%
   dplyr::group_by(npi)
-
-
-comprehensively_cleaned_provider_records
 
 
 # Postmastr standardization because there are lots of people who work at the same place but have different addresses.  ----
@@ -2493,8 +2488,8 @@ logger::log_info("Cleaning up database connections and resources")
 
 # Close DuckDB connection with error handling
 tryCatch({
-  if (!base::is.null(nppes_duckdb_connection)) {
-    DBI::dbDisconnect(nppes_duckdb_connection)
+  if (!base::is.null(duckdb_connection)) {
+    DBI::dbDisconnect(duckdb_connection)
     logger::log_info("DuckDB connection successfully closed")
   } else {
     logger::log_warn("DuckDB connection was NULL - no cleanup needed")
