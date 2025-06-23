@@ -259,6 +259,7 @@ accessibility over time and retirement patterns among specialists.
 -   Gynecologic Oncology
 -   Maternal-Fetal Medicine
 -   Reproductive Endocrinology and Infertility
+-   Most helper functions include a `verbose` argument to control logging. Set it to `FALSE` for quieter execution.
 
 ## Materials and Methods
 
