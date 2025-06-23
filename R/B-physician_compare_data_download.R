@@ -14,6 +14,7 @@ library(dplyr)
 library(stringr)
 library(purrr)
 library(fs)
+library(tidyr)
 
 # Define base directory
 base_dir <- "/Volumes/Video Projects Muffly 1/physician_compare/unzipped_files/"
@@ -60,6 +61,7 @@ library(stringr)
 library(fs)
 library(logger)
 library(purrr)
+library(tidyr)
 library(scales)
 library(beepr)
 
@@ -618,20 +620,19 @@ deduplicate_physician_data <- function(physician_data) {
     
     logger::log_info("Using columns for deduplication: {paste(unlist(selected_columns), collapse=', ')}")
     
-    # Create deduplication key using available columns
-    dedup_expression <- paste(
-      paste0("physician_data$", unlist(selected_columns)),
-      collapse = ", "
-    )
-    
-    dedup_cmd <- paste0("physician_data %>% dplyr::mutate(dedup_key = paste(", 
-                        dedup_expression, ", sep = '||')) %>% ",
-                        "dplyr::distinct(dedup_key, .keep_all = TRUE) %>% ",
-                        "dplyr::select(-dedup_key)")
-    
-    # Execute the dynamic deduplication command
-    deduplicated_data <- eval(parse(text = dedup_cmd))
-    
+    # Safely construct deduplication key using tidyr and dplyr
+    selected_cols <- unlist(selected_columns)
+    deduplicated_data <- physician_data %>%
+      tidyr::unite(
+        "dedup_key",
+        dplyr::all_of(selected_cols),
+        sep = "||",
+        remove = FALSE,
+        na.rm = TRUE
+      ) %>%
+      dplyr::distinct(dedup_key, .keep_all = TRUE) %>%
+      dplyr::select(-dedup_key)
+
     return(deduplicated_data)
   } else {
     # Not enough identifiers for reliable deduplication

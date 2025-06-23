@@ -484,10 +484,10 @@ build_wget_command <- function(source_url, destination_path, timeout_minutes,
   }
   
   # Add output file specification
-  cmd_parts <- c(cmd_parts, paste0("--output-document='", destination_path, "'"))
-  
+  cmd_parts <- c(cmd_parts, paste0("--output-document=", shQuote(destination_path)))
+
   # Add URL (must be last)
-  cmd_parts <- c(cmd_parts, paste0("'", source_url, "'"))
+  cmd_parts <- c(cmd_parts, shQuote(source_url))
   
   # Join all parts
   return(paste(cmd_parts, collapse = " "))
