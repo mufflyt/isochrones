@@ -1,7 +1,19 @@
 #' Create a mapping between NPPES table names and years
 #'
-#' @param con A DBI connection to the NPPES database
-#' @return Data frame with columns `table_name` and `year`
+#' The National Plan & Provider Enumeration System (NPPES) database is often
+#' stored with one table per year. This helper scans the available tables in the
+#' connected database, extracts the year component from each table name and
+#' returns a tidy data frame that maps table names to their corresponding year.
+#'
+#' @param con A DBI connection to the NPPES database.
+#'
+#' @return A data frame with columns `table_name` and `year` sorted by year.
+#'
+#' @examples
+#' \dontrun{
+#' con <- DBI::dbConnect(duckdb::duckdb(), "nppes.duckdb")
+#' create_nppes_table_mapping(con)
+#' }
 create_nppes_table_mapping <- function(con) {
   all_tables <- DBI::dbListTables(con)
   nppes_tables <- all_tables[grepl("npidata|NPPES_Data_Dissemination", all_tables, ignore.case = TRUE)]
@@ -18,11 +30,25 @@ create_nppes_table_mapping <- function(con) {
 
 #' Query physician data across multiple years
 #'
-#' @param con A DBI connection
-#' @param table_year_mapping Data frame from `create_nppes_table_mapping`
-#' @param taxonomy_codes Character vector of taxonomy codes
-#' @param years_to_include Optional numeric vector of years to include
-#' @return A tibble with provider data
+#' Given a database connection and table/year mapping produced by
+#' `create_nppes_table_mapping()`, this function retrieves provider records for
+#' the specified taxonomy codes from each year's table. Results from all years
+#' are combined into a single tibble. Optionally, a subset of years can be
+#' provided via `years_to_include`.
+#'
+#' @param con A DBI connection.
+#' @param table_year_mapping Data frame produced by
+#'   `create_nppes_table_mapping()`.
+#' @param taxonomy_codes Character vector of taxonomy codes to filter by.
+#' @param years_to_include Optional numeric vector of years to include.
+#'
+#' @return A tibble with provider data from the requested years.
+#'
+#' @examples
+#' \dontrun{
+#' mapping <- create_nppes_table_mapping(con)
+#' df <- find_physicians_across_years(con, mapping, c("207V00000X"))
+#' }
 find_physicians_across_years <- function(con, table_year_mapping, taxonomy_codes,
                                          years_to_include = NULL) {
   assertthat::assert_that(DBI::dbIsValid(con))
