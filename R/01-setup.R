@@ -64,10 +64,10 @@ source("R/here_api_utils.R")
 # Store tidycensus data on cache
 options(tigris_use_cache = TRUE)
 
+readRenviron("~/.Renviron")
 if (!nzchar(Sys.getenv("HERE_API_KEY"))) {
   stop("HERE_API_KEY environment variable is not set.")
 }
-readRenviron("~/.Renviron")
 hereR::set_key(Sys.getenv("HERE_API_KEY"))
 
 
