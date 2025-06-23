@@ -10,10 +10,12 @@
 #' @return A data frame with columns `table_name` and `year` sorted by year.
 #'
 #' @examples
-#' \dontrun{
-#' con <- DBI::dbConnect(duckdb::duckdb(), "nppes.duckdb")
+#' con <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+#' DBI::dbWriteTable(con, "npidata_2020", data.frame(x = 1))
 #' create_nppes_table_mapping(con)
-#' }
+#' DBI::dbDisconnect(con)
+#' @export
+#' @import DBI
 create_nppes_table_mapping <- function(con) {
   all_tables <- DBI::dbListTables(con)
   nppes_tables <- all_tables[grepl("npidata|NPPES_Data_Dissemination", all_tables, ignore.case = TRUE)]
@@ -45,10 +47,19 @@ create_nppes_table_mapping <- function(con) {
 #' @return A tibble with provider data from the requested years.
 #'
 #' @examples
-#' \dontrun{
+#' con <- DBI::dbConnect(RSQLite::SQLite(), ":memory:")
+#' DBI::dbWriteTable(con, "npidata_2020", data.frame(
+#'   `Entity Type Code` = 1,
+#'   `Healthcare Provider Taxonomy Code_1` = "207V00000X"
+#' ))
 #' mapping <- create_nppes_table_mapping(con)
-#' df <- find_physicians_across_years(con, mapping, c("207V00000X"))
-#' }
+#' find_physicians_across_years(con, mapping, "207V00000X")
+#' DBI::dbDisconnect(con)
+#' @export
+#' @import assertthat
+#' @importFrom stringr str_sub
+#' @importFrom tibble as_tibble
+#' @import DBI
 find_physicians_across_years <- function(con, table_year_mapping, taxonomy_codes,
                                          years_to_include = NULL) {
   assertthat::assert_that(DBI::dbIsValid(con))
