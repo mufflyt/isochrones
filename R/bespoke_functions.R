@@ -2864,6 +2864,7 @@ process_physician_retirement <- function(data_directory,
 initialize_logger <- function(verbose) {
   log_level <- if (verbose) "DEBUG" else "INFO"
   logger::log_threshold(log_level)
+  logger::log_formatter(formatter_glue_safe)
   logger::log_info("Logger initialized with level: {log_level}")
 }
 
