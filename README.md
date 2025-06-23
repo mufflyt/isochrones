@@ -90,6 +90,15 @@ geocoding:
 clean_df <- standardize_addresses(df, address_col = "address")
 ```
 
+### Abstract Statistics
+
+Use `summarize_abstract()` to quickly measure the length of your abstract:
+
+```r
+abstract_text <- readLines("README.md")
+summarize_abstract(paste(abstract_text, collapse = " "))
+```
+
 <!-- Custom CSS for enhanced styling -->
 
 ```{=html}
