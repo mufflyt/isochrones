@@ -14,3 +14,19 @@ summarize_abstract <- function(text) {
     characters = nchar(text)
   )
 }
+
+#' Count the number of paragraphs in text
+#'
+#' @param text Character string containing paragraphs separated by blank lines
+#' @return Integer count of paragraphs
+#' @examples
+#' count_paragraphs("One.\n\nTwo.")
+#'
+#' @export
+count_paragraphs <- function(text) {
+  if (length(text) > 1) {
+    text <- paste(text, collapse = "\n")
+  }
+  parts <- unlist(strsplit(text, "\n\s*\n"))
+  sum(nzchar(trimws(parts)))
+}

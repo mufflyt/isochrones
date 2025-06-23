@@ -90,6 +90,21 @@ geocoding:
 clean_df <- standardize_addresses(df, address_col = "address")
 ```
 
+### Additional Documentation and Utilities
+
+Several companion files provide context and helper scripts beyond the main
+workflow:
+
+- `docs/about_me.md` — background on the project author.
+- `docs/file_save_messages.md` — tips on confirming saved file locations.
+- `docs/function_naming_and_organization.md` — suggestions for organizing
+  helper functions.
+- `database_optimization_notes.md` — notes on speeding up database work.
+- `healthcare_benchmark_references.md` — healthcare benchmarking resources.
+- `NEWBIE_MISTAKES.md` — common pitfalls for new contributors.
+- `openpayments.R` — pulls CMS Open Payments data.
+- `mosaic_better.R` — utility for producing mosaic plots.
+
 ### Abstract Statistics
 
 Use `summarize_abstract()` to quickly measure the length of your abstract:
@@ -97,6 +112,13 @@ Use `summarize_abstract()` to quickly measure the length of your abstract:
 ```r
 abstract_text <- readLines("README.md")
 summarize_abstract(paste(abstract_text, collapse = " "))
+```
+
+The companion `count_paragraphs()` helper returns how many paragraphs are
+present in a document:
+
+```r
+count_paragraphs(paste(abstract_text, collapse = "\n"))
 ```
 
 <!-- Custom CSS for enhanced styling -->
