@@ -76,10 +76,10 @@ hereR::set_key(Sys.getenv("HERE_API_KEY"))
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####
 here::set_here(path = ".", verbose = TRUE)
 here::i_am("isochrones.Rproj")
-data_folder <- here::here("data")
-results_folder <- here::here("results")
-images_folder <- here::here("figures")
-code_folder <- here::here("R")
+DATA_FOLDER <- here::here("data")
+RESULTS_FOLDER <- here::here("results")
+IMAGES_FOLDER <- here::here("figures")
+CODE_FOLDER <- here::here("R")
 
 ########### Bespoke Functions ----
 #### #### #### #### #### #### #### #### #### #### #### #### #### #### #### ####

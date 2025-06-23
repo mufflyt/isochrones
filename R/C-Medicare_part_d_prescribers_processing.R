@@ -1,5 +1,6 @@
 #######################
 source("R/01-setup.R")
+source("R/constants.R")
 #######################
 
 # ------------------------------------------------------------------------------
@@ -160,10 +161,10 @@ logger::log_layout(logger::layout_glue_generator(
 ))
 
 # Directory and file paths
-directory_path <- "/Volumes/Video Projects Muffly 1/MedicarePartDPrescribersbyProvider/unzipped_files"
-duckdb_file_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
-duckdb_path <- duckdb_file_path
-output_csv_path <- "/Volumes/Video Projects Muffly 1/Medicare_part_D_prescribers/unzipped_files/Medicare_part_D_prescribers_merged_data.csv"
+DIRECTORY_PATH <- "/Volumes/Video Projects Muffly 1/MedicarePartDPrescribersbyProvider/unzipped_files"
+DUCKDB_FILE_PATH <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
+DUCKDB_PATH <- DUCKDB_FILE_PATH
+OUTPUT_CSV_PATH <- "/Volumes/Video Projects Muffly 1/Medicare_part_D_prescribers/unzipped_files/Medicare_part_D_prescribers_merged_data.csv"
 
 # Establish conflict preferences
 conflicted::conflicts_prefer(stringr::str_remove_all)
@@ -176,12 +177,12 @@ conflicted::conflicts_prefer(lubridate::year)
 # Database connection
 # --------------------------------------------------------------------------
 logger::log_info("Establishing DuckDB connection")
-con <- dbConnect(duckdb(), duckdb_path)
+con <- dbConnect(duckdb(), DUCKDB_PATH)
 assertthat::assert_that(!is.null(con), msg = "Failed to connect to DuckDB")
 
 # Create tables from files in directory
-logger::log_info("Creating tables from files in directory: {directory_path}")
-file_names <- list.files(directory_path)
+logger::log_info("Creating tables from files in directory: {DIRECTORY_PATH}")
+file_names <- list.files(DIRECTORY_PATH)
 created_tables <- character(0)
 
 # --------------------------------------------------------------------------
@@ -191,7 +192,7 @@ logger::log_info("Loading CSV files into DuckDB")
 
 for (i in seq_along(file_names)) {
   file_name <- file_names[i]
-  full_path <- file.path(directory_path, file_name)
+  full_path <- file.path(DIRECTORY_PATH, file_name)
   table_name <- tools::file_path_sans_ext(gsub("[^A-Za-z0-9]", "_", file_name))
   table_name <- paste0(table_name, "_", i)
   

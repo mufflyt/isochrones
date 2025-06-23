@@ -1,5 +1,6 @@
 #######################
 source("R/01-setup.R")
+source("R/constants.R")
 #######################
 
 # Load required packages
@@ -29,7 +30,7 @@ duckdb_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/unzi
 # Create a remote table reference
 payments_tbl <- tbl(conn, table_name)
 
-specialty_string <- c(
+SPECIALTY_STRING <- c(
   "Allopathic & Osteopathic Physicians | Obstetrics & Gynecology",
   "Allopathic & Osteopathic Physicians | Obstetrics & Gynecology | Female Pelvic Medicine and Reconstructive Surgery",
   "Allopathic & Osteopathic Physicians | Obstetrics & Gynecology | Gynecologic Oncology",

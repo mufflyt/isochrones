@@ -4,6 +4,7 @@
 
 #######################
 source("R/01-setup.R")
+source("R/constants.R")
 #######################
 
 #**************************
@@ -11,13 +12,19 @@ source("R/01-setup.R")
 #**************************
 # 
 # Get data formatted the same so we can match it better.
-geocoded_data <- read_csv("data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv")
+GEOCODED_DATA_CSV <- "data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv"
+GEOCODED_MATCH_CSV <- "data/05-geocode-cleaning/geocoded_data_to_match_house_number.csv"
+CLINICIAN_DATA_CSV <- "data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv"
+POSTMASTR_OUTPUT_CSV <- "data/05-geocode-cleaning/end_postmastr_clinician_data.csv"
+POSTMASTR_CLINICIAN_DATA_CSV <- "data/05-geocode-cleaning/postmastr_clinician_data.csv"
+
+geocoded_data <- read_csv(GEOCODED_DATA_CSV)
 
 geocoded_data_to_match_house_number <- geocoded_data %>%
   mutate(address_cleaned = exploratory::str_remove(address, regex(", United States$", ignore_case = TRUE), remove_extra_space = TRUE), .after = ifelse("address" %in% names(.), "address", last_col())) %>%
   mutate(address_cleaned = exploratory::str_remove_after(address_cleaned, sep = "\\-")) %>%
   mutate(address_cleaned = str_replace(address_cleaned, "([A-Z]{2}) ([0-9]{5})", "\\1, \\2")) %>%
-  readr::write_csv(., "data/05-geocode-cleaning/geocoded_data_to_match_house_number.csv")
+  readr::write_csv(., GEOCODED_MATCH_CSV)
 
 
 #**************************
@@ -40,7 +47,7 @@ geocoded_data_to_match_house_number <- geocoded_data %>%
 # * reconstruct
 
 # Prep
-clinician_data_for_matching <- readr::read_csv("data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv")
+clinician_data_for_matching <- readr::read_csv(CLINICIAN_DATA_CSV)
 clinician_data_postmastr <- clinician_data_for_matching %>% postmastr::pm_identify(var = "address")
 clinician_data_postmastr_min <- postmastr::pm_prep(clinician_data_postmastr, var = "address", type = "street") %>%
   mutate(pm.address = stringr::str_squish(pm.address))
@@ -96,7 +103,7 @@ clinician_data_postmastr_parsed$ACOG_District <- factor(
              "District XI", "District XII"))
 
 
-readr::write_csv(clinician_data_postmastr_parsed, "data/05-geocode-cleaning/end_postmastr_clinician_data.csv")
+readr::write_csv(clinician_data_postmastr_parsed, POSTMASTR_OUTPUT_CSV)
 
 # Now do a join between the postmastr file `postmastr_clinician_data.csv` and the geocoded results file `geocoded_data_to_match_house_number`
 
@@ -105,10 +112,10 @@ readr::write_csv(clinician_data_postmastr_parsed, "data/05-geocode-cleaning/end_
 # INNER JOIN BY HOUSE_NUMBER AND STATE
 #**********************************************
 # Provenance from 05-geocode-cleaning.R at the top of the script
-geocoded_data_to_match_house_number <- readr::read_csv("data/05-geocode-cleaning/geocoded_data_to_match_house_number.csv")
+geocoded_data_to_match_house_number <- readr::read_csv(GEOCODED_MATCH_CSV)
 
 # Provenance
-clinician_data_postmastr_parsed <- readr::read_csv("data/05-geocode-cleaning/postmastr_clinician_data.csv")
+clinician_data_postmastr_parsed <- readr::read_csv(POSTMASTR_CLINICIAN_DATA_CSV)
 
 inner_join_postmastr_clinician_data <- clinician_data_postmastr_parsed %>%
   rename(house_number = pm.house, street = pm.street) %>%

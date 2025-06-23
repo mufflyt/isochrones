@@ -26,7 +26,8 @@ source("R/09-get-census-population.R")
 
 # This is the old address approach.  
 # Method 1: Use explicit package prefixes (recommended)
-geocoded_data <- readr::read_csv("/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/NPPES/NPPES_November_filtered_data_for_geocoding_geocoded_addresses.csv") %>%
+GEOCODED_DATA_PATH <- "/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/NPPES/NPPES_November_filtered_data_for_geocoding_geocoded_addresses.csv"
+geocoded_data <- readr::read_csv(GEOCODED_DATA_PATH) %>%
   dplyr::mutate(id = 1:dplyr::n()) %>%
   dplyr::mutate(postal_code = stringr::str_sub(postal_code, 1, 5)) %>%
   dplyr::mutate(access = exploratory::str_remove(access, regex("^POINT \\(", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
@@ -46,7 +47,7 @@ create_and_save_physician_dot_map(
   popup_var = "name"
 )
 
-geocoded_data <- readr::read_csv("/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/NPPES/NPPES_November_filtered_data_for_geocoding_geocoded_addresses.csv") %>%
+geocoded_data <- readr::read_csv(GEOCODED_DATA_PATH) %>%
         mutate(id = 1:n()) %>%
         mutate(postal_code = stringr::str_sub(postal_code,1 ,5)) %>%
         mutate(access = exploratory::str_remove(access, regex("^POINT \\(", ignore_case = TRUE), remove_extra_space = TRUE)) %>%

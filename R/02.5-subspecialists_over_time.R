@@ -13,7 +13,7 @@ source("R/01-setup.R")
 #**************************
 
 ##########################################################################
-db_details <- list(
+DB_DETAILS <- list(
   host = "localhost",
   port = 5433,
   name = "template1",
@@ -65,21 +65,21 @@ library(tidyverse)
 
 ################
 ##Define your database connection details
-db_host <- "localhost"
-db_port <- 5433  # Default PostgreSQL port
-db_name <- "template1"
-db_user <- "postgres"
-db_password <- "???"
+DB_HOST <- "localhost"
+DB_PORT <- 5433  # Default PostgreSQL port
+DB_NAME <- "template1"
+DB_USER <- "postgres"
+DB_PASSWORD <- "???"
 
 ################
 ## Create a database connection
 db_connection <- dbConnect(
   RPostgres::Postgres(),
-  dbname = db_name,
-  host = db_host,
-  port = db_port,
-  user = db_user,
-  password = db_password
+  dbname = DB_NAME,
+  host = DB_HOST,
+  port = DB_PORT,
+  user = DB_USER,
+  password = DB_PASSWORD
 )
 
 ################
@@ -106,7 +106,7 @@ write_csv(nppes_data, "nppes_data.csv")
 #* DOWNLOADS PHYSICIAN DATA FROM NPI DATABASE FOR EACH YEAR
 #* THE RESULTS OF POSTICO_DATABASE_OBGYNS_BY_YEAR BELOW WERE BROUGHT IN TO THE LOCAL MACHINE!
 #**************************
-db_details <- list(
+DB_DETAILS <- list(
   host = "localhost",
   port = 5433,
   name = "template1",
@@ -114,17 +114,17 @@ db_details <- list(
   password = ""
 )
 
-postico_database_obgyns_by_year(year = 2023, db_details)
-postico_database_obgyns_by_year(year = 2022, db_details)
-postico_database_obgyns_by_year(year = 2021, db_details)
-postico_database_obgyns_by_year(year = 2020, db_details)
-postico_database_obgyns_by_year(year = 2019, db_details)
-postico_database_obgyns_by_year(year = 2018, db_details)
-postico_database_obgyns_by_year(year = 2017, db_details)
-postico_database_obgyns_by_year(year = 2016, db_details) #this one fails because no Primary Specialty was listed
-postico_database_obgyns_by_year(year = 2015, db_details)
-postico_database_obgyns_by_year(year = 2014, db_details)
-postico_database_obgyns_by_year(year = 2013, db_details)
+postico_database_obgyns_by_year(year = 2023, DB_DETAILS)
+postico_database_obgyns_by_year(year = 2022, DB_DETAILS)
+postico_database_obgyns_by_year(year = 2021, DB_DETAILS)
+postico_database_obgyns_by_year(year = 2020, DB_DETAILS)
+postico_database_obgyns_by_year(year = 2019, DB_DETAILS)
+postico_database_obgyns_by_year(year = 2018, DB_DETAILS)
+postico_database_obgyns_by_year(year = 2017, DB_DETAILS)
+postico_database_obgyns_by_year(year = 2016, DB_DETAILS) #this one fails because no Primary Specialty was listed
+postico_database_obgyns_by_year(year = 2015, DB_DETAILS)
+postico_database_obgyns_by_year(year = 2014, DB_DETAILS)
+postico_database_obgyns_by_year(year = 2013, DB_DETAILS)
 
 
 #****************************************************************************

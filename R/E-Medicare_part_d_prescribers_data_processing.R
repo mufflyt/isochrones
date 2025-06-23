@@ -1,5 +1,6 @@
 #######################
 source("R/01-setup.R")
+source("R/constants.R")
 #######################
 
 # ------------------------------------------------------------------------------
@@ -166,10 +167,10 @@ logger::log_layout(logger::layout_glue_generator(
 ))
 
 # Directory and file paths
-directory_path <- "/Volumes/Video Projects Muffly 1/MedicarePartDPrescribersbyProvider/unzipped_files"
-duckdb_file_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
-duckdb_path <- duckdb_file_path
-output_csv_path <- "/Volumes/Video Projects Muffly 1/Medicare_part_D_prescribers/unzipped_files/Medicare_part_D_prescribers_merged_data.csv"
+DIRECTORY_PATH <- "/Volumes/Video Projects Muffly 1/MedicarePartDPrescribersbyProvider/unzipped_files"
+DUCKDB_FILE_PATH <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/nber/nber_my_duckdb.duckdb"
+DUCKDB_PATH <- DUCKDB_FILE_PATH
+OUTPUT_CSV_PATH <- "/Volumes/Video Projects Muffly 1/Medicare_part_D_prescribers/unzipped_files/Medicare_part_D_prescribers_merged_data.csv"
 
 # Establish conflict preferences
 conflicted::conflicts_prefer(stringr::str_remove_all)
@@ -182,12 +183,12 @@ conflicted::conflicts_prefer(lubridate::year)
 # Database connection
 # --------------------------------------------------------------------------
 logger::log_info("Establishing DuckDB connection")
-con <- dbConnect(duckdb(), duckdb_path)
+con <- dbConnect(duckdb(), DUCKDB_PATH)
 assertthat::assert_that(!is.null(con), msg = "Failed to connect to DuckDB")
 
 # Create tables from files in directory
-logger::log_info("Creating tables from files in directory: {directory_path}")
-file_names <- list.files(directory_path)
+logger::log_info("Creating tables from files in directory: {DIRECTORY_PATH}")
+file_names <- list.files(DIRECTORY_PATH)
 created_tables <- character(0)
 
 # List all tables created in DuckDB
@@ -246,9 +247,9 @@ processed_tables <- list()
 all_data <- data.frame()
 
 # Create output directory if needed
-if (!dir.exists(dirname(output_csv_path))) {
-  logger::log_info("Creating output directory: {dirname(output_csv_path)}")
-  dir.create(dirname(output_csv_path), recursive = TRUE)
+if (!dir.exists(dirname(OUTPUT_CSV_PATH))) {
+  logger::log_info("Creating output directory: {dirname(OUTPUT_CSV_PATH)}")
+  dir.create(dirname(OUTPUT_CSV_PATH), recursive = TRUE)
 }
 
 
@@ -292,10 +293,10 @@ for (i in 1:length(table_names)) {
 logger::log_info("Total rows in combined dataset: {nrow(all_data)}")
 
 # Write the merged data to CSV
-logger::log_info("Writing processed data to: {output_csv_path}")
+logger::log_info("Writing processed data to: {OUTPUT_CSV_PATH}")
 tryCatch({
-  readr::write_csv(all_data, output_csv_path)
-  logger::log_info("Data successfully written to: {output_csv_path}")
+  readr::write_csv(all_data, OUTPUT_CSV_PATH)
+  logger::log_info("Data successfully written to: {OUTPUT_CSV_PATH}")
 }, error = function(e) {
   logger::log_error("Failed to write CSV: {e$message}")
 })

@@ -1,14 +1,18 @@
 
 #######################
 source("R/01-setup.R")
+source("R/constants.R")
 #######################
 
 #The purpose of this code is to geocode the addresses of clinician data using the HERE geocoding service. It starts by reading a CSV file containing clinician data, combines address components into a single address field, and then writes this data to a new CSV file for geocoding. After geocoding, the resulting geocoded data is saved as a separate CSV file, providing geographic coordinates for each clinician's address.
 
-readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds") %>%
+COMPLETE_NPI_FILE <- "data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds"
+GEOCODE_PREP_CSV <- "data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv"
+
+readr::read_rds(COMPLETE_NPI_FILE) %>%
   tidyr::unite(address, city, state, zip, sep = ", ", remove = FALSE, na.rm = FALSE) %>%
   #head(10) %>% #for testing.
-  readr::write_csv(., "data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv")
+  readr::write_csv(., GEOCODE_PREP_CSV)
 
 
 # Prepare Address Data for Geocoding ----

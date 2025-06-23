@@ -1,5 +1,7 @@
 #######################
+
 source("R/01-setup.R")
+source("R/constants.R")
 #######################
 
 ##########################################################################
@@ -9,8 +11,8 @@ source("R/01-setup.R")
 #readr::read_csv("data/complete_npi_for_subspecialists.csv")
 source("R/01-setup.R")
 
-input_data <- "data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds"
-clinician_data <- tyler::search_and_process_npi(input_data)
+INPUT_DATA <- "data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds"
+clinician_data <- tyler::search_and_process_npi(INPUT_DATA)
 readr::write_csv(clinician_data, "data/clinician_data.csv")
 
 #readr::read_csv("data/clinician_data.csv")
