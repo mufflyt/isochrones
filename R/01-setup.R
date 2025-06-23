@@ -843,7 +843,5 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
   return(df_updated)
 }
 
-
-
 # fin
 print("Setup is complete!")
