@@ -1,6 +1,7 @@
 
 #######################
 source("R/01-setup.R")
+source("R/standardize_addresses.R")
 #######################
 
 #The purpose of this code is to geocode the addresses of clinician data using the HERE geocoding service. It starts by reading a CSV file containing clinician data, combines address components into a single address field, and then writes this data to a new CSV file for geocoding. After geocoding, the resulting geocoded data is saved as a separate CSV file, providing geographic coordinates for each clinician's address.
@@ -411,6 +412,10 @@ obgyn_geocoding_data <- prepare_addresses_for_geocoding(
   state_filter = "CO", # For testing
   deduplicate_by_address_only = TRUE #Gets unique addresses
 )
+
+# Standardize address strings with postmastr
+obgyn_geocoding_data <- standardize_addresses(obgyn_geocoding_data,
+                                              address_col = "address")
 
 #**************************
 #* GEOCODE THE DATA USING HERE API.  The key is hard coded into the function.  

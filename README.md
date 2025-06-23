@@ -53,6 +53,20 @@ We need to use `postmastr` because a lot of the addresses are close but
 abbreviated in annoying ways. <https://pe.usps.com/text/pub28/welcome.htm> is a
 list of USPS address codes.
 
+Install the development version of **postmastr** from GitHub:
+
+```r
+remotes::install_github("slu-openGIS/postmastr")
+```
+
+After installation, the helper `standardize_addresses()` in
+`R/standardize_addresses.R` can be used to clean address fields prior to
+geocoding:
+
+```r
+clean_df <- standardize_addresses(df, address_col = "address")
+```
+
 <!-- Custom CSS for enhanced styling -->
 
 ```{=html}
