@@ -77,7 +77,9 @@ create_isochrones_for_dataframe <- function(input_file, breaks = c(1800, 3600, 7
   }
 
   # Save the isochrones data to an RDS file
-  readr::write_rds(isochrones, paste("data/isochrones_raw_output_from_here_api_", format(Sys.time(), format = "%Y-%m-%d_%H-%M-%S"), ".rds", sep = ""))
+  output_path <- paste("data/isochrones_raw_output_from_here_api_", format(Sys.time(), format = "%Y-%m-%d_%H-%M-%S"), ".rds", sep = "")
+  readr::write_rds(isochrones, output_path)
+  message(paste("Saved raw isochrones to:", output_path))
   isochrones <- data.table::rbindlist(isochrones_temp)
   return(isochrones)
 }

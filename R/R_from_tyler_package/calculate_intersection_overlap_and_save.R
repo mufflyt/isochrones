@@ -50,7 +50,7 @@ calculate_intersection_overlap_and_save <- function(block_groups, isochrones_joi
       # Write the intersection shapefile
       output_shapefile <- file.path(output_dir, paste0("intersect_", drive_time, "_minutes.shp"))
       sf::st_write(intersect, output_shapefile, append = FALSE)
-      message("Intersection calculated and saved successfully.")
+      message(paste("Intersection shapefile saved to:", output_shapefile))
 
       # Merge intersection area by GEOID
       block_groups <- dplyr::left_join(block_groups, intersect, by = "GEOID")
