@@ -125,6 +125,26 @@ create_nppes_table_mapping <- function(con) {
   return(mapping_df)
 }
 
+#' @title Find physicians across multiple years
+#' @description Queries NPPES tables for providers matching specific taxonomy
+#'   codes. Results from each year are combined with consistent data types.
+#'
+#' @param con DBI connection to a DuckDB database with NPPES data.
+#' @param table_year_mapping Data frame mapping table names to their
+#'   publication year. Must contain `table_name` and `year` columns.
+#' @param taxonomy_codes Character vector of taxonomy codes to search for.
+#' @param years_to_include Numeric vector of years to include; if `NULL` all
+#'   years are used.
+#' @param verbose Logical; if `TRUE` prints progress messages.
+#'
+#' @return Tibble of matching physicians with a `Year` column.
+#'
+#' @family nppes
+#'
+#' @importFrom logger log_info log_warn log_threshold
+#' @importFrom DBI dbListTables
+#' @importFrom dplyr bind_rows
+#' @export
 find_physicians_across_years <- function(con,
                                          table_year_mapping,
                                          taxonomy_codes,
@@ -2439,11 +2459,10 @@ check_for_missing_providers <- function(connection, combined_providers, filtered
   return(combined_providers)
 }
 
-#' Generate a mapping between NPPES database tables and years
-#'
-#' Analyzes table names in a DuckDB database to create a mapping between
-#' tables containing NPPES data and the years they represent. This is particularly
-#' useful for tracking healthcare providers across multiple years.
+#' @title Generate a mapping between NPPES database tables and years
+#' @description Analyzes table names in a DuckDB database to create a mapping
+#'   between tables containing NPPES data and the years they represent. This is
+#'   useful for tracking healthcare providers across multiple years.
 #'
 #' @param connection A valid DBI database connection
 #' @param verbose Logical; if TRUE, provides detailed logs during execution
@@ -2467,6 +2486,7 @@ check_for_missing_providers <- function(connection, combined_providers, filtered
 #' @importFrom logger log_info log_warn
 #' @importFrom DBI dbListTables
 #' @importFrom tibble tibble
+#' @family nppes
 create_nppes_table_mapping <- function(connection, verbose = TRUE) {
   # Set up logging threshold based on verbose parameter
   logger::log_threshold(if(verbose) logger::INFO else logger::WARN)

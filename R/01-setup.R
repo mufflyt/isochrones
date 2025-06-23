@@ -88,7 +88,10 @@ code_folder <- here::here("R")
 `%nin%`<-Negate(`%in%`)
 
 
-#' Search NPI Database by Taxonomy
+#' @title Search NPI database by taxonomy
+#' @description Query the NPI Registry for specific taxonomy terms and
+#'   return a cleaned result set.
+#' @noRd
 #'
 #' @param taxonomy_to_search A character vector of taxonomy descriptions
 #' @param enumeration_type NPI enumeration type to search
@@ -206,7 +209,21 @@ search_by_taxonomy <- function(taxonomy_to_search,
 
 ##############################
 ###############################
-#' Search and Process NPI Numbers
+#' @title Search and process NPI numbers
+#' @description Memoised wrapper around `npi::npi_search()` that reads a list of
+#'   names from a file and retrieves matching NPI records.
+#' @noRd
+#' @param input_file Path to a file containing first and last names.
+#' @param enumeration_type NPI enumeration type to search. Defaults to `"ind"`.
+#' @param limit Maximum number of records to retrieve for each name. Defaults to
+#'   `5`.
+#' @param country_code Country code for the search. Defaults to `"US"`.
+#' @param filter_credentials Vector of credentials to keep. Defaults to
+#'   `c("MD", "DO")`.
+#' @return Tibble of NPI search results.
+#' @examples
+#' \dontrun{search_and_process_npi("names.csv")}
+#' 
 # Define a memoization function for search_and_process_npi
 
 search_and_process_npi <- memoise(function(input_file,
@@ -250,7 +267,13 @@ search_and_process_npi <- memoise(function(input_file,
 
   bc <- c("Pathology, Chemical Pathology", "Pathology, Clinical Laboratory Director, Non-physician", "Pathology, Clinical Pathology", "Pathology, Clinical Pathology/Laboratory Medicine", "Pathology, Cytopathology", "Pathology, Dermatopathology", "Pathology, Forensic Pathology", "Pathology, Hematology", "Pathology, Medical Microbiology", "Pathology, Molecular Genetic Pathology", "Pathology, Neuropathology", "Pediatrics", "Pediatrics, Adolescent Medicine", "Pediatrics, Clinical & Laboratory Immunology", "Pediatrics, Child Abuse Pediatrics", "Pediatrics, Developmental - Behavioral Pediatrics", "Pediatrics, Hospice and Palliative Medicine", "Pediatrics, Neonatal-Perinatal Medicine", "Pediatrics, Neurodevelopmental Disabilities", "Pediatrics, Pediatric Allergy/Immunology", "Pediatrics, Pediatric Cardiology", "Pediatrics, Pediatric Critical Care Medicine", "Pediatrics, Pediatric Emergency Medicine", "Pediatrics, Pediatric Endocrinology", "Pediatrics, Pediatric Gastroenterology", "Pediatrics, Pediatric Hematology-Oncology", "Pediatrics, Pediatric Infectious Diseases", "Pediatrics, Pediatric Nephrology", "Pediatrics, Pediatric Pulmonology", "Pediatrics, Pediatric Rheumatology", "Pediatrics, Sleep Medicine", "Physical Medicine & Rehabilitation, Neuromuscular Medicine", "Physical Medicine & Rehabilitation, Pain Medicine", "Physical Medicine & Rehabilitation", "Physical Medicine & Rehabilitation, Pediatric Rehabilitation Medicine", "Physical Medicine & Rehabilitation, Spinal Cord Injury Medicine", "Physical Medicine & Rehabilitation, Sports Medicine", "Plastic Surgery", "Plastic Surgery, Plastic Surgery Within the Head and Neck", "Plastic Surgery, Surgery of the Hand", "Preventive Medicine, Aerospace Medicine", "Preventive Medicine, Obesity Medicine", "Preventive Medicine, Occupational Medicine", "Preventive Medicine, Preventive Medicine/Occupational Environmental Medicine", "Preventive Medicine, Undersea and Hyperbaric Medicine", "Preventive Medicine, Public Health & General Preventive Medicine", "Psychiatry & Neurology, Addiction Medicine", "Psychiatry & Neurology, Addiction Psychiatry", "Psychiatry & Neurology, Behavioral Neurology & Neuropsychiatry", "Psychiatry & Neurology, Brain Injury Medicine", "Psychiatry & Neurology, Child & Adolescent Psychiatry", "Psychiatry & Neurology, Clinical Neurophysiology", "Psychiatry & Neurology, Forensic Psychiatry", "Psychiatry & Neurology, Geriatric Psychiatry", "Psychiatry & Neurology, Neurocritical Care", "Psychiatry & Neurology, Neurology", "Psychiatry & Neurology, Neurology with Special Qualifications in Child Neurology", "Psychiatry & Neurology, Psychiatry", "Psychiatry & Neurology, Psychosomatic Medicine", "Psychiatry & Neurology, Sleep Medicine", "Psychiatry & Neurology, Vascular Neurology", "Radiology, Body Imaging", "Radiology, Diagnostic Neuroimaging", "Radiology, Diagnostic Radiology", "Radiology, Diagnostic Ultrasound", "Radiology, Neuroradiology", "Radiology, Nuclear Radiology", "Radiology, Pediatric Radiology", "Radiology, Radiation Oncology", "Radiology, Vascular & Interventional Radiology", "Specialist", "Surgery", "Surgery, Pediatric Surgery", "Surgery, Plastic and Reconstructive Surgery", "Surgery, Surgery of the Hand", "Surgery, Surgical Critical Care", "Surgery, Surgical Oncology", "Surgery, Trauma Surgery", "Surgery, Vascular Surgery", "Urology", "Urology, Female Pelvic Medicine and Reconstructive Surgery", "Urology, Pediatric Urology","Pathology", "Thoracic Surgery (Cardiothoracic Vascular Surgery)" , "Transplant Surgery")
 
-  # Create a function to search NPI based on first and last names
+  #' @title Search NPI by name
+  #' @description Helper used within `search_and_process_npi` to query the NPI
+  #'   registry by first and last name.
+  #' @param first_name Provider first name
+  #' @param last_name Provider last name
+  #' @return Tibble of results or `NULL` if an error occurs.
+  #' @noRd
   search_npi <- function(first_name, last_name) {
     cat("Searching NPI for:", first_name, last_name, "\n")
     tryCatch(
@@ -304,11 +327,15 @@ search_and_process_npi <- memoise(function(input_file,
 #**************************
 #* create_geocode: 04-geocode.R.  GEOCODE THE DATA USING HERE API.  The key is hard coded into the function.
 #*
+#' @title Geocode addresses with HERE API
+#' @description Reads a CSV of addresses and returns an `sf` object of geocoded
+#'   points. Results are cached via `memoise` for efficiency.
 #' @param csv_file Input CSV file containing addresses
 #' @param address_col Name of the address column
 #' @param output_file Optional file path to write geocoded results
 #' @param id_col Optional column name to carry through to results
 #' @return An `sf` object with geocoded locations
+#' @noRd
 #**************************
 create_geocode <- memoise::memoise(function(csv_file,
                                      address_col = "address",
@@ -376,6 +403,16 @@ create_geocode <- memoise::memoise(function(csv_file,
 
 ##############################
 ###############################
+#' @title Create and save a physician dot map
+#' @description Generates a leaflet map of physician locations, adding jitter to
+#'   points and ACOG district overlays. The map is saved as both HTML and PNG.
+#' @param physician_data Data frame with `lat`, `long`, and `ACOG_District`
+#'   columns.
+#' @param jitter_range Amount of random jitter applied to coordinates.
+#' @param color_palette Viridis palette name for districts.
+#' @param popup_var Column name shown in map popups.
+#' @return A `leaflet` widget.
+#' @noRd
 create_and_save_physician_dot_map <- function(physician_data, jitter_range = 0.05, color_palette = "magma", popup_var = "name") {
   # Add jitter to latitude and longitude coordinates
   jittered_physician_data <- physician_data %>%
@@ -459,6 +496,12 @@ create_and_save_physician_dot_map <- function(physician_data, jitter_range = 0.0
 ##############################
 ###############################
 #***************
+#' @title Test and process isochrones
+#' @description Helper for experimenting with HERE isochrone retrieval on a
+#'   small data set.
+#' @param input_file Data frame with `lat` and `long` columns.
+#' @return NULL invisibly.
+#' @noRd
 test_and_process_isochrones <- function(input_file) {
   input_file <- input_file %>%
     mutate(id = row_number()) %>%
@@ -526,6 +569,18 @@ test_and_process_isochrones <- function(input_file) {
 
 ##############################
 ###############################
+#' @title Process and save isochrones
+#' @description Processes a dataset in chunks and saves isochrone results to
+#'   disk.
+#' @param input_file Data frame of points to process.
+#' @param chunk_size Number of rows per chunk.
+#' @param iso_datetime Datetime string used when calling the HERE API.
+#' @param iso_ranges Numeric vector of isochrone ranges in seconds.
+#' @param crs EPSG code for coordinate reference system.
+#' @param transport_mode HERE transport mode.
+#' @param save_dir Directory to store output files.
+#' @return List of isochrone objects.
+#' @noRd
 process_and_save_isochrones <- function(input_file, chunk_size = 25,
                                         iso_datetime = "2023-10-20 09:00:00",
                                         iso_ranges = c(30*60, 60*60, 120*60, 180*60),
@@ -651,6 +706,12 @@ get_census_data <- function (us_fips_list)
 
 ######
 #Entire USA national scale block groups only start at 2019
+#' @title Download national block groups
+#' @description Retrieves and processes block group geometries for the supplied
+#'   years.
+#' @param years Integer vector of years.
+#' @return None. Files are written to disk.
+#' @noRd
 process_block_groups <- function(years) {
   for (year in years) {
     block_groups_by_year <- tigris::block_groups(state = NULL, cb = TRUE, year = year)
@@ -676,6 +737,12 @@ process_block_groups <- function(years) {
 #process_block_groups(years_to_process)
 
 ######
+#' @title Download block groups for all states
+#' @description Downloads block groups for each state for a given year and
+#'   combines them into a single `sf` object.
+#' @param year Numeric year to download.
+#' @return Combined `sf` object of block groups.
+#' @noRd
 download_and_merge_block_groups <- function(year) {
   # Specific list of state FIPS codes
   us_fips_list <- c("01", "02", "04", "05", "06", "08", "09", "10", "11", "12",
@@ -728,6 +795,13 @@ download_and_merge_block_groups <- function(year) {
 # combined_block_groups_2020 <- download_and_merge_block_groups(2020)
 
 #########
+#' @title Query Postico database for OB/GYNs by year
+#' @description Connects to a database and retrieves filtered NPPES data for a
+#'   given year.
+#' @param year Numeric year to query.
+#' @param db_details List of connection parameters.
+#' @return Data frame of provider data.
+#' @noRd
 postico_database_obgyns_by_year <- function(year, db_details) {
   # Database connection details
   db_host <- db_details$host
@@ -776,6 +850,12 @@ postico_database_obgyns_by_year <- function(year, db_details) {
 #   password = "????"
 # )
 
+#' @title Validate and remove invalid NPIs
+#' @description Reads data from a dataframe or CSV, checks NPI validity and
+#'   removes invalid entries.
+#' @param input_data Data frame or path to CSV with an NPI column.
+#' @return Data frame with valid NPIs.
+#' @noRd
 validate_and_remove_invalid_npi <- function(input_data) {
   
   if (is.data.frame(input_data)) {
@@ -816,7 +896,14 @@ validate_and_remove_invalid_npi <- function(input_data) {
   return(npi_records)
 }
 
-############
+#------------
+#' @title Retrieve clinician data
+#' @description For each unique NPI in the input, calls the provider API and
+#'   returns a combined data frame of clinician details.
+#' @param input_data Data frame or CSV with a column `npi`.
+#' @param no_results_csv File path to save NPIs with no results.
+#' @return Data frame of clinician data.
+#' @noRd
 retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi.csv") {
   message("The data should already have had the NPI numbers validated.")
   
@@ -837,6 +924,7 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
   no_results_npi <- vector("list", 0)
   
   # Function to retrieve clinician data for a single NPI
+  #' @noRd
   get_clinician_data <- function(npi) {
     if (!is.numeric(npi) || nchar(npi) != 10) {
       cat("Invalid NPI:", npi, "\n")
