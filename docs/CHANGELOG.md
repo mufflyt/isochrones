@@ -1,4 +1,8 @@
 # Changelog
+## 2025-06-23
+- Documented supporting files in the README and introduced the `count_paragraphs()` helper.
+- Added tests for the new helper function.
+
 
 ## 2025-06-22
 - Verified recent updates to `01-setup.R`, correcting indentation and spacing
