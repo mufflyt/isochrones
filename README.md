@@ -1107,6 +1107,13 @@ critical for spatial accuracy in healthcare accessibility analysis.
 
 *Source: `R/04-geocode.R`*
 
+Example usage:
+
+```r
+csv_file <- "data/geocoding/obgyn_practice_addresses_for_geocoding.csv"
+geocoded_data <- create_geocode(csv_file)
+```
+
 
 
 ### Why Full Addresses vs. ZIP Code Geocoding
