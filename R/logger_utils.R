@@ -12,3 +12,16 @@ formatter_glue_safe <- function(...,
     error = function(e) paste0(...)
   )
 }
+
+#' Format numbers with thousands separators
+#'
+#' A small helper wrapper around `scales::comma` that returns a
+#' character representation of a numeric value with commas for
+#' thousands. Useful for making large values easier to read in
+#' log messages.
+#'
+#' @param x Numeric vector to format
+#' @return A character vector of formatted numbers
+format_with_commas <- function(x) {
+  scales::comma(x)
+}

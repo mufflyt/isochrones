@@ -603,10 +603,12 @@ import_single_file <- function(conn, file_path, year, max_rows) {
   
   # Log success
   if (!is.null(max_rows)) {
-    logger::log_success(sprintf("Successfully imported %d rows (limited to %d)", 
-                                row_count, max_rows))
+    logger::log_success(sprintf("Successfully imported %s rows (limited to %s)",
+                                format_with_commas(row_count),
+                                format_with_commas(max_rows)))
   } else {
-    logger::log_success(sprintf("Successfully imported %d rows", row_count))
+    logger::log_success(sprintf("Successfully imported %s rows",
+                                format_with_commas(row_count)))
   }
   
   # Record in metadata table
@@ -901,8 +903,9 @@ merge_open_payments_data <- function(conn, years, output_table_name, column_mapp
   }
   
   # Log completion
-  logger::log_success(sprintf("Successfully merged %d rows into %s", 
-                              total_rows_merged, output_table_name))
+  logger::log_success(sprintf("Successfully merged %s rows into %s",
+                              format_with_commas(total_rows_merged),
+                              output_table_name))
   
   # Return summary
   return(list(
@@ -3390,10 +3393,12 @@ import_single_file <- function(conn, file_path, year, max_rows) {
   
   # Log success
   if (!is.null(max_rows)) {
-    logger::log_success(sprintf("Successfully imported %d rows (limited to %d)", 
-                                row_count, max_rows))
+    logger::log_success(sprintf("Successfully imported %s rows (limited to %s)",
+                                format_with_commas(row_count),
+                                format_with_commas(max_rows)))
   } else {
-    logger::log_success(sprintf("Successfully imported %d rows", row_count))
+    logger::log_success(sprintf("Successfully imported %s rows",
+                                format_with_commas(row_count)))
   }
   
   # Record in metadata table
@@ -3706,8 +3711,9 @@ merge_open_payments_data <- function(conn, years, output_table_name, unified_sch
   }
   
   # Log completion
-  logger::log_success(sprintf("Successfully merged %d rows into %s", 
-                              total_rows_merged, output_table_name))
+  logger::log_success(sprintf("Successfully merged %s rows into %s",
+                              format_with_commas(total_rows_merged),
+                              output_table_name))
   
   # Return summary
   return(list(
@@ -4566,10 +4572,12 @@ import_single_file <- function(conn, file_path, year, max_rows) {
   
   # Log success
   if (!is.null(max_rows)) {
-    logger::log_success(sprintf("Successfully imported %d rows (limited to %d)", 
-                                row_count, max_rows))
+    logger::log_success(sprintf("Successfully imported %s rows (limited to %s)",
+                                format_with_commas(row_count),
+                                format_with_commas(max_rows)))
   } else {
-    logger::log_success(sprintf("Successfully imported %d rows", row_count))
+    logger::log_success(sprintf("Successfully imported %s rows",
+                                format_with_commas(row_count)))
   }
   
   # Record in metadata table
@@ -5013,12 +5021,14 @@ merge_open_payments_data <- function(conn, years, output_table_name, column_mapp
     
     # Update total rows
     total_rows_merged <- total_rows_merged + year_row_count
-    logger::log_success(sprintf("Merged %d rows from year %d", year_row_count, year))
+    logger::log_success(sprintf("Merged %s rows from year %d",
+                                format_with_commas(year_row_count), year))
   }
   
   # Log completion
-  logger::log_success(sprintf("Successfully merged %d total rows into %s", 
-                              total_rows_merged, output_table_name))
+  logger::log_success(sprintf("Successfully merged %s total rows into %s",
+                              format_with_commas(total_rows_merged),
+                              output_table_name))
   
   # Return summary
   return(list(

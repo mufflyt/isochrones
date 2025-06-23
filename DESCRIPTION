@@ -11,4 +11,5 @@ Imports:
     DBI,
     assertthat,
     stringr,
-    tibble
+    tibble,
+    scales

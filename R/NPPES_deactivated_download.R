@@ -366,8 +366,8 @@ tryCatch({
   count_query <- paste0("SELECT COUNT(*) AS count FROM ", table_name)
   row_count_result <- DBI::dbGetQuery(db_conn, count_query)
   row_count <- row_count_result$count[1]
-  
-  logger::log_info("✅ Successfully loaded {row_count} rows into table {table_name}")
+
+  logger::log_info("✅ Successfully loaded {format_with_commas(row_count)} rows into table {table_name}")
   
 }, error = function(e) {
   error_message <- paste0(
