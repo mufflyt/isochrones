@@ -416,7 +416,7 @@ create_and_save_physician_dot_map <- function(physician_data, jitter_range = 0.0
       radius = 3,         # Adjust the radius as needed
       stroke = TRUE,      # Add a stroke (outline)
       weight = 1,         # Adjust the outline weight as needed
-      color = district_colors[as.numeric(physician_data$ACOG_District)],   # Set the outline color to black
+      color = district_colors[as.numeric(jittered_physician_data$ACOG_District)],   # Set the outline color to match jittered positions
       fillOpacity = 0.8,  # Fill opacity
       popup = as.formula(paste0("~", popup_var))  # Popup text based on popup_var argument
     ) %>%
