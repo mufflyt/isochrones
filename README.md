@@ -49,6 +49,29 @@ editor_options:
     canonical: true
 ---
 
+## Quick Start
+
+Follow these steps to reproduce the analysis:
+
+1. Install required R packages and set up the project environment:
+
+   ```r
+   source("R/01-setup.R")
+   ```
+
+2. Execute the complete workflow:
+
+   ```r
+   source("R/000-Control.R")
+   ```
+
+The `README.md` file is generated from this R Markdown document. After making
+changes, re-render it with:
+
+```r
+rmarkdown::render("README.rmd")
+```
+
 We need to use `postmastr` because a lot of the addresses are close but
 abbreviated in annoying ways. <https://pe.usps.com/text/pub28/welcome.htm> is a
 list of USPS address codes.
