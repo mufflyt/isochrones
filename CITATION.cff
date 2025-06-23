@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "If you use this code, please cite the project as below."
+title: "Gynecologic Oncology Accessibility Project"
+version: "1.0.0"
+authors:
+  - family-names: Muffly
+    given-names: Tyler
+    affiliation: Department of Obstetrics and Gynecology
+license: MIT
+date-released: 2025-06-22

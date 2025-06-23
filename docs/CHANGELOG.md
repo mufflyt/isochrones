@@ -1,5 +1,9 @@
 # Changelog
 
+## 2025-06-23
+- Added a `CITATION.cff` file and updated the README YAML front matter with
+  explicit language and encoding fields.
+
 ## 2025-06-22
 - Verified recent updates to `01-setup.R`, correcting indentation and spacing to match the style guide.
 
