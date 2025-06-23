@@ -6,7 +6,5 @@
 # * https://r-pkgs.org/testing-design.html#sec-tests-files-overview
 # * https://testthat.r-lib.org/articles/special-files.html
 
-library(testthat)
-
 # There is no installed isochrones package. Run tests directly from this folder.
 testthat::test_dir("testthat")
