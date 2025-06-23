@@ -2353,7 +2353,6 @@ comprehensively_cleaned_provider_records <- grouped_provider_records_for_imputat
              ifelse(adist(practice_address, best_addr, ignore.case = TRUE) <= 2, best_addr, practice_address))
     }
   }, .by = c(npi, provider_first_name, provider_last_name)) %>%
-  
   dplyr::group_by(npi)
 
 
@@ -2371,8 +2370,13 @@ library(stringr)
 library(purrr)
 library(readr)
 
-
-
+dirs <- pm_dictionary(type = "directional", filter = c("N", "S", "E", "W"), locale = "us")
+mo <- pm_dictionary(type = "state", case = c("title", "upper"), locale = "us")
+sushi1 <- pm_identify(comprehensively_cleaned_provider_records, var = "practice_address")
+sushi1_min <- pm_prep(sushi1, var = "practice_address", type = "street")
+sushi2_min <- pm_house_parse(sushi1_min)
+sushi2_min <- pm_streetDir_parse(sushi2_min, dictionary = dirs)
+sushi2_min <- pm_streetSuf_parse(sushi2_min)
 
 
 logger::log_info("Advanced data cleaning validation successful")
