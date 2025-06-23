@@ -1,5 +1,8 @@
 # Changelog
 ## 2025-06-23
+- Added function `print_ascii_art()` to display the project art.
+
+## 2025-06-23
 - Documented supporting files in the README and introduced the `count_paragraphs()` helper.
 - Added tests for the new helper function.
 
