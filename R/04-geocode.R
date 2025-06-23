@@ -418,12 +418,17 @@ obgyn_geocoding_data <- standardize_addresses(obgyn_geocoding_data,
                                               address_col = "address")
 
 #**************************
-#* GEOCODE THE DATA USING HERE API.  The key is hard coded into the function.  
+#* GEOCODE THE DATA USING HERE API.  The key is hard coded into the function.
 #**************************
 
+# Define the CSV file path before calling `create_geocode`
+csv_file <- "data/geocoding/obgyn_practice_addresses_for_geocoding.csv"
 
 geocoded_data <- create_geocode(csv_file)
-readr::write_csv(geocoded_data, "data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv")
+readr::write_csv(
+  geocoded_data,
+  "data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv"
+)
 
 # Geocoding Using HERE API ----
 #'
@@ -795,7 +800,6 @@ geocoding_using_HERE_API <- function(csv_file_path,
 }
 
 # Execute ----
-csv_file <- "data/geocoding/obgyn_practice_addresses_for_geocoding.csv"
 
 read_csv(csv_file)
 
