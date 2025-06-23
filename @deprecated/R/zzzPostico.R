@@ -248,16 +248,18 @@ retrieve_clinician_data <- function(input_data) {
   get_clinician_data <- function(npi) {
     if (!is.numeric(npi) || nchar(npi) != 10) {
       cat("Invalid NPI:", npi, "\n")
+      Sys.sleep(1)
       return(NULL)  # Skip this NPI
     }
-    
+
     clinician_info <- provider::clinicians(npi = npi)
     if (is.null(clinician_info)) {
       cat("No results for NPI:", npi, "\n")
+      Sys.sleep(1)
     } else {
+      Sys.sleep(1)
       return(clinician_info)  # Print the clinician data as it comes out
     }
-    Sys.sleep(1)
   }
   
   #df <- df %>% head(5) #test

@@ -840,6 +840,7 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
   get_clinician_data <- function(npi) {
     if (!is.numeric(npi) || nchar(npi) != 10) {
       cat("Invalid NPI:", npi, "\n")
+      Sys.sleep(1)  # To avoid rate limits in API calls
       return(NULL)  # Skip this NPI
     }
 
@@ -847,11 +848,12 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
     if (is.null(clinician_info)) {
       cat("No results for NPI:", npi, "\n")
       no_results_npi <<- c(no_results_npi, list(npi))  # Add the NPI to the list
+      Sys.sleep(1)  # To avoid rate limits in API calls
       return(NULL)
     } else {
+      Sys.sleep(1)  # To avoid rate limits in API calls
       return(clinician_info)  # Return the clinician data
     }
-    Sys.sleep(1)  # To avoid rate limits in API calls
   }
   
   # Loop through the NPI column and get clinician data
