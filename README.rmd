@@ -1083,8 +1083,10 @@ readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspeciali
 
 ```{r geocoding-implementation, eval=FALSE, echo=TRUE}
 csv_file <- "data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv"
-geocoded_data <- create_geocode(csv_file)  # Custom function using Google Geocoding API
-write_csv(geocoded_data, "data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv")
+geocoded_data <- create_geocode(
+  csv_file,
+  output_file = "data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv"
+)
 
 # Validation of geocoding accuracy
 mean(geocoded_data$score) # Accuracy assessment
