@@ -91,8 +91,16 @@ code_folder <- here::here("R")
 #' Search NPI Database by Taxonomy
 #'
 #' @param taxonomy_to_search A character vector of taxonomy descriptions
+#' @param enumeration_type NPI enumeration type to search
+#' @param limit Maximum number of results to retrieve per taxonomy
+#' @param country_code Country code for the search
+#' @param credential_filter Vector of credentials to keep
 #' @return A cleaned and filtered data frame of matched NPIs
-search_by_taxonomy <- function(taxonomy_to_search) {
+search_by_taxonomy <- function(taxonomy_to_search,
+                               enumeration_type = "ind",
+                               limit = 1200,
+                               country_code = "US",
+                               credential_filter = c("MD", "DO")) {
   logger::log_info("Starting taxonomy search for {length(taxonomy_to_search)} terms.")
   
   data <- dplyr::tibble()
@@ -103,9 +111,9 @@ search_by_taxonomy <- function(taxonomy_to_search) {
     tryCatch({
       result <- npi::npi_search(
         taxonomy_description = taxonomy,
-        country_code = "US",
-        enumeration_type = "ind",
-        limit = 1200
+        country_code = country_code,
+        enumeration_type = enumeration_type,
+        limit = limit
       )
       
       if (!is.null(result)) {
@@ -123,7 +131,10 @@ search_by_taxonomy <- function(taxonomy_to_search) {
               dplyr::mutate(
                 basic_credential = stringr::str_remove_all(basic_credential, "[[\\p{P}][\\p{S}]]")
               ) %>%
-              dplyr::filter(stringr::str_to_lower(basic_credential) %in% stringr::str_to_lower(c("MD", "DO")))
+              dplyr::filter(
+                stringr::str_to_lower(basic_credential) %in%
+                  stringr::str_to_lower(credential_filter)
+              )
           }
           
           if ("taxonomies_desc" %in% names(flattened)) {
@@ -291,9 +302,18 @@ search_and_process_npi <- memoise(function(input_file,
 
 
 #**************************
-#* create_geocode: 04-geocode.R.  GEOCODE THE DATA USING HERE API.  The key is hard coded into the function.  
+#* create_geocode: 04-geocode.R.  GEOCODE THE DATA USING HERE API.  The key is hard coded into the function.
+#*
+#' @param csv_file Input CSV file containing addresses
+#' @param address_col Name of the address column
+#' @param output_file Optional file path to write geocoded results
+#' @param id_col Optional column name to carry through to results
+#' @return An `sf` object with geocoded locations
 #**************************
-create_geocode <- memoise::memoise(function(csv_file) {
+create_geocode <- memoise::memoise(function(csv_file,
+                                     address_col = "address",
+                                     output_file = NULL,
+                                     id_col = NULL) {
 
   # Set your HERE API key from environment variable
   api_key <- Sys.getenv("HERE_API_KEY")
@@ -311,9 +331,11 @@ create_geocode <- memoise::memoise(function(csv_file) {
   # Read the CSV file into a data frame
   data <- read.csv(csv_file)
 
-  # Check if the data frame contains a column named "address"
-  if (!"address" %in% colnames(data)) {
-    stop("The CSV file must have a column named 'address' for geocoding.")
+  if (is.null(output_file)) output_file <- csv_file
+
+  # Check if the data frame contains the address column
+  if (!address_col %in% colnames(data)) {
+    stop("The CSV file must have a column named '", address_col, "' for geocoding.")
   }
 
   # Initialize a list to store geocoded results
@@ -324,7 +346,7 @@ create_geocode <- memoise::memoise(function(csv_file) {
 
   # Loop through each address and geocode it
   for (i in 1:nrow(data)) {
-    address <- data[i, "address"]
+    address <- data[[address_col]][i]
     result <- hereR::geocode(address)
     geocoded_results[[i]] <- result
     cat("Geocoded address ", i, " of ", nrow(data), "\n")
@@ -338,8 +360,13 @@ create_geocode <- memoise::memoise(function(csv_file) {
   data$latitude <- geocoded$latitude
   data$longitude <- geocoded$longitude
 
+  # Attach optional id column to the geocoded results
+  if (!is.null(id_col) && id_col %in% names(data)) {
+    geocoded[[id_col]] <- data[[id_col]]
+  }
+
   # Write the updated data frame with geocoded information back to a CSV file
-  write.csv(data, csv_file, row.names = FALSE)
+  write.csv(data, output_file, row.names = FALSE)
   cat("Updated CSV file with geocoded information.\n")
 
   cat("Geocoding complete.\n")
