@@ -760,7 +760,7 @@ merge_chunks_to_final_output <- function(chunk_directory, preserve_all_columns =
         )
         
         row_count <- nrow(chunk_data)
-        logger::log_info("Read {row_count} rows from chunk {chunk_path}")
+        logger::log_info("Read {format_with_commas(row_count)} rows from chunk {chunk_path}")
         
         # Verify year_source column exists and has values
         if (!"year_source" %in% colnames(chunk_data)) {
@@ -804,7 +804,7 @@ merge_chunks_to_final_output <- function(chunk_directory, preserve_all_columns =
         )
         
         total_rows_written <- total_rows_written + row_count
-        logger::log_info("Wrote {row_count} rows to final output (running total: {total_rows_written})")
+        logger::log_info("Wrote {format_with_commas(row_count)} rows to final output (running total: {format_with_commas(total_rows_written)})")
         
         is_first_chunk <- FALSE
         

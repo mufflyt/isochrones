@@ -186,7 +186,7 @@ prepare_addresses_for_geocoding <- function(input_file_path = "data/B-nber_nppes
   
   if (verbose) {
     logger::log_info("Dataset loaded successfully")
-    logger::log_info("Initial dimensions: {initial_row_count} rows x {initial_column_count} columns")
+    logger::log_info("Initial dimensions: {format_with_commas(initial_row_count)} rows x {initial_column_count} columns")
     logger::log_info("Required columns found: {paste(required_columns, collapse = ', ')}")
   }
   
@@ -345,7 +345,7 @@ prepare_addresses_for_geocoding <- function(input_file_path = "data/B-nber_nppes
   
   if (verbose) {
     logger::log_info("Address unification completed")
-    logger::log_info("Final dimensions: {final_row_count} rows x {final_column_count} columns")
+    logger::log_info("Final dimensions: {format_with_commas(final_row_count)} rows x {final_column_count} columns")
     
     # Sample some addresses for verification
     sample_addresses <- head(geocoding_ready_dataset$address, 3)
@@ -393,7 +393,7 @@ prepare_addresses_for_geocoding <- function(input_file_path = "data/B-nber_nppes
     logger::log_info("Geocoding preparation completed successfully")
     logger::log_info("Output file: {output_csv_path}")
     logger::log_info("Output file size: {output_file_size_mb} MB")
-    logger::log_info("Records prepared for geocoding: {final_row_count}")
+    logger::log_info("Records prepared for geocoding: {format_with_commas(final_row_count)}")
   }
   
   # Return the processed dataset
@@ -770,7 +770,7 @@ geocoding_using_HERE_API <- function(csv_file_path,
     
     if (verbose) {
       logger::log_info("CSV export completed: {output_csv_path}")
-      logger::log_info("CSV contains {nrow(csv_export_data)} rows x {ncol(csv_export_data)} columns")
+      logger::log_info("CSV contains {format_with_commas(nrow(csv_export_data))} rows x {ncol(csv_export_data)} columns")
     }
   }
   
@@ -2084,7 +2084,7 @@ validate_and_prepare_physician_data <- function(physician_geodata, verbose) {
   
   if (verbose) {
     logger::log_info("Input data class: {class(physician_geodata)}")
-    logger::log_info("Input data dimensions: {nrow(physician_geodata)} rows, {ncol(physician_geodata)} columns")
+    logger::log_info("Input data dimensions: {format_with_commas(nrow(physician_geodata))} rows, {ncol(physician_geodata)} columns")
   }
   
   # Check if already sf object
@@ -2112,8 +2112,8 @@ validate_and_prepare_physician_data <- function(physician_geodata, verbose) {
     
     if (verbose) {
       missing_coordinate_count <- nrow(physician_geodata) - nrow(clean_physician_data)
-      logger::log_info("Removed {missing_coordinate_count} rows with missing coordinates")
-      logger::log_info("Final dataset contains {nrow(clean_physician_data)} physicians with valid coordinates")
+      logger::log_info("Removed {format_with_commas(missing_coordinate_count)} rows with missing coordinates")
+      logger::log_info("Final dataset contains {format_with_commas(nrow(clean_physician_data))} physicians with valid coordinates")
     }
     
     assertthat::assert_that(nrow(clean_physician_data) > 0,
