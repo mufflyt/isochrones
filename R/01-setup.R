@@ -103,7 +103,7 @@ search_by_taxonomy <- function(taxonomy_to_search,
                                credential_filter = c("MD", "DO")) {
   logger::log_info("Starting taxonomy search for {length(taxonomy_to_search)} terms.")
   
-  data <- dplyr::tibble()
+  taxonomy_results <- dplyr::tibble()
   
   for (taxonomy in taxonomy_to_search) {
     logger::log_info("Searching for taxonomy: {taxonomy}")
@@ -187,7 +187,7 @@ search_by_taxonomy <- function(taxonomy_to_search,
               )
           }
           
-          data <- dplyr::bind_rows(data, flattened)
+          taxonomy_results <- dplyr::bind_rows(taxonomy_results, flattened)
         }
       }
     }, error = function(e) {
@@ -196,11 +196,11 @@ search_by_taxonomy <- function(taxonomy_to_search,
   }
   
   filename <- paste0("data/search_taxonomy_", format(Sys.time(), "%Y-%m-%d_%H-%M-%S"), ".rds")
-  readr::write_rds(data, filename)
+  readr::write_rds(taxonomy_results, filename)
   logger::log_info("Saved search results to {filename}")
   beepr::beep(2)
-  
-  return(data)
+
+  return(taxonomy_results)
 }
 
 
@@ -230,20 +230,20 @@ search_and_process_npi <- memoise(function(input_file,
   file_extension <- tools::file_ext(input_file)
 
   if (file_extension == "rds") {
-    data <- readRDS(input_file)
+    input_records <- readRDS(input_file)
   } else if (file_extension %in% c("csv", "xls", "xlsx")) {
     if (file_extension %in% c("xls", "xlsx")) {
-      data <- readxl::read_xlsx(input_file)
+      input_records <- readxl::read_xlsx(input_file)
     } else {
-      data <- readr::read_csv(input_file)
+      input_records <- readr::read_csv(input_file)
     }
   } else {
     stop("Unsupported file format. Please provide an RDS, CSV, or XLS/XLSX file of NAMES to search.")
   }
   cat("Data loaded from the input file.\n")
 
-  first_names <- data$first
-  last_names <- data$last
+  first_names <- input_records$first
+  last_names <- input_records$last
 
   # Define the list of taxonomies to filter
   vc <- c("Allergy & Immunology", "Allergy & Immunology, Allergy", "Anesthesiology", "Anesthesiology, Critical Care Medicine", "Anesthesiology, Hospice and Palliative Medicine", "Anesthesiology, Pain Medicine", "Advanced Practice Midwife", "Colon & Rectal Surgery", "Dermatology", "Dermatology, Clinical & Laboratory Dermatological Immunology", "Dermatology, Dermatopathology", "Dermatology, MOHS-Micrographic Surgery", "Dermatology, Pediatric Dermatology", "Dermatology, Procedural Dermatology", "Doula", "Emergency Medicine", "Emergency Medicine, Emergency Medical Services", "Emergency Medicine, Hospice and Palliative Medicine", "Emergency Medicine, Medical Toxicology", "Emergency Medicine, Pediatric Emergency Medicine", "Emergency Medicine, Undersea and Hyperbaric Medicine", "Family Medicine", "Family Medicine, Addiction Medicine", "Family Medicine, Adolescent Medicine", "Family Medicine, Adult Medicine", "Family Medicine, Geriatric Medicine", "Family Medicine, Hospice and Palliative Medicine", "Family Medicine, Sports Medicine", "Internal Medicine", "Internal Medicine, Addiction Medicine", "Internal Medicine, Adolescent Medicine", "Internal Medicine, Advanced Heart Failure and Transplant Cardiology", "Internal Medicine, Allergy & Immunology", "Internal Medicine, Bariatric Medicine", "Internal Medicine, Cardiovascular Disease", "Internal Medicine, Clinical Cardiac Electrophysiology", "Internal Medicine, Critical Care Medicine", "Internal Medicine, Endocrinology, Diabetes & Metabolism", "Internal Medicine, Gastroenterology", "Internal Medicine, Geriatric Medicine", "Internal Medicine, Hematology", "Internal Medicine, Hematology & Oncology", "Internal Medicine, Hospice and Palliative Medicine", "Internal Medicine, Hypertension Specialist", "Internal Medicine, Infectious Disease", "Internal Medicine, Interventional Cardiology", "Internal Medicine, Medical Oncology", "Internal Medicine, Nephrology", "Internal Medicine, Pulmonary Disease", "Internal Medicine, Rheumatology", "Internal Medicine, Sleep Medicine", "Internal Medicine, Sports Medicine", "Lactation Consultant, Non-RN", "Medical Genetics, Clinical Biochemical Genetics", "Medical Genetics, Clinical Genetics (M.D.)", "Medical Genetics, Ph.D. Medical Genetics", "Midwife", "Nuclear Medicine", "Neuromusculoskeletal Medicine, Sports Medicine", "Neuromusculoskeletal Medicine & OMM", "Nuclear Medicine, Nuclear Cardiology", "Obstetrics & Gynecology", "Obstetrics & Gynecology, Complex Family Planning", "Obstetrics & Gynecology, Critical Care Medicine", "Obstetrics & Gynecology, Gynecologic Oncology", "Obstetrics & Gynecology, Gynecology", "Obstetrics & Gynecology, Hospice and Palliative Medicine", "Obstetrics & Gynecology, Maternal & Fetal Medicine", "Obstetrics & Gynecology, Obstetrics", "Obstetrics & Gynecology, Reproductive Endocrinology", "Ophthalmology", "Ophthalmology, Cornea and External Diseases Specialist", "Ophthalmology, Glaucoma Specialist", "Ophthalmology, Ophthalmic Plastic and Reconstructive Surgery", "Ophthalmology, Pediatric Ophthalmology and Strabismus Specialist", "Ophthalmology, Retina Specialist", "Oral & Maxillofacial Surgery", "Orthopaedic Surgery", "Orthopaedic Surgery, Adult Reconstructive Orthopaedic Surgery", "Orthopaedic Surgery, Foot and Ankle Surgery", "Orthopaedic Surgery, Hand Surgery", "Orthopaedic Surgery, Orthopaedic Surgery of the Spine", "Orthopaedic Surgery, Orthopaedic Trauma", "Orthopaedic Surgery, Pediatric Orthopaedic Surgery", "Orthopaedic Surgery, Sports Medicine", "Otolaryngology, Facial Plastic Surgery", "Otolaryngology, Otolaryngic Allergy", "Otolaryngology, Otolaryngology/Facial Plastic Surgery", "Otolaryngology, Otology & Neurotology", "Otolaryngology, Pediatric Otolaryngology", "Otolaryngology, Plastic Surgery within the Head & Neck", "Pain Medicine, Interventional Pain Medicine", "Pain Medicine, Pain Medicine", "Pathology, Anatomic Pathology", "Pathology, Anatomic Pathology & Clinical Pathology", "Pathology, Anatomic Pathology & Clinical Pathology", "Pathology, Blood Banking & Transfusion Medicine")
@@ -272,21 +272,21 @@ search_and_process_npi <- memoise(function(input_file,
     return(t)
   }
 
-  # Create an empty list to receive the data
-  out <- list()
+  # Create an empty list to store search results
+  search_results_list <- list()
 
   # Initialize progress bar
   total_names <- length(first_names)
   pb <- progress::progress_bar$new(total = total_names)
 
   # Search NPI for each name in the input data
-  out <- purrr::map2(first_names, last_names, function(first_name, last_name) {
+  search_results_list <- purrr::map2(first_names, last_names, function(first_name, last_name) {
     pb$tick()
     search_npi(first_name, last_name)
   })
 
   # Filter npi_data to keep only elements that are data frames
-  npi_data <- Filter(is.data.frame, out)
+  npi_data <- Filter(is.data.frame, search_results_list)
 
   # Combine multiple data frames into a single data frame using data.table::rbindlist()
   result <- data.table::rbindlist(npi_data, fill = TRUE)
@@ -329,12 +329,12 @@ create_geocode <- memoise::memoise(function(csv_file,
   }
 
   # Read the CSV file into a data frame
-  data <- read.csv(csv_file)
+  address_table <- read.csv(csv_file)
 
   if (is.null(output_file)) output_file <- csv_file
 
   # Check if the data frame contains the address column
-  if (!address_col %in% colnames(data)) {
+  if (!address_col %in% colnames(address_table)) {
     stop("The CSV file must have a column named '", address_col, "' for geocoding.")
   }
 
@@ -342,11 +342,11 @@ create_geocode <- memoise::memoise(function(csv_file,
   geocoded_results <- list()
 
   # Initialize progress bar
-  pb <- progress_bar$new(total = nrow(data), format = "[:bar] :percent :elapsed :eta :rate")
+  pb <- progress_bar$new(total = nrow(address_table), format = "[:bar] :percent :elapsed :eta :rate")
 
   # Loop through each address and geocode it
-  for (i in 1:nrow(data)) {
-    address <- data[[address_col]][i]
+  for (i in 1:nrow(address_table)) {
+    address <- address_table[[address_col]][i]
     result <- hereR::geocode(address)
     geocoded_results[[i]] <- result
     cat("Geocoded address ", i, " of ", nrow(data), "\n")
@@ -357,16 +357,16 @@ create_geocode <- memoise::memoise(function(csv_file,
   geocoded <- do.call(rbind, geocoded_results)
 
   # Add the geocoded information to the original data frame
-  data$latitude <- geocoded$latitude
-  data$longitude <- geocoded$longitude
+  address_table$latitude <- geocoded$latitude
+  address_table$longitude <- geocoded$longitude
 
   # Attach optional id column to the geocoded results
-  if (!is.null(id_col) && id_col %in% names(data)) {
-    geocoded[[id_col]] <- data[[id_col]]
+  if (!is.null(id_col) && id_col %in% names(address_table)) {
+    geocoded[[id_col]] <- address_table[[id_col]]
   }
 
   # Write the updated data frame with geocoded information back to a CSV file
-  write.csv(data, output_file, row.names = FALSE)
+  write.csv(address_table, output_file, row.names = FALSE)
   cat("Updated CSV file with geocoded information.\n")
 
   cat("Geocoding complete.\n")
@@ -780,29 +780,29 @@ validate_and_remove_invalid_npi <- function(input_data) {
   
   if (is.data.frame(input_data)) {
     # Input is a dataframe
-    df <- input_data
+    npi_records <- input_data
   } else if (is.character(input_data)) {
     # Input is a file path to a CSV
-    df <- readr::read_csv(input_data)
+    npi_records <- readr::read_csv(input_data)
   } else {
     stop("Input must be a dataframe or a file path to a CSV.")
   }
   
   # Standardize NPI column name
-  npi_col <- if ("npi" %in% names(df)) {
+  npi_col <- if ("npi" %in% names(npi_records)) {
     "npi"
-  } else if ("NPI" %in% names(df)) {
+  } else if ("NPI" %in% names(npi_records)) {
     "NPI"
   } else {
     stop("Dataframe must contain a column named 'npi' or 'NPI'.")
   }
   
   # Remove rows with missing or empty NPIs
-  df <- df %>%
+  npi_records <- npi_records %>%
     dplyr::filter(!is.na(!!sym(npi_col)) & !!sym(npi_col) != "")
   
   # Add a new column "npi_is_valid" to indicate NPI validity
-  df <- df %>%
+  npi_records <- npi_records %>%
     dplyr::mutate(npi_is_valid = sapply(!!sym(npi_col), function(x) {
       if (is.numeric(x) && nchar(x) == 10) {
         npi::npi_is_valid(as.character(x))
@@ -813,7 +813,7 @@ validate_and_remove_invalid_npi <- function(input_data) {
     dplyr::filter(!is.na(npi_is_valid) & npi_is_valid)
   
   # Return the valid dataframe with the "npi_is_valid" column
-  return(df)
+  return(npi_records)
 }
 
 ############
@@ -822,16 +822,16 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
   
   # Load data or read from file
   if (is.data.frame(input_data)) {
-    df <- input_data
+    npi_data <- input_data
   } else if (is.character(input_data)) {
-    df <- readr::read_csv(input_data)
+    npi_data <- readr::read_csv(input_data)
   } else {
     stop("Input must be a dataframe or a file path to a CSV.")
   }
   
   
   # Remove duplicate NPIs
-  df <- df %>% dplyr::distinct(npi, .keep_all = TRUE)
+  npi_data <- npi_data %>% dplyr::distinct(npi, .keep_all = TRUE)
   
   # Initialize a list to store NPIs with no results
   no_results_npi <- vector("list", 0)
@@ -855,7 +855,7 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
   }
   
   # Loop through the NPI column and get clinician data
-  df_updated <- df %>%
+  updated_records <- npi_data %>%
     #dplyr::mutate(row_number = row_number()) %>%
     dplyr::mutate(clinician_data = purrr::map(npi, get_clinician_data)) %>%
     tidyr::unnest(clinician_data, names_sep = "_") %>%
@@ -867,7 +867,7 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
     message("PEOPLE WHO RETIRED ARE GOING TO BE NO RESULTS. NPIs without results have been saved to ", no_results_csv)
   }
   
-  return(df_updated)
+  return(updated_records)
 }
 
 # fin
