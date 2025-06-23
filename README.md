@@ -1254,7 +1254,7 @@ isochrones_sf <- process_and_save_isochrones(
   iso_ranges = c(30*60, 60*60, 120*60, 180*60),  # Convert minutes to seconds
   crs = 4326, 
   transport_mode = "car",
-  file_path_prefix = "data/06-isochrones/isochrones_"
+  save_dir = "data/06-isochrones"
 )
 ```
 

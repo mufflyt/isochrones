@@ -526,12 +526,12 @@ test_and_process_isochrones <- function(input_file) {
 
 ##############################
 ###############################
-process_and_save_isochrones <- function(input_file, chunk_size = 25, 
+process_and_save_isochrones <- function(input_file, chunk_size = 25,
                                         iso_datetime = "2023-10-20 09:00:00",
                                         iso_ranges = c(30*60, 60*60, 120*60, 180*60),
-                                        crs = 4326, 
+                                        crs = 4326,
                                         transport_mode = "car",
-                                        file_path_prefix = "data/06-isochrones/isochrones_") 
+                                        save_dir = "data/06-isochrones")
   {
   message("Starting isochrones processing...")
   input_file$lat <- as.numeric(input_file$lat)
@@ -577,13 +577,18 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25,
       # Create the file name with the current date and time
       current_datetime <- format(Sys.time(), "%Y%m%d%H%M%S")
 
-      file_name <- paste0(
-        file_path_prefix,
-        current_datetime,
-        "_chunk_",
-        min(chunk_data$id),
-        "_to_",
-        max(chunk_data$id)
+      dir.create(save_dir, recursive = TRUE, showWarnings = FALSE)
+
+      file_name <- file.path(
+        save_dir,
+        paste0(
+          "isochrones_",
+          current_datetime,
+          "_chunk_",
+          min(chunk_data$id),
+          "_to_",
+          max(chunk_data$id)
+        )
       )
       dir.create(file_name, recursive = TRUE, showWarnings = FALSE)
 
