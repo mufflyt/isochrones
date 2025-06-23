@@ -722,12 +722,6 @@ download_and_merge_block_groups <- function(year) {
 # Example usage: download data for the year 2020
 # combined_block_groups_2020 <- download_and_merge_block_groups(2020)
 
-##########
-format_pct <- function(x, my_digits = 0) {
-  format(x, digits = my_digits, nsmall = my_digits)
-}
-
-
 #########
 postico_database_obgyns_by_year <- function(year, db_details) {
   # Database connection details
