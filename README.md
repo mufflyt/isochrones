@@ -2878,3 +2878,13 @@ decisions.*
 
 *Generated on 2025-06-22 \| Version 2.0 \| Comprehensive HTML Documentation*
 :::
+
+## rOpenSci Packaging
+
+This repository is being refactored to follow the [rOpenSci](https://ropensci.org/about/) packaging guidelines. Key additions include:
+
+- Function documentation written with **roxygen2** and exported via the NAMESPACE file.
+- A `CITATION` file so users can easily cite the package.
+- Continuous integration using GitHub Actions (see `.github/workflows/R-CMD-check.yaml`).
+
+These steps help make the package suitable for submission to rOpenSci's onboarding process.

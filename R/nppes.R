@@ -1,7 +1,15 @@
 #' Create a mapping between NPPES table names and years
 #'
-#' @param con A DBI connection to the NPPES database
-#' @return Data frame with columns `table_name` and `year`
+#' This helper scans the connected database for NPPES tables and
+#' extracts the year embedded in each table name.
+#'
+#' @param con A `DBI` connection to the NPPES database.
+#'
+#' @return A data frame with columns `table_name` and `year`.
+#' @examples
+#' # con <- DBI::dbConnect(RSQLite::SQLite(), "nppes.sqlite")
+#' # create_nppes_table_mapping(con)
+#' @export
 create_nppes_table_mapping <- function(con) {
   all_tables <- DBI::dbListTables(con)
   nppes_tables <- all_tables[grepl("npidata|NPPES_Data_Dissemination", all_tables, ignore.case = TRUE)]
@@ -18,11 +26,19 @@ create_nppes_table_mapping <- function(con) {
 
 #' Query physician data across multiple years
 #'
-#' @param con A DBI connection
-#' @param table_year_mapping Data frame from `create_nppes_table_mapping`
-#' @param taxonomy_codes Character vector of taxonomy codes
-#' @param years_to_include Optional numeric vector of years to include
-#' @return A tibble with provider data
+#' Retrieves provider information for the supplied taxonomy codes
+#' across the NPPES tables in `table_year_mapping`.
+#'
+#' @param con A `DBI` connection.
+#' @param table_year_mapping Data frame from `create_nppes_table_mapping`.
+#' @param taxonomy_codes Character vector of taxonomy codes to filter on.
+#' @param years_to_include Optional numeric vector of years to include.
+#'
+#' @return A tibble with provider data.
+#' @examples
+#' # mapping <- create_nppes_table_mapping(con)
+#' # find_physicians_across_years(con, mapping, c("207V00000X"))
+#' @export
 find_physicians_across_years <- function(con, table_year_mapping, taxonomy_codes,
                                          years_to_include = NULL) {
   assertthat::assert_that(DBI::dbIsValid(con))

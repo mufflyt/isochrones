@@ -146,7 +146,7 @@ tyler_*.tar.gz
 #--------------------------------------
 .gitattributes
 .git/
-.github/
+# .github directory now tracked for CI configuration
 #--------------------------------------
 # Temporary files
 #--------------------------------------
