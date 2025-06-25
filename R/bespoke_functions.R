@@ -1510,6 +1510,7 @@ count_nppes_providers <- function(connection, table_name) {
   tryCatch({
     provider_count <- dplyr::tbl(connection, table_name) %>%
       dplyr::count() %>%
+      dplyr::compute() %>%
       dplyr::collect() %>%
       dplyr::pull(n)
     
@@ -1533,6 +1534,7 @@ save_nppes_to_rds <- function(connection, table_name, output_path) {
   tryCatch({
     logger::log_debug("Reading data from DuckDB table: {table_name}")
     nppes_provider_data <- dplyr::tbl(connection, table_name) %>%
+      dplyr::compute() %>%
       dplyr::collect()
     
     logger::log_info("Saving data to RDS file: {output_path}")
@@ -1967,6 +1969,7 @@ try_dplyr_approach <- function(connection, current_table, current_year, taxonomy
       providers_data <- query %>%
         dplyr::rename(!!!rename_cols) %>%
         dplyr::mutate(Year = as.integer(current_year)) %>%
+        dplyr::compute() %>%
         dplyr::collect(n = max_results_per_year)
       
       if ("Zip" %in% colnames(providers_data)) {

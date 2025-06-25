@@ -1759,6 +1759,7 @@ final_dataset_statistics <- final_processed_obgyn_providers %>%
     md_credential_count = sum(credential_standardized == "MD", na.rm = TRUE),
     do_credential_count = sum(credential_standardized == "DO", na.rm = TRUE)
   ) %>%
+  dplyr::compute() %>%
   dplyr::collect()
 
 logger::log_info("=== FINAL DATASET STATISTICS ===")
@@ -1771,6 +1772,7 @@ logger::log_info("DO credentials: {final_dataset_statistics$do_credential_count}
 logger::log_info("Collecting final processed dataset from duckplyr to R memory")
 
 final_obgyn_provider_dataset <- final_processed_obgyn_providers %>%
+  dplyr::compute() %>%
   dplyr::collect()
 
 logger::log_info("Dataset collection from duckplyr completed")
@@ -1868,6 +1870,7 @@ logger::log_info("Pre-cleaning record count: {scales::comma(pre_cleaning_record_
 logger::log_info("Collecting data from duckplyr backend to R memory for advanced cleaning")
 
 continental_us_provider_tibble <- continental_us_providers %>%
+  dplyr::compute() %>%
   dplyr::collect()
 
 assertthat::assert_that(
