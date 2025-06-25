@@ -1,6 +1,8 @@
 # Changelog
 ## 2025-06-24
 - Added `compute()` before `collect()` in several scripts to ensure heavy queries are materialized in DuckDB prior to transferring results into R.
+- Added comprehensive roxygen documentation for custom functions.
+- Added usage comments for libraries in `01-setup.R` to clarify their purpose.
 
 ## 2025-06-23
 - Added function `print_ascii_art()` to display the project art.
