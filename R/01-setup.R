@@ -125,12 +125,18 @@ code_folder <- here::here("R")
 
 #' Search NPI Database by Taxonomy
 #'
+#' @description Search the NPI registry for providers by taxonomy and filter
+#'   the results by credential.
 #' @param taxonomy_to_search A character vector of taxonomy descriptions
 #' @param enumeration_type NPI enumeration type to search
 #' @param limit Maximum number of results to retrieve per taxonomy
 #' @param country_code Country code for the search
 #' @param credential_filter Vector of credentials to keep
 #' @return A cleaned and filtered data frame of matched NPIs
+#' @seealso npi::npi_search
+#' @examples
+#' search_by_taxonomy("Obstetrics & Gynecology", limit = 10)
+#' @export
 search_by_taxonomy <- function(taxonomy_to_search,
                                enumeration_type = "ind",
                                limit = 1200,
@@ -242,6 +248,18 @@ search_by_taxonomy <- function(taxonomy_to_search,
 ##############################
 ###############################
 #' Search and Process NPI Numbers
+#'
+#' @description Search for provider names, fetch matching NPIs and clean the
+#'   returned data.
+#' @param input_file Path to a CSV, Excel or RDS file of names to search.
+#' @param enumeration_type NPI enumeration type to search
+#' @param limit Maximum number of results to retrieve per name
+#' @param country_code Country code for the search
+#' @param filter_credentials Vector of credentials used to filter results
+#' @return A data frame of search results
+#' @examples
+#' search_and_process_npi("providers.csv")
+#' @export
 # Define a memoization function for search_and_process_npi
 
 search_and_process_npi <- memoise(function(input_file,
@@ -339,11 +357,18 @@ search_and_process_npi <- memoise(function(input_file,
 #**************************
 #* create_geocode: 04-geocode.R.  GEOCODE THE DATA USING HERE API.  The key is hard coded into the function.
 #*
+#' Geocode an address file
+#'
+#' @description Geocode a CSV of addresses using the HERE API and return an
+#'   `sf` object of coordinates.
 #' @param csv_file Input CSV file containing addresses
 #' @param address_col Name of the address column
 #' @param output_file Optional file path to write geocoded results
 #' @param id_col Optional column name to carry through to results
 #' @return An `sf` object with geocoded locations
+#' @examples
+#' geocoded <- create_geocode("addresses.csv")
+#' @export
 #**************************
 create_geocode <- memoise::memoise(function(csv_file,
                                      address_col = "address",
@@ -411,6 +436,18 @@ create_geocode <- memoise::memoise(function(csv_file,
 
 ##############################
 ###############################
+#' Create and Save a Physician Dot Map
+#'
+#' @description Create a Leaflet map of physician locations and optionally save
+#'   it as an HTML file.
+#' @param physician_data Data frame containing `lat` and `long` columns
+#' @param jitter_range Amount of jitter to apply to coordinates
+#' @param color_palette Name of the viridis palette to use
+#' @param popup_var Column name to display in the marker popup
+#' @return A `leaflet` widget
+#' @examples
+#' create_and_save_physician_dot_map(my_df)
+#' @export
 create_and_save_physician_dot_map <- function(physician_data, jitter_range = 0.05, color_palette = "magma", popup_var = "name") {
   # Add jitter to latitude and longitude coordinates
   jittered_physician_data <- physician_data %>%
@@ -494,6 +531,15 @@ create_and_save_physician_dot_map <- function(physician_data, jitter_range = 0.0
 ##############################
 ###############################
 #***************
+#' Test and Process Isochrones
+#'
+#' @description Generate isochrones for a sample of locations and log any
+#'   failures for review.
+#' @param input_file Data frame containing longitude and latitude columns
+#' @return A list with isochrone results
+#' @examples
+#' test_and_process_isochrones(my_data)
+#' @export
 test_and_process_isochrones <- function(input_file) {
   input_file <- input_file %>%
     mutate(id = row_number()) %>%
@@ -561,6 +607,21 @@ test_and_process_isochrones <- function(input_file) {
 
 ##############################
 ###############################
+#' Process and Save Isochrones
+#'
+#' @description Compute isochrones for many points in chunks and save them to
+#'   disk as GeoJSON files.
+#' @param input_file Data frame with `long` and `lat` columns
+#' @param chunk_size Number of points to process per request
+#' @param iso_datetime Date and time for the routing calculation
+#' @param iso_ranges Numeric vector of time ranges in seconds
+#' @param crs Coordinate reference system for output
+#' @param transport_mode Transport mode for routing (e.g., "car")
+#' @param save_dir Directory path for saving isochrone files
+#' @return A combined `sf` object of all computed isochrones
+#' @examples
+#' process_and_save_isochrones(df)
+#' @export
 process_and_save_isochrones <- function(input_file, chunk_size = 25,
                                         iso_datetime = "2023-10-20 09:00:00",
                                         iso_ranges = c(30*60, 60*60, 120*60, 180*60),
@@ -666,6 +727,14 @@ us_fips_list <- tigris::fips_codes %>%
   dplyr::pull()
 
 
+#' Get Census Block Group Data
+#'
+#' @description Retrieve ACS block group data for a vector of state FIPS codes.
+#' @param us_fips_list Character vector of state FIPS codes
+#' @return A data frame of ACS variables for all requested states
+#' @examples
+#' get_census_data(c("08", "06"))
+#' @export
 get_census_data <- function (us_fips_list)
 {
   state_data <- list()
@@ -686,6 +755,14 @@ get_census_data <- function (us_fips_list)
 
 ######
 #Entire USA national scale block groups only start at 2019
+#' Process Census Block Groups
+#'
+#' @description Download and simplify census block groups for multiple years.
+#' @param years Integer vector of years to process
+#' @return None. Shapefiles are written to disk
+#' @examples
+#' process_block_groups(c(2019, 2020))
+#' @export
 process_block_groups <- function(years) {
   for (year in years) {
     block_groups_by_year <- tigris::block_groups(state = NULL, cb = TRUE, year = year)
@@ -711,6 +788,14 @@ process_block_groups <- function(years) {
 #process_block_groups(years_to_process)
 
 ######
+#' Download and Merge Block Groups
+#'
+#' @description Retrieve block group polygons for all US states in a given year and merge them.
+#' @param year Single year to download
+#' @return An `sf` object of merged block groups
+#' @examples
+#' download_and_merge_block_groups(2020)
+#' @export
 download_and_merge_block_groups <- function(year) {
   # Specific list of state FIPS codes
   us_fips_list <- c("01", "02", "04", "05", "06", "08", "09", "10", "11", "12",
@@ -760,9 +845,26 @@ download_and_merge_block_groups <- function(year) {
 }
 
 # Example usage: download data for the year 2020
+#' Download and Merge Block Groups
+#'
+#' @description Retrieve block group polygons for all US states in a given year and merge them.
+#' @param year Single year to download
+#' @return An `sf` object of merged block groups
+#' @examples
+#' download_and_merge_block_groups(2020)
+#' @export
 # combined_block_groups_2020 <- download_and_merge_block_groups(2020)
 
 #########
+#' Query Postico Database of OBGYNs
+#'
+#' @description Connect to a Postgres database and extract NPI records for a given year.
+#' @param year Year of the table to query
+#' @param db_details Named list with connection parameters
+#' @return A processed data frame of provider information
+#' @examples
+#' postico_database_obgyns_by_year(2020, details)
+#' @export
 postico_database_obgyns_by_year <- function(year, db_details) {
   # Database connection details
   db_host <- db_details$host
@@ -811,6 +913,14 @@ postico_database_obgyns_by_year <- function(year, db_details) {
 #   password = "????"
 # )
 
+#' Validate and Remove Invalid NPI Values
+#'
+#' @description Checks NPI numbers for validity and drops rows with invalid entries.
+#' @param input_data Data frame or CSV path containing NPI values
+#' @return A cleaned data frame with a validity flag
+#' @examples
+#' validate_and_remove_invalid_npi(df)
+#' @export
 validate_and_remove_invalid_npi <- function(input_data) {
   
   if (is.data.frame(input_data)) {
