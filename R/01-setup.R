@@ -55,6 +55,41 @@ library(ggplot2)
 library(ggthemes)
 library(maps)
 library(forcats)
+# Additional packages used elsewhere in the project
+library(DBI)         # database access in openpayments.R
+library(DT)          # interactive tables in GO_access_analysis_code.Rmd
+library(RPostgres)   # PostgreSQL connections in Postico_database_pull.R
+library(arrow)       # Parquet support in A - nber_nppes_download.R
+library(assertthat)  # input validation in B-Medicare_part_d_prescribers_read_in.R
+library(beepr)       # progress alerts in A-physician_compare_data_download.R
+library(dbplyr)      # DB manipulation in C-open_payments.R
+library(downloader)  # file downloads in A-nppes_download.R
+library(dplyr)       # data wrangling used across scripts
+library(duckdb)      # local DB operations in openpayments.R
+library(duckplyr)    # duckdb tibble translation in B-NPPES_read_in_csv_file_to_duckDB_database.R
+library(fs)          # filesystem helpers in A-open_payments_download.R
+library(gganimate)   # animations in GO_access_analysis_code.Rmd
+library(gghighlight) # highlight plots in GO_access_analysis_code.Rmd
+library(ggrepel)     # non-overlap labels in GO_REBUILD.Rmd
+library(ggspatial)   # scale bars in What is a census tract?.Rmd
+library(ggtext)      # rich text labels in GO_access_analysis_code.Rmd
+library(glue)        # string interpolation in openpayments.R
+library(gridExtra)   # arranging plots in F-retirement_year_confirmation.R
+library(httr)        # HTTP requests in NPPES_deactivated_download.R
+library(janitor)     # cleaning tables in F-retirement_year_confirmation.R
+library(kableExtra)  # formatted tables in GO_REBUILD.Rmd
+library(knitr)       # report generation in GO_REBUILD.Rmd
+library(lme4)        # mixed models in isochrones.Rmd
+library(logger)      # logging in D-Quality_check_medicare_prescribing.R
+library(lubridate)   # date handling in D-Quality_check_medicare_prescribing.R
+library(patchwork)   # plot layouts in C-Medicare_part_d_prescribers_processing.R
+library(postmastr)   # address parsing in B-nber_nppes_combine_columns.R
+library(readr)       # fast CSV reading in B-Medicare_part_d_prescribers_read_in.R
+library(rlang)       # tidy evaluation in GO_REBUILD.Rmd
+library(rvest)       # web scraping in NPPES_deactivated_download.R
+library(scales)      # axis scales in GO_access_analysis_code.Rmd
+library(tibble)      # tidy tables in C-NPPES.R
+library(tyler)       # custom utilities in C-NPPES.R
 source("R/here_api_utils.R")
 
 #Of note this is a personal package with some bespoke functions and data that we will use occasionally.  It is still under development and it is normal for it to give multiple warnings at libary(tyler).

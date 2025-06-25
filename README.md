@@ -1915,7 +1915,13 @@ if (memory_gb < 8) {
 # Install required packages
 required_packages <- c(
   "tidyverse", "sf", "tigris", "logger", "assertthat",
-  "ggplot2", "scales", "viridis", "DT", "knitr"
+  "ggplot2", "scales", "viridis", "DT", "knitr",
+  "DBI", "RPostgres", "arrow", "beepr", "dbplyr",
+  "downloader", "dplyr", "duckdb", "duckplyr", "fs",
+  "gganimate", "gghighlight", "ggrepel", "ggspatial", "ggtext",
+  "glue", "gridExtra", "httr", "janitor", "kableExtra",
+  "lme4", "lubridate", "patchwork", "postmastr", "readr",
+  "rlang", "rvest", "tibble", "tyler"
 )
 
 # Install missing packages
