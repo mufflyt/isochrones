@@ -125,17 +125,21 @@ code_folder <- here::here("R")
 
 #' Search NPI Database by Taxonomy
 #'
-#' @description Search the NPI registry for providers by taxonomy and filter
-#'   the results by credential.
-#' @param taxonomy_to_search A character vector of taxonomy descriptions
+#' @description Search the NPI registry for providers by taxonomy and
+#'   filter the results by credential.
+#' @param taxonomy_to_search A character vector of taxonomy descriptions.
 #' @param enumeration_type NPI enumeration type to search
+#'   (default `"ind"`).
 #' @param limit Maximum number of results to retrieve per taxonomy
-#' @param country_code Country code for the search
+#'   (default `1200`).
+#' @param country_code Country code for the search (default `"US"`).
 #' @param credential_filter Vector of credentials to keep
+#'   (default `c("MD", "DO")`).
 #' @return A cleaned and filtered data frame of matched NPIs
 #' @seealso npi::npi_search
 #' @examples
 #' search_by_taxonomy("Obstetrics & Gynecology", limit = 10)
+#' @family npi
 #' @export
 search_by_taxonomy <- function(taxonomy_to_search,
                                enumeration_type = "ind",
@@ -249,16 +253,20 @@ search_by_taxonomy <- function(taxonomy_to_search,
 ###############################
 #' Search and Process NPI Numbers
 #'
-#' @description Search for provider names, fetch matching NPIs and clean the
-#'   returned data.
+#' @description Search for provider names, fetch matching NPIs and clean
+#'   the returned data.
 #' @param input_file Path to a CSV, Excel or RDS file of names to search.
 #' @param enumeration_type NPI enumeration type to search
+#'   (default `"ind"`).
 #' @param limit Maximum number of results to retrieve per name
-#' @param country_code Country code for the search
+#'   (default `5`).
+#' @param country_code Country code for the search (default `"US"`).
 #' @param filter_credentials Vector of credentials used to filter results
+#'   (default `c("MD", "DO")`).
 #' @return A data frame of search results
 #' @examples
 #' search_and_process_npi("providers.csv")
+#' @family npi
 #' @export
 # Define a memoization function for search_and_process_npi
 
@@ -361,13 +369,16 @@ search_and_process_npi <- memoise(function(input_file,
 #'
 #' @description Geocode a CSV of addresses using the HERE API and return an
 #'   `sf` object of coordinates.
-#' @param csv_file Input CSV file containing addresses
-#' @param address_col Name of the address column
+#' @param csv_file Input CSV file containing addresses.
+#' @param address_col Name of the address column (default `"address"`).
 #' @param output_file Optional file path to write geocoded results
+#'   (default `NULL`).
 #' @param id_col Optional column name to carry through to results
+#'   (default `NULL`).
 #' @return An `sf` object with geocoded locations
 #' @examples
 #' geocoded <- create_geocode("addresses.csv")
+#' @family geocode
 #' @export
 #**************************
 create_geocode <- memoise::memoise(function(csv_file,
@@ -438,15 +449,19 @@ create_geocode <- memoise::memoise(function(csv_file,
 ###############################
 #' Create and Save a Physician Dot Map
 #'
-#' @description Create a Leaflet map of physician locations and optionally save
-#'   it as an HTML file.
-#' @param physician_data Data frame containing `lat` and `long` columns
+#' @description Create a Leaflet map of physician locations and optionally
+#'   save it as an HTML file.
+#' @param physician_data Data frame containing `lat` and `long` columns.
 #' @param jitter_range Amount of jitter to apply to coordinates
+#'   (default `0.05`).
 #' @param color_palette Name of the viridis palette to use
+#'   (default `"magma"`).
 #' @param popup_var Column name to display in the marker popup
+#'   (default `"name"`).
 #' @return A `leaflet` widget
 #' @examples
 #' create_and_save_physician_dot_map(my_df)
+#' @family visualization
 #' @export
 create_and_save_physician_dot_map <- function(physician_data, jitter_range = 0.05, color_palette = "magma", popup_var = "name") {
   # Add jitter to latitude and longitude coordinates
@@ -535,10 +550,11 @@ create_and_save_physician_dot_map <- function(physician_data, jitter_range = 0.0
 #'
 #' @description Generate isochrones for a sample of locations and log any
 #'   failures for review.
-#' @param input_file Data frame containing longitude and latitude columns
+#' @param input_file Data frame containing longitude and latitude columns.
 #' @return A list with isochrone results
 #' @examples
 #' test_and_process_isochrones(my_data)
+#' @family isochrones
 #' @export
 test_and_process_isochrones <- function(input_file) {
   input_file <- input_file %>%
@@ -611,16 +627,22 @@ test_and_process_isochrones <- function(input_file) {
 #'
 #' @description Compute isochrones for many points in chunks and save them to
 #'   disk as GeoJSON files.
-#' @param input_file Data frame with `long` and `lat` columns
+#' @param input_file Data frame with `long` and `lat` columns.
 #' @param chunk_size Number of points to process per request
+#'   (default `25`).
 #' @param iso_datetime Date and time for the routing calculation
+#'   (default `"2023-10-20 09:00:00"`).
 #' @param iso_ranges Numeric vector of time ranges in seconds
-#' @param crs Coordinate reference system for output
+#'   (default `c(30*60, 60*60, 120*60, 180*60)`).
+#' @param crs Coordinate reference system for output (default `4326`).
 #' @param transport_mode Transport mode for routing (e.g., "car")
+#'   (default `"car"`).
 #' @param save_dir Directory path for saving isochrone files
+#'   (default `"data/06-isochrones"`).
 #' @return A combined `sf` object of all computed isochrones
 #' @examples
 #' process_and_save_isochrones(df)
+#' @family isochrones
 #' @export
 process_and_save_isochrones <- function(input_file, chunk_size = 25,
                                         iso_datetime = "2023-10-20 09:00:00",
@@ -730,10 +752,11 @@ us_fips_list <- tigris::fips_codes %>%
 #' Get Census Block Group Data
 #'
 #' @description Retrieve ACS block group data for a vector of state FIPS codes.
-#' @param us_fips_list Character vector of state FIPS codes
+#' @param us_fips_list Character vector of state FIPS codes.
 #' @return A data frame of ACS variables for all requested states
 #' @examples
 #' get_census_data(c("08", "06"))
+#' @family census
 #' @export
 get_census_data <- function (us_fips_list)
 {
@@ -758,10 +781,11 @@ get_census_data <- function (us_fips_list)
 #' Process Census Block Groups
 #'
 #' @description Download and simplify census block groups for multiple years.
-#' @param years Integer vector of years to process
+#' @param years Integer vector of years to process.
 #' @return None. Shapefiles are written to disk
 #' @examples
 #' process_block_groups(c(2019, 2020))
+#' @family census
 #' @export
 process_block_groups <- function(years) {
   for (year in years) {
@@ -791,10 +815,11 @@ process_block_groups <- function(years) {
 #' Download and Merge Block Groups
 #'
 #' @description Retrieve block group polygons for all US states in a given year and merge them.
-#' @param year Single year to download
+#' @param year Single year to download.
 #' @return An `sf` object of merged block groups
 #' @examples
 #' download_and_merge_block_groups(2020)
+#' @family census
 #' @export
 download_and_merge_block_groups <- function(year) {
   # Specific list of state FIPS codes
@@ -859,11 +884,12 @@ download_and_merge_block_groups <- function(year) {
 #' Query Postico Database of OBGYNs
 #'
 #' @description Connect to a Postgres database and extract NPI records for a given year.
-#' @param year Year of the table to query
-#' @param db_details Named list with connection parameters
+#' @param year Year of the table to query.
+#' @param db_details Named list with connection parameters.
 #' @return A processed data frame of provider information
 #' @examples
 #' postico_database_obgyns_by_year(2020, details)
+#' @family npi
 #' @export
 postico_database_obgyns_by_year <- function(year, db_details) {
   # Database connection details
@@ -916,10 +942,11 @@ postico_database_obgyns_by_year <- function(year, db_details) {
 #' Validate and Remove Invalid NPI Values
 #'
 #' @description Checks NPI numbers for validity and drops rows with invalid entries.
-#' @param input_data Data frame or CSV path containing NPI values
+#' @param input_data Data frame or CSV path containing NPI values.
 #' @return A cleaned data frame with a validity flag
 #' @examples
 #' validate_and_remove_invalid_npi(df)
+#' @family npi
 #' @export
 validate_and_remove_invalid_npi <- function(input_data) {
   
@@ -962,6 +989,19 @@ validate_and_remove_invalid_npi <- function(input_data) {
 }
 
 ############
+#' Retrieve Clinician Data
+#'
+#' @description Given a data frame or CSV file with NPI numbers, fetch
+#'   clinician details from the provider API.
+#' @param input_data Data frame or CSV file containing an `npi` column.
+#' @param no_results_csv File path to save NPIs without results
+#'   (default `"no_results_npi.csv"`).
+#' @return A data frame with the original data and nested clinician details
+#'   for each NPI.
+#' @examples
+#' retrieve_clinician_data(my_npi_data)
+#' @family npi
+#' @export
 retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi.csv") {
   message("The data should already have had the NPI numbers validated.")
   
