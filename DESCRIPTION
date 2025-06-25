@@ -13,3 +13,4 @@ Imports:
     stringr,
     tibble,
     scales
+RoxygenNote: 7.3.2
