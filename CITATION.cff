@@ -6,5 +6,28 @@ authors:
   - family-names: Muffly
     given-names: Tyler
     affiliation: Department of Obstetrics and Gynecology
+    orcid: https://orcid.org/0000-0002-5120-828X
 license: MIT
 date-released: 2025-06-22
+url: https://github.com/mufflyt/isochrones
+abstract: >-
+  This project analyzes nationwide access to gynecologic oncologists and other
+  OBGYN subspecialists using drive time isochrones, demographic data, and
+  geospatial analysis. The analysis examines how accessibility varies across
+  different geographic areas, demographic groups, and time periods (2013–2023).
+keywords:
+  - gynecologic oncology
+  - healthcare accessibility
+  - spatial analysis
+  - isochrones
+  - health disparities
+  - geographic information systems
+preferred-citation:
+  type: manual
+  title: "Gynecologic Oncology Accessibility Project"
+  author:
+    - family-names: Muffly
+      given-names: Tyler
+  year: "2025"
+  url: https://github.com/mufflyt/isochrones
+
