@@ -2357,9 +2357,12 @@ comprehensively_cleaned_provider_records <- grouped_provider_records_for_imputat
   dplyr::group_by(npi)
 
 
-# Postmastr standardization because there are lots of people who work at the same place but have different addresses.  ----
+# Postmastr standardization because there are lots of people who work at the same place but have different addresses.----
 # install.packages("remotes")
 #remotes::install_github("slu-openGIS/postmastr")
+
+comprehensively_cleaned_provider_records <- readr::read_csv("data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv") %>%
+  dplyr::mutate(practice_address = paste(plocline1, ploccityname, plocstatename, ploczip, sep = ", "))
 
 # Load required libraries
 library(postmastr)
@@ -2368,17 +2371,26 @@ library(stringr)
 library(purrr)
 library(readr)
 
+# This is going to take a while.  
 dirs <- pm_dictionary(type = "directional", filter = c("N", "S", "E", "W"), locale = "us")
-mo <- pm_dictionary(type = "state", case = c("title", "upper"), locale = "us")
-sushi1 <- pm_identify(comprehensively_cleaned_provider_records, var = "practice_address")
-sushi1_min <- pm_prep(sushi1, var = "practice_address", type = "street")
-sushi2_min <- pm_house_parse(sushi1_min)
-sushi2_min <- pm_streetDir_parse(sushi2_min, dictionary = dirs)
-sushi2_min <- pm_streetSuf_parse(sushi2_min)
 
+sushi_parsed <- comprehensively_cleaned_provider_records %>%
+  pm_identify(var = "practice_address") %>%
+  pm_parse(input = "full",
+           address = "practice_address",
+           output = "full",
+           keep_parsed = FALSE,
+           dir_dict = dirs); sushi_parsed$pm.address
+
+comprehensively_cleaned_provider_records <- comprehensively_cleaned_provider_records %>%
+  dplyr::mutate(pm_address = sushi_parsed$pm.address) %>%
+  dplyr::select(-starts_with(c("pmail", "ploc"))) %>% # removes old address info
+  dplyr::select(-pnamesuffix, -ptaxcode2, -ptaxcode3, -ptaxcode4, -certdate, -lastupdate, -penumdatestr)
 
 logger::log_info("Advanced data cleaning validation successful")
 logger::log_info("Post-cleaning dataset: {scales::comma(post_cleaning_record_count)} rows x {post_cleaning_column_count} columns")
+
+comprehensively_cleaned_provider_records$pm_address
 
 # ============================================================================
 # FINAL DATASET OUTPUT ----
@@ -2388,6 +2400,7 @@ logger::log_info("=== STEP 7: DATASET EXPORT ===")
 logger::log_info("Exporting comprehensively cleaned dataset to CSV")
 
 # Ensure output directory exists
+output_cleaned_provider_csv_path <- "data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv"
 output_directory_path <- base::dirname(output_cleaned_provider_csv_path)
 
 if (!base::dir.exists(output_directory_path)) {
@@ -2417,6 +2430,7 @@ tryCatch({
   base::stop("Dataset export failed")
 })
 
+readr::read_csv("data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv")
 
 # ============================================================================
 # ADDRESS COMPARISON ANALYSIS
