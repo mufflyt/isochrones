@@ -1,7 +1,7 @@
 # Workflow for Geographic Disparities in Potential Accessibility to Obstetrics and Gynecology Subspecialists in the United States from 2017 to 2023
 
 source("R/01-setup.R")
-source("R/02-search_taxonomy.R")
+source("R/02-nber_nppes.R")
 source("R/03-search_and_process_npi.R")
 source("R/03a-search_and_process_extra.R")
 source("R/04-geocode.R")
