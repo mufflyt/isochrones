@@ -1,6 +1,11 @@
 # Changelog
+## 2025-06-27
+- Standardized all address fields with the `postmastr` package to improve geocoding reliability.
+- Added clarifying comments in `01-setup.R` outlining how each library is used.
+- Expanded roxygen blocks across helper files for easier discovery.
+
 ## 2025-06-24
-- Added `compute()` before `collect()` in several scripts to ensure heavy queries are materialized in DuckDB prior to transferring results into R.
+- Added `compute()` before `collect()` in several scripts so large DuckDB queries are materialized prior to bringing the data into R.
 - Added comprehensive roxygen documentation for custom functions.
 - Added usage comments for libraries in `01-setup.R` to clarify their purpose.
 

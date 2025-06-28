@@ -3,7 +3,9 @@ Type: Package
 Title: Utilities for Isochrone Analysis
 Version: 0.1.0
 Authors@R: c(person(given = "Tyler", family = "Muffly", role = c("aut", "cre"), email = "tyler.muffly@dhha.org"))
-Description: Helper functions used in the isochrones project.
+Description: Utility scripts and helpers for analyzing drive-time isochrones and
+    healthcare accessibility. Functions cover dataset retrieval, geocoding,
+    polygon creation, and summary reporting.
 License: MIT
 Encoding: UTF-8
 LazyData: true
