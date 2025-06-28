@@ -14,11 +14,15 @@
 #' summarize_abstract(abstract_text)
 #' @export
 summarize_abstract <- function(text) {
-  tibble::tibble(
+  stopifnot(is.character(text))
+
+  result <- tibble::tibble(
     words = stringr::str_count(text, stringr::boundary("word")),
     sentences = stringr::str_count(text, stringr::boundary("sentence")),
     characters = nchar(text)
   )
+
+  result
 }
 
 #' Count the number of paragraphs in text
@@ -30,9 +34,12 @@ summarize_abstract <- function(text) {
 #'
 #' @export
 count_paragraphs <- function(text) {
+  stopifnot(is.character(text))
+
   if (length(text) > 1) {
     text <- paste(text, collapse = "\n")
   }
-  parts <- unlist(strsplit(text, "\n\s*\n"))
+
+  parts <- stringr::str_split(text, "\n\s*\n")[[1]]
   sum(nzchar(trimws(parts)))
 }
