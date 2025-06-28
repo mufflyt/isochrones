@@ -1,3 +1,4 @@
+testthat::local_edition(3)
 library(testthat)
 source(file.path("..", "..", "R", "abstract_statistics.R"))
 

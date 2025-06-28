@@ -16,7 +16,7 @@
 #' }
 #' @export
 initialize_here_api_key <- function(api_key = Sys.getenv("HERE_API_KEY"), verbose = FALSE) {
-  if (is.null(api_key) || api_key == "") {
+  if (!nzchar(api_key)) {
     stop("HERE API key must be provided via argument or HERE_API_KEY env var.")
   }
 
@@ -26,4 +26,6 @@ initialize_here_api_key <- function(api_key = Sys.getenv("HERE_API_KEY"), verbos
   if (verbose) {
     logger::log_info("HERE API key successfully initialized")
   }
+
+  invisible(api_key)
 }

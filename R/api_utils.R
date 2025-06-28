@@ -21,7 +21,7 @@ get_env_or_stop <- function(var, msg = NULL, verbose = FALSE) {
 
   val <- Sys.getenv(var)
 
-  if (val == "") {
+  if (!nzchar(val)) {
     if (is.null(msg)) {
       msg <- paste0(var, " environment variable is not set. Please add it to your .Renviron or .env file")
     }
@@ -32,5 +32,5 @@ get_env_or_stop <- function(var, msg = NULL, verbose = FALSE) {
     logger::log_info("Successfully retrieved environment variable '%s'", var)
   }
 
-  val
+  return(val)
 }

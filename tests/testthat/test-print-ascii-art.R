@@ -1,3 +1,4 @@
+testthat::local_edition(3)
 source(file.path("..", "..", "R", "print_ascii_art.R"))
 
 testthat::test_that("print_ascii_art outputs ascii", {
