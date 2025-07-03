@@ -57,6 +57,20 @@ params:
   output_format: "html_document"
 ---
 
+## Parameters
+
+The parameters above control data input paths, reporting options, and logging
+behavior. `input_data_path` points to the CSV file with access data. The list in
+`drive_time_thresholds` specifies which drive times (in minutes) will be
+analyzed. `categories` defines demographic groups present in the dataset.
+`target_year` selects the year for the racial disparity summary, while
+`figure_base_dir` is the folder where plots will be saved. Other parameters tune
+table pagination, benchmark reference output, and whether plots should be
+animated.  The logger threshold (`log_level`) controls how much information is
+printed during execution.
+
+# OVERVIEW
+
 # OVERVIEW
 This code performs a comprehensive analysis of access to gynecologic oncologists (GOs) across different geographic regions, time periods, and demographic groups. The analysis focuses on drive time thresholds (30, 60, 120, and 180 minutes) to measure accessibility. The code includes several robust functions that process data from CSV files, calculate weighted statistics, analyze temporal trends, and examine racial/ethnic disparities in access. It then creates detailed visualizations showing accessibility patterns, including time series analysis of declining access rates, comparisons between different years (particularly 2013 vs 2022), normalized trend analysis, and demographic breakdowns. The visualizations reveal a consistent decline in accessibility across all drive time thresholds from 2013 to 2022, with the decline being most pronounced for shorter travel times (30-minute threshold). The code also generates formatted results text and publication-ready tables that highlight key findings about geographic and racial/ethnic disparities in access to gynecologic oncology care.
 
@@ -92,7 +106,15 @@ library(stats)
 # Set logger threshold
 logger::log_threshold(params$log_level)
 
-# Master figure directory setup - run this at the beginning
+#' Setup figure directory structure
+#'
+#' Creates a base directory and a set of subdirectories for storing analysis
+#' figures.
+#'
+#' @param base_dir Base directory for figure output.
+#' @return The path to the created base directory.
+#' @examples
+#' setup_figure_directories("figures")
 setup_figure_directories <- function(base_dir = "figures") {
   # Create main figures directory
   if (!dir.exists(base_dir)) {
@@ -145,20 +167,37 @@ knitr::opts_chunk$set(
 )
 ```
 
+## How to Run the Analysis
+
+Install required packages listed in the setup chunk, then render this document
+with `rmarkdown::render()`. Parameters can be overridden using the `params`
+argument:
+
+```r
+rmarkdown::render(
+  "R/GO_access_analysis_code.Rmd",
+  params = list(input_data_path = "data/Walker_data/access_by_group.csv")
+)
+```
+
+The output will be written to the format specified in the YAML header
+(`output_format`).
+
 
 ```{r calculate_group_stats}
-# This function helps us find the average and spread (like how different the numbers are) of a group of percentages, but it gives more importance to some numbers than others, based on how big their group is. So if one group has more people, it counts more in the average. It tells us two things: the weighted average and how much the numbers vary around that average.
-
-# Helper function for weighted statistics (unchanged)
+#' Weighted mean and standard deviation
+#'
+#' Computes a population weighted mean and standard deviation for a data frame
+#' containing `percent` and `total` columns.
+#'
+#' @param df Data frame with `percent` values and population `total`.
+#' @return A tibble with `weighted_mean` and `weighted_sd` columns.
 calculate_group_stats <- function(df) {
   w_mean <- weighted.mean(df$percent, df$total)
-  w_var <- sum(df$total * (df$percent - w_mean)^2) / sum(df$total)
-  w_sd <- sqrt(w_var)
-  
-  return(tibble(
-    weighted_mean = w_mean,
-    weighted_sd = w_sd
-  ))
+  w_var  <- sum(df$total * (df$percent - w_mean)^2) / sum(df$total)
+  w_sd   <- sqrt(w_var)
+
+  tibble(weighted_mean = w_mean, weighted_sd = w_sd)
 }
 ```
 
@@ -170,7 +209,15 @@ calculate_group_stats <- function(df) {
 #' @importFrom stats sd weighted.mean
 #' @importFrom assertthat assert_that
 
-# Helper function for calculating weighted statistics
+#' Calculate weighted statistics
+#'
+#' Helper function that returns the weighted mean and standard deviation for a
+#' numeric column.
+#'
+#' @param data Data frame containing the values and weights.
+#' @param value_col Name of the numeric column to summarize.
+#' @param weight_col Column providing weights for each observation.
+#' @return A list with elements `mean` and `sd`.
 #' @noRd
 calculate_weighted_stats <- function(data, value_col, weight_col) {
   assert_that(is.data.frame(data))
@@ -187,10 +234,17 @@ calculate_weighted_stats <- function(data, value_col, weight_col) {
 }
 
 #' Analyze drive time access trends
+#'
+#' Calculates annual weighted access statistics for the total female population
+#' at the drive-time thresholds specified in `params$drive_time_thresholds`.
+#'
+#' @param data Data frame read from `input_data_path`.
+#' @return A tibble with mean and standard deviation of access by year.
 #' @noRd
 analyze_drive_time_trends <- function(data) {
   logger::log_info("Analyzing drive time trends...")
 
+  # Filter for overall female category and aggregate by year
   yearly_stats <- data %>%
     dplyr::filter(category == "total_female",
                   range/60 %in% params$drive_time_thresholds) %>%
@@ -207,12 +261,19 @@ analyze_drive_time_trends <- function(data) {
 }
 
 #' Analyze geographic access disparities
+#'
+#' Determines the size of the population living beyond the 60-minute drive time
+#' (or the closest threshold) from a gynecologic oncologist.
+#'
+#' @param data Data frame of access information.
+#' @return A tibble summarizing the low-access population by year (in millions).
 #' @noRd
 analyze_geographic_disparities <- function(data) {
   logger::log_info("Analyzing geographic disparities...")
   
   threshold_sec <- ifelse(60 %in% params$drive_time_thresholds, 60*60, 3600)
 
+  # Summarise the population living beyond the chosen threshold
   low_access_pop <- data %>%
     dplyr::filter(range > threshold_sec, category == "total_female") %>%
     dplyr::group_by(year) %>%
@@ -226,6 +287,13 @@ analyze_geographic_disparities <- function(data) {
 }
 
 #' Analyze racial and ethnic disparities
+#'
+#' Calculates weighted access statistics by racial/ethnic category for a given
+#' year.
+#'
+#' @param data Data frame with access information.
+#' @param target_year Year to summarise.
+#' @return Tibble of mean access and SD by category.
 #' @noRd
 analyze_racial_disparities <- function(data, target_year = params$target_year) {
   logger::log_info("Analyzing racial disparities for year {target_year}...")
@@ -237,6 +305,7 @@ analyze_racial_disparities <- function(data, target_year = params$target_year) {
       category != "total_female"
     ) %>%
     dplyr::group_by(category) %>%
+    # Compute weighted stats for each racial/ethnic group
     dplyr::summarize(
       access_stats = list(calculate_weighted_stats(cur_data(), "percent", "total")),
       mean_access = access_stats[[1]]$mean,
@@ -249,11 +318,15 @@ analyze_racial_disparities <- function(data, target_year = params$target_year) {
   return(racial_stats)
 }
 
-#' Main analysis function
-#' @param data_path Path to the CSV file
-#' @return List containing analysis results
+#' Main analysis wrapper
+#'
+#' Reads the dataset, runs the individual analyses and prints a short
+#' summary. The function returns a list of results for further use.
+#'
+#' @param data_path Path to the access CSV file.
+#' @return List containing analysis results.
 #' @examples
-#' results <- analyze_go_access("access_by_group.csv")
+#' analyze_go_access("access_by_group.csv")
 analyze_go_access <- function(data_path = params$input_data_path) {
   logger::log_info("Starting analysis of GO access data")
   
@@ -261,7 +334,7 @@ analyze_go_access <- function(data_path = params$input_data_path) {
   assert_that(file.exists(data_path))
   data <- readr::read_csv(data_path, show_col_types = FALSE)
   
-  # Perform analyses
+  # Perform analyses using helper functions
   drive_time_trends <- analyze_drive_time_trends(data)
   geographic_disparities <- analyze_geographic_disparities(data)
   racial_disparities_2015 <- analyze_racial_disparities(data, params$target_year)
@@ -919,17 +992,6 @@ Note: Standard deviations reflect variability across different drive time ranges
   return(results_text)
 }
 
-# Helper function for weighted statistics (unchanged)
-calculate_group_stats <- function(df) {
-  w_mean <- weighted.mean(df$percent, df$total)
-  w_var <- sum(df$total * (df$percent - w_mean)^2) / sum(df$total)
-  w_sd <- sqrt(w_var)
-  
-  return(tibble(
-    weighted_mean = w_mean,
-    weighted_sd = w_sd
-  ))
-}
 ```
 
 ## `all_isochrone_demographics`
