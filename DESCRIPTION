@@ -7,6 +7,8 @@ Description: Utility scripts and helpers for analyzing drive-time isochrones and
     healthcare accessibility. Functions cover dataset retrieval, geocoding,
     polygon creation, and summary reporting.
 License: MIT
+URL: https://github.com/mufflyt/isochrones
+BugReports: https://github.com/mufflyt/isochrones/issues
 Encoding: UTF-8
 LazyData: true
 Imports:
