@@ -14,7 +14,8 @@
 #' summarize_abstract(abstract_text)
 #' @export
 summarize_abstract <- function(text) {
-  stopifnot(is.character(text))
+  assertthat::assert_that(assertthat::is.string(text),
+                          msg = "text must be a single character string")
 
   result <- tibble::tibble(
     words = stringr::str_count(text, stringr::boundary("word")),
@@ -34,7 +35,8 @@ summarize_abstract <- function(text) {
 #'
 #' @export
 count_paragraphs <- function(text) {
-  stopifnot(is.character(text))
+  assertthat::assert_that(is.character(text),
+                          msg = "text must be a character vector")
 
   if (length(text) > 1) {
     text <- paste(text, collapse = "\n")

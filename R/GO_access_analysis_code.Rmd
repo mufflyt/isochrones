@@ -230,12 +230,30 @@ calculate_group_stats <- function(df) {
 #' @return A list with elements `mean` and `sd`.
 #' @noRd
 calculate_weighted_stats <- function(data, value_col, weight_col) {
-  assert_that(is.data.frame(data))
-  
+  assertthat::assert_that(
+    is.data.frame(data),
+    msg = "data must be a data frame"
+  )
+  assertthat::assert_that(
+    assertthat::is.string(value_col),
+    value_col %in% names(data),
+    msg = paste("Column", value_col, "not found in data")
+  )
+  assertthat::assert_that(
+    assertthat::is.string(weight_col),
+    weight_col %in% names(data),
+    msg = paste("Column", weight_col, "not found in data")
+  )
+  assertthat::assert_that(
+    is.numeric(data[[value_col]]),
+    is.numeric(data[[weight_col]]),
+    msg = "value_col and weight_col must be numeric"
+  )
+
   weighted_mean <- weighted.mean(data[[value_col]], data[[weight_col]])
-  
+
   # Calculate weighted variance
-  weighted_var <- sum(data[[weight_col]] * (data[[value_col]] - weighted_mean)^2) / 
+  weighted_var <- sum(data[[weight_col]] * (data[[value_col]] - weighted_mean)^2) /
                  sum(data[[weight_col]])
   
   weighted_sd <- sqrt(weighted_var)
@@ -253,6 +271,21 @@ calculate_weighted_stats <- function(data, value_col, weight_col) {
 #' @noRd
 analyze_drive_time_trends <- function(data) {
   logger::log_info("Analyzing drive time trends...")
+
+  assertthat::assert_that(
+    is.data.frame(data),
+    msg = "data must be a data frame"
+  )
+  required_cols <- c("category", "range", "year", "percent", "total")
+  assertthat::assert_that(
+    all(required_cols %in% names(data)),
+    msg = paste("Required columns missing:",
+                paste(setdiff(required_cols, names(data)), collapse = ", "))
+  )
+  assertthat::assert_that(
+    is.numeric(params$drive_time_thresholds),
+    msg = "drive_time_thresholds must be numeric"
+  )
 
   # Filter for overall female category and aggregate by year
   yearly_stats <- data %>%
@@ -280,7 +313,18 @@ analyze_drive_time_trends <- function(data) {
 #' @noRd
 analyze_geographic_disparities <- function(data) {
   logger::log_info("Analyzing geographic disparities...")
-  
+
+  assertthat::assert_that(
+    is.data.frame(data),
+    msg = "data must be a data frame"
+  )
+  required_cols <- c("year", "range", "category", "count")
+  assertthat::assert_that(
+    all(required_cols %in% names(data)),
+    msg = paste("Required columns missing:",
+                paste(setdiff(required_cols, names(data)), collapse = ", "))
+  )
+
   threshold_sec <- DRIVE_TIME_60_MIN_SEC
 
   # Summarise the population living beyond the chosen threshold
@@ -307,6 +351,24 @@ analyze_geographic_disparities <- function(data) {
 #' @noRd
 analyze_racial_disparities <- function(data, target_year = params$target_year) {
   logger::log_info("Analyzing racial disparities for year {target_year}...")
+assertthat::assert_that(
+  is.data.frame(data),
+  msg = "data must be a data frame"
+)
+required_cols <- c("year", "range", "category", "percent", "total")
+assertthat::assert_that(
+  all(required_cols %in% names(data)),
+  msg = paste("Required columns missing:", paste(setdiff(required_cols, names(data)), collapse = ", "))
+)
+assertthat::assert_that(
+  is.numeric(target_year),
+  length(target_year) == 1,
+  msg = "target_year must be a single numeric value"
+)
+assertthat::assert_that(
+  target_year %in% data$year,
+  msg = paste("target_year", target_year, "not found in data")
+)
   
   racial_stats <- data %>%
     dplyr::filter(
@@ -341,7 +403,11 @@ analyze_go_access <- function(data_path = params$input_data_path) {
   logger::log_info("Starting analysis of GO access data")
   
   # Read and validate data
-  assert_that(file.exists(data_path))
+  assertthat::assert_that(
+    assertthat::is.string(data_path),
+    file.exists(data_path),
+    msg = paste("Data file not found:", data_path)
+  )
   data <- readr::read_csv(data_path, show_col_types = FALSE)
   
   # Perform analyses using helper functions

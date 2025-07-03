@@ -15,7 +15,12 @@
 #' format_pct(c(0.1, 0.25), my_digits = 1)
 #' @export
 format_pct <- function(x, my_digits = 0) {
-  stopifnot(is.numeric(x), is.numeric(my_digits), length(my_digits) == 1)
+  assertthat::assert_that(is.numeric(x),
+                          msg = "x must be numeric")
+  assertthat::assert_that(is.numeric(my_digits),
+                          length(my_digits) == 1,
+                          my_digits >= 0,
+                          msg = "my_digits must be a single non-negative number")
 
   formatC(x, format = "f", digits = my_digits)
 }

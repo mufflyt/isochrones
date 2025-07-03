@@ -20,7 +20,22 @@ standardize_addresses <- function(df,
                                   address_col = "address",
                                   city_dictionary_path =
                                     "data/05-geocode-cleaning/city.rds") {
-  stopifnot(is.data.frame(df), address_col %in% names(df))
+  assertthat::assert_that(is.data.frame(df),
+                          msg = "df must be a data frame")
+  assertthat::assert_that(assertthat::is.string(address_col),
+                          msg = "address_col must be a single string")
+  assertthat::assert_that(address_col %in% names(df),
+                          msg = paste("address column", address_col,
+                                      "not found in data frame"))
+  assertthat::assert_that(
+    is.null(city_dictionary_path) ||
+      assertthat::is.string(city_dictionary_path),
+    msg = "city_dictionary_path must be NULL or a single string"
+  )
+  assertthat::assert_that(
+    is.null(city_dictionary_path) || file.exists(city_dictionary_path),
+    msg = paste("City dictionary not found at", city_dictionary_path)
+  )
 
   addr_sym <- rlang::sym(address_col)
 

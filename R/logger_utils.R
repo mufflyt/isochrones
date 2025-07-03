@@ -24,7 +24,8 @@ formatter_glue_safe <- function(...,
 #' @return A character vector of formatted numbers
 #' @export
 format_with_commas <- function(x) {
-  stopifnot(is.numeric(x))
+  assertthat::assert_that(is.numeric(x),
+                          msg = "x must be numeric for formatting with commas")
 
   return(scales::comma(x))
 }
