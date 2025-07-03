@@ -577,6 +577,8 @@ create_benchmark_comparison <- function(data_path = params$input_data_path) {
     
     writeLines(ref_text, params$benchmark_ref_path)
     message("References saved to '", params$benchmark_ref_path, "'")
+
+    return(invisible(ref_text))
   }
   
   # Generate reference document
@@ -728,8 +730,8 @@ generate_detailed_impact_narrative <- function(data_path) {
   
   # Return as a formatted output
   cat(paste0("\n", paste(narrative, collapse = "\n\n"), "\n\n"))
-  
-  invisible(narrative)
+
+  return(invisible(narrative))
 }
 ```
 
@@ -2611,6 +2613,8 @@ validate_comparison_inputs <- function(accessibility_data_file, output_directory
   logger::log_info("Accessibility data file: {accessibility_data_file}")
   logger::log_info("Output directory: {output_directory}")
   logger::log_info("Verbose logging: {verbose}")
+
+  return(TRUE)
 }
 
 #' @noRd
@@ -3016,6 +3020,8 @@ save_accessibility_outputs <- function(accessibility_comparison_plot, accessibil
   trends_data_path <- file.path(output_paths$base, "accessibility_trend_statistics.csv")
   logger::log_info("Saving trend statistics to: {trends_data_path}")
   readr::write_csv(trend_analysis_results, trends_data_path)
+
+  return(TRUE)
 }
 ```
 
@@ -3802,6 +3808,8 @@ validate_comprehensive_analysis_inputs <- function(accessibility_dataset_filepat
   logger::log_info("Comprehensive output directory: {comprehensive_output_directory}")
   logger::log_info("Time threshold ranges: {paste(time_threshold_ranges, collapse = ', ')}")
   logger::log_info("Verbose logging enabled: {comprehensive_verbose_logging}")
+
+  return(TRUE)
 }
 
 #' @noRd
