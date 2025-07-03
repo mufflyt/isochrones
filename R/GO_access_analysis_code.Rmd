@@ -200,11 +200,11 @@ The output will be written to the format specified in the YAML header
 #' Computes a population weighted mean and standard deviation for a data frame
 #' containing `percent` and `total` columns.
 #'
-#' @param df Data frame with `percent` values and population `total`.
+#' @param access_data_frame Data frame with `percent` values and population `total`.
 #' @return A tibble with `weighted_mean` and `weighted_sd` columns.
-calculate_group_stats <- function(df) {
-  w_mean <- weighted.mean(df$percent, df$total)
-  w_var  <- sum(df$total * (df$percent - w_mean)^2) / sum(df$total)
+calculate_group_stats <- function(access_data_frame) {
+  w_mean <- weighted.mean(access_data_frame$percent, access_data_frame$total)
+  w_var  <- sum(access_data_frame$total * (access_data_frame$percent - w_mean)^2) / sum(access_data_frame$total)
   w_sd   <- sqrt(w_var)
 
   tibble(weighted_mean = w_mean, weighted_sd = w_sd)
@@ -224,19 +224,19 @@ calculate_group_stats <- function(df) {
 #' Helper function that returns the weighted mean and standard deviation for a
 #' numeric column.
 #'
-#' @param data Data frame containing the values and weights.
+#' @param dataset Data frame containing the values and weights.
 #' @param value_col Name of the numeric column to summarize.
 #' @param weight_col Column providing weights for each observation.
 #' @return A list with elements `mean` and `sd`.
 #' @noRd
-calculate_weighted_stats <- function(data, value_col, weight_col) {
-  assert_that(is.data.frame(data))
-  
-  weighted_mean <- weighted.mean(data[[value_col]], data[[weight_col]])
-  
+calculate_weighted_stats <- function(dataset, value_col, weight_col) {
+  assert_that(is.data.frame(dataset))
+
+  weighted_mean <- weighted.mean(dataset[[value_col]], dataset[[weight_col]])
+
   # Calculate weighted variance
-  weighted_var <- sum(data[[weight_col]] * (data[[value_col]] - weighted_mean)^2) / 
-                 sum(data[[weight_col]])
+  weighted_var <- sum(dataset[[weight_col]] * (dataset[[value_col]] - weighted_mean)^2) /
+                 sum(dataset[[weight_col]])
   
   weighted_sd <- sqrt(weighted_var)
   
@@ -248,14 +248,14 @@ calculate_weighted_stats <- function(data, value_col, weight_col) {
 #' Calculates annual weighted access statistics for the total female population
 #' at the drive-time thresholds specified in `params$drive_time_thresholds`.
 #'
-#' @param data Data frame read from `input_data_path`.
+#' @param access_dataset Data frame read from `input_data_path`.
 #' @return A tibble with mean and standard deviation of access by year.
 #' @noRd
-analyze_drive_time_trends <- function(data) {
+analyze_drive_time_trends <- function(access_dataset) {
   logger::log_info("Analyzing drive time trends...")
 
   # Filter for overall female category and aggregate by year
-  yearly_stats <- data %>%
+  yearly_stats <- access_dataset %>%
     dplyr::filter(category == "total_female",
                   range/60 %in% params$drive_time_thresholds) %>%
     dplyr::group_by(year) %>%
@@ -275,16 +275,16 @@ analyze_drive_time_trends <- function(data) {
 #' Determines the size of the population living beyond the 60-minute drive time
 #' (or the closest threshold) from a gynecologic oncologist.
 #'
-#' @param data Data frame of access information.
+#' @param access_dataset Data frame of access information.
 #' @return A tibble summarizing the low-access population by year (in millions).
 #' @noRd
-analyze_geographic_disparities <- function(data) {
+analyze_geographic_disparities <- function(access_dataset) {
   logger::log_info("Analyzing geographic disparities...")
   
   threshold_sec <- DRIVE_TIME_60_MIN_SEC
 
   # Summarise the population living beyond the chosen threshold
-  low_access_pop <- data %>%
+  low_access_pop <- access_dataset %>%
     dplyr::filter(range > threshold_sec, category == "total_female") %>%
     dplyr::group_by(year) %>%
     dplyr::summarize(
@@ -301,14 +301,14 @@ analyze_geographic_disparities <- function(data) {
 #' Calculates weighted access statistics by racial/ethnic category for a given
 #' year.
 #'
-#' @param data Data frame with access information.
+#' @param access_dataset Data frame with access information.
 #' @param target_year Year to summarise.
 #' @return Tibble of mean access and SD by category.
 #' @noRd
-analyze_racial_disparities <- function(data, target_year = params$target_year) {
+analyze_racial_disparities <- function(access_dataset, target_year = params$target_year) {
   logger::log_info("Analyzing racial disparities for year {target_year}...")
   
-  racial_stats <- data %>%
+  racial_stats <- access_dataset %>%
     dplyr::filter(
       year == target_year,
       range == DRIVE_TIME_60_MIN_SEC,
@@ -342,15 +342,15 @@ analyze_go_access <- function(data_path = params$input_data_path) {
   
   # Read and validate data
   assert_that(file.exists(data_path))
-  data <- readr::read_csv(data_path, show_col_types = FALSE)
+  access_dataset <- readr::read_csv(data_path, show_col_types = FALSE)
   
   # Perform analyses using helper functions
-  drive_time_trends <- analyze_drive_time_trends(data)
-  geographic_disparities <- analyze_geographic_disparities(data)
-  racial_disparities_2015 <- analyze_racial_disparities(data, params$target_year)
+  drive_time_trends <- analyze_drive_time_trends(access_dataset)
+  geographic_disparities <- analyze_geographic_disparities(access_dataset)
+  racial_disparities_2015 <- analyze_racial_disparities(access_dataset, params$target_year)
   
   # Generate summary text
-  results <- list(
+  access_analysis_results <- list(
     drive_time = drive_time_trends,
     geographic = geographic_disparities,
     racial = racial_disparities_2015
@@ -379,13 +379,13 @@ analyze_go_access <- function(data_path = params$input_data_path) {
     print()
   
   logger::log_info("Analysis complete")
-  return(results)
+  return(access_analysis_results)
 }
 
 # Example usage:
 # library(tidyverse)
 # library(logger)
-# results <- analyze_go_access("access_by_group.csv")
+# access_analysis_results <- analyze_go_access("access_by_group.csv")
 ```
 
 # Terms
@@ -823,7 +823,7 @@ generate_detailed_impact_narrative(params$input_data_path)
 ```
 
 ```{r, echo=FALSE, include = TRUE}
-results <- analyze_go_access(params$input_data_path)
+access_analysis_results <- analyze_go_access(params$input_data_path)
 ```
 
 ```{r}
@@ -833,10 +833,10 @@ generate_results_text <- function(data_path) {
   library(glue)
   
   # Read and prepare data
-  data <- read_csv(data_path, show_col_types = FALSE)
+  access_dataset <- read_csv(data_path, show_col_types = FALSE)
   
   # 1. Drive Time Analysis
-  drive_time_stats <- data %>%
+  drive_time_stats <- access_dataset %>%
     filter(category == "total_female") %>%
     group_by(year) %>%
     group_modify(~calculate_group_stats(.)) %>%
@@ -849,7 +849,7 @@ generate_results_text <- function(data_path) {
   stats_2019 <- drive_time_stats %>% filter(year == 2019)
   
   # 2. Geographic Access
-  low_access_stats <- data %>%
+  low_access_stats <- access_dataset %>%
     filter(range > DRIVE_TIME_60_MIN_SEC, category == "total_female") %>%
     group_by(year) %>%
     summarise(
@@ -858,7 +858,7 @@ generate_results_text <- function(data_path) {
     )
   
   # 3. Racial Disparities 2015
-  racial_stats_2015 <- data %>%
+  racial_stats_2015 <- access_dataset %>%
     filter(
       year == 2015,
       category != "total_female"
@@ -919,10 +919,10 @@ generate_results_text <- function(data_path) {
   library(stats)
   
   # Read data
-  data <- read_csv(data_path, show_col_types = FALSE)
+  access_dataset <- read_csv(data_path, show_col_types = FALSE)
   
   # 1. Drive Time Analysis
-  drive_time_stats <- data %>%
+  drive_time_stats <- access_dataset %>%
     filter(category == "total_female") %>%
     group_by(year) %>%
     group_modify(~calculate_group_stats(.)) %>%
@@ -939,7 +939,7 @@ generate_results_text <- function(data_path) {
   stats_2019 <- drive_time_stats %>% filter(year == 2019)
   
   # 2. Geographic Access
-  low_access_stats <- data %>%
+  low_access_stats <- access_dataset %>%
     filter(range > DRIVE_TIME_60_MIN_SEC, category == "total_female") %>%
     group_by(year) %>%
     summarise(
@@ -948,7 +948,7 @@ generate_results_text <- function(data_path) {
     )
   
   # 3. Racial Disparities 2015
-  racial_data_2015 <- data %>%
+  racial_data_2015 <- access_dataset %>%
     filter(
       year == 2015,
       category != "total_female"
@@ -1459,13 +1459,13 @@ explore_isochrone_demographics <- function(file_path) {
 ### Demographic Representation Plots
 ```{r, include = TRUE}
 # Execute the function
-results <- explore_isochrone_demographics(params$all_isochrone_path)
+isochrone_plot_results <- explore_isochrone_demographics(params$all_isochrone_path)
 
 # Display the plots
-results$plot1
-results$plot2
-results$plot3
-results$plot4
+isochrone_plot_results$plot1
+isochrone_plot_results$plot2
+isochrone_plot_results$plot3
+isochrone_plot_results$plot4
 ```
 
 # `access_by_group_urban_rural.csv`
@@ -1621,13 +1621,13 @@ For example, this analysis might show that 45% of women can reach essential serv
 Decay analysis helps planners understand service coverage, identify accessibility gaps for different populations, and determine optimal facility locations to maximize access while minimizing travel time.
 ```{r, include = FALSE}
 # Read data
-data <- read_csv(params$input_data_path)
+accessibility_dataset <- read_csv(params$input_data_path)
 ```
 
 
 ```{r, include = TRUE}
 # Calculate overall means across all years for each drive time
-distance_decay <- data %>%
+distance_decay <- accessibility_dataset %>%
   filter(category == "total_female") %>%
   group_by(range) %>%
   summarize(
@@ -1665,10 +1665,10 @@ results_text <- paste0(
 # This script visualizes how accessibility increases with drive time
 
 # Read data
-data <- read_csv(params$input_data_path)
+accessibility_dataset <- read_csv(params$input_data_path)
 
 # Calculate overall means across all years for each drive time
-distance_decay <- data %>%
+distance_decay <- accessibility_dataset %>%
   filter(category == "total_female") %>%
   group_by(range) %>%
   summarize(
@@ -1839,10 +1839,10 @@ kable(distance_decay_table, format = "html", escape = FALSE) %>%
 # This visualization shows how accessibility varies across different demographic groups
 
 # Read data
-data <- read_csv(params$input_data_path)
+accessibility_dataset <- read_csv(params$input_data_path)
 
 # Filter to relevant categories and clean up category names for display
-racial_groups <- data %>%
+racial_groups <- accessibility_dataset %>%
   filter(
     !category %in% c("total_female"), # Exclude overall total
     stringr::str_detect(category, "total_female_") # Only include racial/ethnic categories
@@ -1872,7 +1872,7 @@ racial_decay_curves <- racial_groups %>%
 
 # Create a dataframe for the ideal access curve
 # Using Asian population as benchmark since they have highest access
-ideal_curve <- data %>%
+ideal_curve <- accessibility_dataset %>%
   filter(category == "total_female_asian") %>%
   group_by(range) %>%
   summarize(
@@ -1885,7 +1885,7 @@ ideal_curve <- data %>%
   arrange(drive_time_min)
 
 # Calculate overall average for comparison
-overall_average <- data %>%
+overall_average <- accessibility_dataset %>%
   filter(category == "total_female") %>%
   group_by(range) %>%
   summarize(
