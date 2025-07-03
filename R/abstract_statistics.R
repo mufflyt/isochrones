@@ -40,6 +40,6 @@ count_paragraphs <- function(text) {
     text <- paste(text, collapse = "\n")
   }
 
-  parts <- stringr::str_split(text, "\n\s*\n")[[1]]
+  parts <- stringr::str_split(text, "\\n\\s*\\n")[[1]]
   sum(nzchar(trimws(parts)))
 }

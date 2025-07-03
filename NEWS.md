@@ -1,4 +1,6 @@
 # News
+## 2025-06-28
+Refined file names for consistency, added a `CITATION.MD` file, and improved code style across functions and tests.
 
 ## 2025-06-27
 The project now standardizes address data with the `postmastr` package, greatly improving downstream geocoding. Roxygen documentation has been expanded across helper files and additional comments in `01-setup.R` explain the purpose of each library.
