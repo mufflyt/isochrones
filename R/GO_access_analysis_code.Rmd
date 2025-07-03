@@ -104,6 +104,7 @@ library(tigris)
 
 # Statistical analysis
 library(stats)
+library(isochrones)
 
 # Set logger threshold
 logger::log_threshold(params$log_level)
@@ -147,7 +148,8 @@ setup_figure_directories <- function(base_dir = "figures") {
 }
 
 # Run this first
-figures_dir <- setup_figure_directories(params$figure_base_dir)
+output_dirs <- create_output_structure(params$figure_base_dir)
+figures_dir <- setup_figure_directories(output_dirs$visualization)
 ```
 
 ```{r constants, include=FALSE}
@@ -4525,6 +4527,9 @@ isos <- sf::st_read("/Users/tylermuffly/Dropbox (Personal)/walker_maps/data/2024
 #isos <- st_read("data/HERE_isochrone_results (1)/20241013161700.shp") %>%
   mutate(year = str_sub(departure, 1, 4))
 
+# Save full isochrone dataset for interactive visualization
+prepare_visualization_data(isos, output_dirs, "all_isochrones.geojson")
+
 # Let's make a list of isochrone maps, named by year. Styling can be modified as needed.
 years <- 2013:2023
 names(years) <- paste0("y", years)
@@ -4692,11 +4697,9 @@ hybrid_statistical_implementation <- function(accessibility_data_path = params$i
   logger::log_info("Using feasible methods only - no complex spatial analysis")
   logger::log_info("Confidence level: {confidence_level}")
   
-  # Create output directory
-  if (!dir.exists(results_output_directory)) {
-    dir.create(results_output_directory, recursive = TRUE)
-    logger::log_info("Created output directory: {results_output_directory}")
-  }
+  # Create output directory structure
+  output_paths <- create_output_structure(results_output_directory)
+  logger::log_info("Output base directory: {output_paths$base}")
   
   # Read and process data
   logger::log_info("Reading accessibility data")
@@ -5164,9 +5167,10 @@ hybrid_statistical_implementation <- function(accessibility_data_path = params$i
   comprehensive_results$methods_compliance_summary <- methods_compliance_summary
   
   # Save methods compliance summary
-  saveRDS(
-    methods_compliance_summary, 
-    file.path(results_output_directory, "methods_compliance_summary.rds")
+  save_intermediate_result(
+    methods_compliance_summary,
+    "methods_compliance_summary",
+    output_paths
   )
   
   logger::log_info("Hybrid statistical implementation complete")

@@ -8,3 +8,8 @@ importFrom(tibble, as_tibble)
 export(summarize_abstract)
 export(count_paragraphs)
 export(print_ascii_art)
+
+export(create_output_structure)
+export(save_intermediate_result)
+export(prepare_visualization_data)
+importFrom(sf, st_write)
