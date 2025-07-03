@@ -131,21 +131,21 @@ safe_read_csv <- function(file_path, required = FALSE) {
   }
   
   tryCatch({
-    df <- fread(file_path, data.table = TRUE)
-    return(df)
+    csv_data <- fread(file_path, data.table = TRUE)
+    return(csv_data)
   }, error = function(e) {
     logger::log_error("Failed to read {file_path}: {e$message}")
     return(NULL)
   })
 }
 
-standardize_npi_column <- function(data) {
-  if (is.null(data)) return(NULL)
-  data <- setDT(data)
-  if ("NPI" %in% names(data) && !"npi" %in% names(data)) {
-    setnames(data, "NPI", "npi")
+standardize_npi_column <- function(npi_data) {
+  if (is.null(npi_data)) return(NULL)
+  npi_data <- setDT(npi_data)
+  if ("NPI" %in% names(npi_data) && !"npi" %in% names(npi_data)) {
+    setnames(npi_data, "NPI", "npi")
   }
-  return(data)
+  return(npi_data)
 }
 
 # ------------------------------------------------------------------------------
