@@ -40,6 +40,8 @@ editor_options:
   chunk_output_type: console
 params:
   input_data_path: "data/Walker_data/access_by_group.csv"
+  all_isochrone_path: "data/Walker_data/all_isochrone_demographics.csv"
+  urban_rural_path: "data/Walker_data/access_by_group_urban_rural.csv"
   drive_time_thresholds: [30, 60, 120, 180]
   categories:
     - total_female
@@ -124,6 +126,14 @@ setup_figure_directories <- function(base_dir = "figures") {
 
 # Run this first
 figures_dir <- setup_figure_directories(params$figure_base_dir)
+```
+
+```{r constants, include=FALSE}
+SECONDS_PER_MINUTE <- 60
+MILLION <- 1e6
+DRIVE_TIME_30_MIN_SEC <- 30 * SECONDS_PER_MINUTE
+DRIVE_TIME_60_MIN_SEC <- 60 * SECONDS_PER_MINUTE
+CONFIDENCE_LEVEL_DEFAULT <- 0.95
 ```
 
 ```{r knitr options}
@@ -211,13 +221,13 @@ analyze_drive_time_trends <- function(data) {
 analyze_geographic_disparities <- function(data) {
   logger::log_info("Analyzing geographic disparities...")
   
-  threshold_sec <- ifelse(60 %in% params$drive_time_thresholds, 60*60, 3600)
+  threshold_sec <- DRIVE_TIME_60_MIN_SEC
 
   low_access_pop <- data %>%
     dplyr::filter(range > threshold_sec, category == "total_female") %>%
     dplyr::group_by(year) %>%
     dplyr::summarize(
-      low_access_population = sum(count) / 1e6,  # Convert to millions
+      low_access_population = sum(count) / MILLION,  # Convert to millions
       .groups = "drop"
     )
   
@@ -233,7 +243,7 @@ analyze_racial_disparities <- function(data, target_year = params$target_year) {
   racial_stats <- data %>%
     dplyr::filter(
       year == target_year,
-      range == ifelse(60 %in% params$drive_time_thresholds, 60*60, 3600),
+      range == DRIVE_TIME_60_MIN_SEC,
       category != "total_female"
     ) %>%
     dplyr::group_by(category) %>%
@@ -611,7 +621,7 @@ calculate_impact_metrics <- function(data_path) {
   baseline_year <- min(access_data$year)
   
   impact <- access_data %>%
-    filter(category == "total_female", range == 3600, 
+    filter(category == "total_female", range == DRIVE_TIME_60_MIN_SEC,
            year %in% c(baseline_year, latest_year)) %>%
     select(year, total, count, percent) %>%
     pivot_wider(names_from = year, 
@@ -656,10 +666,10 @@ generate_detailed_impact_narrative <- function(data_path) {
   access_change_count <- as.numeric(gsub(",", "", metrics$value[5]))
   
   # Calculate actual percentages and totals for both years
-  data_2013 <- access_data %>% 
-    filter(year == 2013, category == "total_female", range == 3600) 
-  data_2022 <- access_data %>% 
-    filter(year == 2022, category == "total_female", range == 3600)
+  data_2013 <- access_data %>%
+    filter(year == 2013, category == "total_female", range == DRIVE_TIME_60_MIN_SEC)
+  data_2022 <- access_data %>%
+    filter(year == 2022, category == "total_female", range == DRIVE_TIME_60_MIN_SEC)
   
   percent_2013 <- data_2013$percent
   percent_2022 <- data_2022$percent
@@ -765,10 +775,10 @@ generate_results_text <- function(data_path) {
   
   # 2. Geographic Access
   low_access_stats <- data %>%
-    filter(range > 3600, category == "total_female") %>%
+    filter(range > DRIVE_TIME_60_MIN_SEC, category == "total_female") %>%
     group_by(year) %>%
     summarise(
-      low_access_pop = sum(count) / 1e6,
+      low_access_pop = sum(count) / MILLION,
       .groups = "drop"
     )
   
@@ -855,10 +865,10 @@ generate_results_text <- function(data_path) {
   
   # 2. Geographic Access
   low_access_stats <- data %>%
-    filter(range > 3600, category == "total_female") %>%
+    filter(range > DRIVE_TIME_60_MIN_SEC, category == "total_female") %>%
     group_by(year) %>%
     summarise(
-      low_access_pop = sum(count) / 1e6,
+      low_access_pop = sum(count) / MILLION,
       .groups = "drop"
     )
   
@@ -984,7 +994,7 @@ For a single location (id = 1):
 This pattern repeats across 4,128 rows covering multiple locations and years.
 
 ```{r, include = FALSE}
-all_isochrone_demographics <- read_csv("data/Walker_data/all_isochrone_demographics.csv")
+all_isochrone_demographics <- read_csv(params$all_isochrone_path)
 ```
 
 ### Data Set
@@ -1385,7 +1395,7 @@ explore_isochrone_demographics <- function(file_path) {
 ### Demographic Representation Plots
 ```{r, include = TRUE}
 # Execute the function
-results <- explore_isochrone_demographics("data/Walker_data/all_isochrone_demographics.csv")
+results <- explore_isochrone_demographics(params$all_isochrone_path)
 
 # Display the plots
 results$plot1
@@ -1398,11 +1408,11 @@ results$plot4
 
 ```{r}
 # Assuming the data is loaded
-access_data <- read.csv("data/Walker_data/access_by_group_urban_rural.csv")
+access_data <- read.csv(params$urban_rural_path)
 
 # Create a summary table with the correct range value (1800 seconds = 30 minutes)
 access_summary <- access_data %>%
-  filter(year == max(year) & range == 1800) %>%
+  filter(year == max(year) & range == DRIVE_TIME_30_MIN_SEC) %>%
   select(urban, category, percent) %>%
   # Use values_from and names_from arguments more explicitly
   pivot_wider(
@@ -1498,7 +1508,7 @@ ggplot(time_trend, aes(x = year_factor, y = percent, color = factor(drive_time_m
   labs(
     title = "Access to Services Consistently Higher in Urban Areas",
     subtitle = "Urban areas maintain 15-25% higher access rates compared to rural areas across all drive times",
-    caption = "Data source: access_by_group_urban_rural.csv | Analysis of total female population",
+    caption = paste("Data source:", basename(params$urban_rural_path), "| Analysis of total female population"),
     y = "Percentage with Access",
     x = "Year"
   ) +
@@ -1983,11 +1993,11 @@ knitr::kable(distance_decay_table, digits = 1)
 https://onlinelibrary.wiley.com/doi/full/10.1111/1468-0009.12668
 ```{r}
 # Load data (assuming the data includes a column 'travel_time' in minutes and 'urban_rural' classification)
-census_tracts <- read.csv("data/Walker_data/access_by_group_urban_rural.csv")  # Replace with actual file path
+census_tracts <- read.csv(params$urban_rural_path)  # Replace with actual file path
 
 gyn_oncologist_access <- census_tracts %>%
   dplyr::filter(year == 2022) %>%
-  dplyr::mutate(over_30_min = range > 1800) %>%
+  dplyr::mutate(over_30_min = range > DRIVE_TIME_30_MIN_SEC) %>%
   dplyr::rename("urban_rural" = "urban") 
 
 # Count tracts over 30 minutes
@@ -4587,9 +4597,9 @@ ggplot2::ggsave(
 #'   verbose_output = TRUE
 #' )
 #' # Analysis with conservative confidence intervals and significance testing
-hybrid_statistical_implementation <- function(accessibility_data_path = "access_by_group.csv",
+hybrid_statistical_implementation <- function(accessibility_data_path = params$input_data_path,
                                             results_output_directory = getwd(),
-                                            confidence_level = 0.95,
+                                            confidence_level = CONFIDENCE_LEVEL_DEFAULT,
                                             apply_multiple_comparison_correction = TRUE,
                                             generate_publication_tables = TRUE,
                                             verbose_output = TRUE) {
@@ -4646,7 +4656,7 @@ hybrid_statistical_implementation <- function(accessibility_data_path = "access_
   logger::log_info("Calculating population-weighted means with standard error-based confidence intervals")
   
   # Function to calculate weighted statistics with confidence intervals
-  calculate_weighted_stats_with_ci <- function(values, weights, confidence_level = 0.95) {
+  calculate_weighted_stats_with_ci <- function(values, weights, confidence_level = CONFIDENCE_LEVEL_DEFAULT) {
     # Remove missing values
     valid_indices <- !is.na(values) & !is.na(weights) & weights > 0
     values_clean <- values[valid_indices]
@@ -5116,9 +5126,9 @@ format_p_value <- function(p_values, digits = 3) {
 ```
 
 ```{r}
-hybrid_statistical_implementation(accessibility_data_path = "data/Walker_data/access_by_group.csv",
+hybrid_statistical_implementation(accessibility_data_path = params$input_data_path,
                                             results_output_directory = getwd(),
-                                            confidence_level = 0.95,
+                                            confidence_level = CONFIDENCE_LEVEL_DEFAULT,
                                             apply_multiple_comparison_correction = TRUE,
                                             generate_publication_tables = TRUE,
                                             verbose_output = TRUE)
