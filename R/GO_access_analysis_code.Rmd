@@ -234,6 +234,8 @@ analyze_racial_disparities <- function(data, target_year = 2015) {
 #' @return List containing analysis results
 #' @examples
 #' results <- analyze_go_access("access_by_group.csv")
+#' @export
+#' @import dplyr
 analyze_go_access <- function(data_path) {
   logger::log_info("Starting analysis of GO access data")
   
@@ -418,6 +420,14 @@ dt
 
 ```{r animation_of_access}
 library(gganimate)
+#' Create an animated plot showing access trends
+#'
+#' @param data_path Path to CSV data
+#' @return A gganimate animation object
+#' @export
+#' @import ggplot2
+#' @import gganimate
+#' @import readr
 
 create_animated_access_plot <- function(data_path) {
   access_data <- read.csv(data_path)
@@ -444,6 +454,14 @@ create_animated_access_plot("data/Walker_data/access_by_group.csv")
 ```
 
 ```{r}
+#' Create a benchmark comparison plot
+#'
+#' @param data_path Path to CSV data
+#' @return ggplot object
+#' @export
+#' @import ggplot2
+#' @import dplyr
+#' @import readr
 create_benchmark_comparison <- function(data_path) {
   access_data <- read.csv(data_path)
   
@@ -583,6 +601,13 @@ create_benchmark_comparison("data/Walker_data/access_by_group.csv")
 
 ### Impact Narrative
 ```{r}
+#' Calculate high level impact metrics
+#'
+#' @param data_path Path to CSV data
+#' @return Tibble with impact metrics
+#' @export
+#' @import dplyr
+#' @import readr
 calculate_impact_metrics <- function(data_path) {
   access_data <- read.csv(data_path)
   
@@ -623,6 +648,12 @@ calculate_impact_metrics <- function(data_path) {
 ```
 
 ```{r}
+#' Generate a narrative summarizing impact metrics
+#'
+#' @param data_path Path to CSV data
+#' @return Character string summary
+#' @export
+#' @import dplyr
 generate_detailed_impact_narrative <- function(data_path) {
   # Get the metrics table
   metrics <- calculate_impact_metrics(data_path)
@@ -722,6 +753,14 @@ results <- analyze_go_access("data/Walker_data/access_by_group.csv")
 ```
 
 ```{r}
+#' Generate formatted results text
+#'
+#' @param data_path Path to CSV data
+#' @return Character string of results
+#' @export
+#' @import dplyr
+#' @import readr
+#' @import glue
 # Function to generate nicely formatted results text
 generate_results_text <- function(data_path) {
   library(tidyverse)
@@ -807,6 +846,15 @@ Perhaps most striking are the racial and ethnic disparities identified in 2015. 
 These findings suggest significant and persistent issues with healthcare accessibility that could have serious implications for cancer outcomes among women in underserved populations.
 
 ```{r, include = FALSE}
+#' Generate results text with improved formatting
+#'
+#' @param data_path Path to CSV data
+#' @return Character string of results
+#' @export
+#' @import dplyr
+#' @import readr
+#' @import glue
+#' @import stats
 # Function to generate results text with corrected formatting
 generate_results_text <- function(data_path) {
   library(tidyverse)
@@ -1062,6 +1110,15 @@ dt
 ```
 
 ```{r, include = FALSE}
+#' Explore isochrone demographics data
+#'
+#' @param file_path Path to CSV file
+#' @return Data frame with summary statistics
+#' @export
+#' @import dplyr
+#' @import ggplot2
+#' @import readr
+#' @import sf
 # Comprehensive function to explore isochrone demographics data
 explore_isochrone_demographics <- function(file_path) {
   library(tidyverse)
@@ -2015,9 +2072,15 @@ This section creates comprehensive visualizations of the declining accessibility
 #' 
 #' @param data_file Path to the Access_Data.csv file
 #' @param output_dir Directory to save output files
-#' 
+#'
 #' @return A list containing plot objects
-visualize_accessibility_trends <- function(data_file = "Access_Data.csv", 
+#' @export
+#' @import dplyr
+#' @import ggplot2
+#' @import readr
+#' @import tidyr
+#' @import scales
+visualize_accessibility_trends <- function(data_file = "Access_Data.csv",
                                            output_dir = getwd()) {
   
   # Create output directory if it doesn't exist
@@ -2305,8 +2368,12 @@ visualize_accessibility_trends <- function(data_file = "Access_Data.csv",
 #' @param data_file Path to the Access_Data.csv file
 #' @param years_to_compare Vector of years to compare
 #' @param output_dir Directory to save output files
-#' 
+#'
 #' @return A comparison plot
+#' @export
+#' @import dplyr
+#' @import ggplot2
+#' @import readr
 compare_years <- function(data_file = "Access_Data.csv",
                           years_to_compare = c(2013, 2022),
                           output_dir = getwd()) {
@@ -2409,7 +2476,9 @@ compare_years <- function(data_file = "Access_Data.csv",
 #' @param data_file Path to the Access_Data.csv file
 #' @param output_dir Directory to save output files
 #' @return A list containing visualization results
-run_visualization_analysis <- function(data_file = "Access_Data.csv", 
+#' @export
+#' @import dplyr
+run_visualization_analysis <- function(data_file = "Access_Data.csv",
                                        output_dir = "results/visualizations") {
   # Create all standard visualizations
   visualizations <- visualize_accessibility_trends(data_file, output_dir)
@@ -2485,6 +2554,7 @@ run_visualization_analysis <- function(data_file = "Access_Data.csv",
 #' @importFrom ggplot2 labs theme_minimal theme element_text ggsave
 #' @importFrom readr read_csv write_csv
 #' @importFrom scales percent_format percent
+#' @export
 #' @importFrom stats lm
 #' @importFrom utils head tail
 #' @export
@@ -3048,6 +3118,7 @@ These findings suggest that access to gynecologic oncology care has become more 
 #' @importFrom ggplot2 ggplot aes geom_line geom_point geom_smooth scale_color_viridis_d
 #' @importFrom ggplot2 scale_y_continuous labs theme_minimal theme element_text ggsave
 #' @importFrom scales percent_format
+#' @export
 #' @importFrom readr read_csv write_csv
 #' @importFrom stringr str_c
 #' @importFrom stats lm sd
@@ -3363,6 +3434,7 @@ visualize_accessibility_trends_comprehensive <- function(accessibility_data_file
 #' @importFrom ggplot2 scale_y_continuous labs theme_minimal theme geom_text element_text
 #' @importFrom readr read_csv write_csv
 #' @importFrom scales percent_format
+#' @export
 #' @importFrom stats sd
 #' @export
 compare_accessibility_between_years <- function(accessibility_data_filepath = "access_by_group.csv",
@@ -3999,6 +4071,8 @@ analysis_results <- visualize_accessibility_trends(data_file = "data/Walker_data
 #' @importFrom ggplot2 scale_y_continuous labs theme_minimal theme geom_text geom_segment
 #' @importFrom readr read_csv write_csv
 #' @importFrom scales percent_format percent
+#' @export
+#' @export
 compare_years <- function(data_file = "access_by_group.csv",
                           years_to_compare = NULL,
                           output_dir = getwd(),
@@ -4533,6 +4607,7 @@ ggplot2::ggsave(
 #' @importFrom stringr str_remove str_replace_all str_to_title
 #' @importFrom knitr kable
 #' @importFrom scales percent
+#' @export
 #'
 #' @examples
 #' # Example 1: Full feasible statistical analysis
