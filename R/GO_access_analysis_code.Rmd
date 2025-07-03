@@ -251,13 +251,14 @@ calculate_weighted_stats <- function(data, value_col, weight_col) {
 #' @param data Data frame read from `input_data_path`.
 #' @return A tibble with mean and standard deviation of access by year.
 #' @noRd
-analyze_drive_time_trends <- function(data) {
+analyze_drive_time_trends <- function(data,
+                                      drive_time_thresholds = params$drive_time_thresholds) {
   logger::log_info("Analyzing drive time trends...")
 
   # Filter for overall female category and aggregate by year
   yearly_stats <- data %>%
     dplyr::filter(category == "total_female",
-                  range/60 %in% params$drive_time_thresholds) %>%
+                  range/60 %in% drive_time_thresholds) %>%
     dplyr::group_by(year) %>%
     dplyr::summarize(
       access_stats = list(calculate_weighted_stats(cur_data(), "percent", "total")),
@@ -278,11 +279,10 @@ analyze_drive_time_trends <- function(data) {
 #' @param data Data frame of access information.
 #' @return A tibble summarizing the low-access population by year (in millions).
 #' @noRd
-analyze_geographic_disparities <- function(data) {
+analyze_geographic_disparities <- function(data,
+                                           threshold_sec = DRIVE_TIME_60_MIN_SEC) {
   logger::log_info("Analyzing geographic disparities...")
   
-  threshold_sec <- DRIVE_TIME_60_MIN_SEC
-
   # Summarise the population living beyond the chosen threshold
   low_access_pop <- data %>%
     dplyr::filter(range > threshold_sec, category == "total_female") %>%
@@ -305,13 +305,15 @@ analyze_geographic_disparities <- function(data) {
 #' @param target_year Year to summarise.
 #' @return Tibble of mean access and SD by category.
 #' @noRd
-analyze_racial_disparities <- function(data, target_year = params$target_year) {
+analyze_racial_disparities <- function(data,
+                                       target_year = params$target_year,
+                                       threshold_sec = DRIVE_TIME_60_MIN_SEC) {
   logger::log_info("Analyzing racial disparities for year {target_year}...")
   
   racial_stats <- data %>%
     dplyr::filter(
       year == target_year,
-      range == DRIVE_TIME_60_MIN_SEC,
+      range == threshold_sec,
       category != "total_female"
     ) %>%
     dplyr::group_by(category) %>%
@@ -337,7 +339,10 @@ analyze_racial_disparities <- function(data, target_year = params$target_year) {
 #' @return List containing analysis results.
 #' @examples
 #' analyze_go_access("access_by_group.csv")
-analyze_go_access <- function(data_path = params$input_data_path) {
+analyze_go_access <- function(data_path = params$input_data_path,
+                              drive_time_thresholds = params$drive_time_thresholds,
+                              threshold_sec = DRIVE_TIME_60_MIN_SEC,
+                              target_year = params$target_year) {
   logger::log_info("Starting analysis of GO access data")
   
   # Read and validate data
@@ -345,9 +350,9 @@ analyze_go_access <- function(data_path = params$input_data_path) {
   data <- readr::read_csv(data_path, show_col_types = FALSE)
   
   # Perform analyses using helper functions
-  drive_time_trends <- analyze_drive_time_trends(data)
-  geographic_disparities <- analyze_geographic_disparities(data)
-  racial_disparities_2015 <- analyze_racial_disparities(data, params$target_year)
+  drive_time_trends <- analyze_drive_time_trends(data, drive_time_thresholds)
+  geographic_disparities <- analyze_geographic_disparities(data, threshold_sec)
+  racial_disparities_2015 <- analyze_racial_disparities(data, target_year, threshold_sec)
   
   # Generate summary text
   results <- list(
