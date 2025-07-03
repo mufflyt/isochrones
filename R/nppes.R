@@ -14,6 +14,7 @@
 #' con <- DBI::dbConnect(duckdb::duckdb(), "nppes.duckdb")
 #' create_nppes_table_mapping(con)
 #' }
+#' @importFrom DBI dbListTables
 create_nppes_table_mapping <- function(con) {
   all_tables <- DBI::dbListTables(con)
   nppes_tables <- all_tables[grepl("npidata|NPPES_Data_Dissemination", all_tables, ignore.case = TRUE)]
@@ -49,6 +50,10 @@ create_nppes_table_mapping <- function(con) {
 #' mapping <- create_nppes_table_mapping(con)
 #' df <- find_physicians_across_years(con, mapping, c("207V00000X"))
 #' }
+#' @importFrom DBI dbIsValid dbListFields dbGetQuery
+#' @importFrom assertthat assert_that
+#' @importFrom tibble as_tibble
+#' @importFrom stringr str_sub
 find_physicians_across_years <- function(con, table_year_mapping, taxonomy_codes,
                                          years_to_include = NULL) {
   assertthat::assert_that(DBI::dbIsValid(con))

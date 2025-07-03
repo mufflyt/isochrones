@@ -12,6 +12,8 @@
 #' @examples
 #' abstract_text <- "This is a test."
 #' summarize_abstract(abstract_text)
+#' @importFrom tibble tibble
+#' @importFrom stringr str_count boundary str_split
 #' @export
 summarize_abstract <- function(text) {
   stopifnot(is.character(text))
@@ -31,6 +33,7 @@ summarize_abstract <- function(text) {
 #' @return Integer count of paragraphs
 #' @examples
 #' count_paragraphs("One.\n\nTwo.")
+#' @importFrom stringr str_split
 #'
 #' @export
 count_paragraphs <- function(text) {

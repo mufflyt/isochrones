@@ -523,7 +523,7 @@ dt
 library(gganimate)
 
 create_animated_access_plot <- function(data_path = params$input_data_path) {
-  access_data <- read.csv(data_path)
+  access_data <- readr::read_csv(data_path, show_col_types = FALSE)
   
   # Create animation showing change in access over years
   p <- ggplot(access_data, aes(x = factor(range/60), y = percent, fill = category)) +
@@ -548,15 +548,15 @@ create_animated_access_plot(params$input_data_path)
 
 ```{r}
 create_benchmark_comparison <- function(data_path = params$input_data_path) {
-  access_data <- read.csv(data_path)
+  access_data <- readr::read_csv(data_path, show_col_types = FALSE)
   
   # Latest year for analysis
   latest_year <- max(access_data$year)
   
   # Filter to total female population for the latest year
-  latest_data <- access_data %>% 
-    filter(year == latest_year, category == "total_female") %>%
-    mutate(drive_time = range/60)
+  latest_data <- access_data %>%
+    dplyr::filter(year == latest_year, category == "total_female") %>%
+    dplyr::mutate(drive_time = range/60)
   
   # Add healthcare access benchmark data with references
   benchmarks <- tribble(
@@ -689,25 +689,25 @@ create_benchmark_comparison(params$input_data_path)
 ### Impact Narrative
 ```{r}
 calculate_impact_metrics <- function(data_path) {
-  access_data <- read.csv(data_path)
+  access_data <- readr::read_csv(data_path, show_col_types = FALSE)
   
   # Calculate people affected metrics
   latest_year <- max(access_data$year)
   baseline_year <- min(access_data$year)
   
   impact <- access_data %>%
-    filter(category == "total_female", range == DRIVE_TIME_60_MIN_SEC,
+    dplyr::filter(category == "total_female", range == DRIVE_TIME_60_MIN_SEC,
            year %in% c(baseline_year, latest_year)) %>%
-    select(year, total, count, percent) %>%
-    pivot_wider(names_from = year, 
+    dplyr::select(year, total, count, percent) %>%
+    tidyr::pivot_wider(names_from = year,
                 values_from = c(total, count, percent),
                 names_prefix = "year_") %>%
-    mutate(
-      population_change = total_year_2022 - total_year_2013,
-      access_change_pct = percent_year_2022 - percent_year_2013,
-      additional_women_with_access = count_year_2022 - count_year_2013,
-      women_still_without_access = total_year_2022 - count_year_2022
-    )
+    dplyr::mutate(
+        population_change = total_year_2022 - total_year_2013,
+        access_change_pct = percent_year_2022 - percent_year_2013,
+        additional_women_with_access = count_year_2022 - count_year_2013,
+        women_still_without_access = total_year_2022 - count_year_2022
+      )
   
   # Create a summary table
   impact_table <- tibble(
@@ -731,7 +731,7 @@ calculate_impact_metrics <- function(data_path) {
 generate_detailed_impact_narrative <- function(data_path) {
   # Get the metrics table
   metrics <- calculate_impact_metrics(data_path)
-  access_data <- read.csv(data_path)
+  access_data <- readr::read_csv(data_path, show_col_types = FALSE)
   
   # Extract values (removing formatting to work with numbers)
   total_women_2022 <- as.numeric(gsub(",", "", metrics$value[1]))
@@ -742,9 +742,9 @@ generate_detailed_impact_narrative <- function(data_path) {
   
   # Calculate actual percentages and totals for both years
   data_2013 <- access_data %>%
-    filter(year == 2013, category == "total_female", range == DRIVE_TIME_60_MIN_SEC)
+    dplyr::filter(year == 2013, category == "total_female", range == DRIVE_TIME_60_MIN_SEC)
   data_2022 <- access_data %>%
-    filter(year == 2022, category == "total_female", range == DRIVE_TIME_60_MIN_SEC)
+    dplyr::filter(year == 2022, category == "total_female", range == DRIVE_TIME_60_MIN_SEC)
   
   percent_2013 <- data_2013$percent
   percent_2022 <- data_2022$percent
@@ -754,10 +754,10 @@ generate_detailed_impact_narrative <- function(data_path) {
   
   # Calculate statistical significance (assuming we can treat these as proportions)
   # Using prop.test to compare two proportions
-  prop_test <- prop.test(
-    x = c(count_2013, count_2022),
-    n = c(total_2013, total_women_2022)
-  )
+  prop_test <- stats::prop.test(
+      x = c(count_2013, count_2022),
+      n = c(total_2013, total_women_2022)
+    )
   p_value <- prop_test$p.value
   
   # Generate narrative sentences with more detail
@@ -831,46 +831,46 @@ results <- analyze_go_access(params$input_data_path)
 generate_results_text <- function(data_path) {
   library(tidyverse)
   library(glue)
-  
+
   # Read and prepare data
-  data <- read_csv(data_path, show_col_types = FALSE)
+  data <- readr::read_csv(data_path, show_col_types = FALSE)
   
   # 1. Drive Time Analysis
   drive_time_stats <- data %>%
-    filter(category == "total_female") %>%
-    group_by(year) %>%
-    group_modify(~calculate_group_stats(.)) %>%
-    ungroup()
+    dplyr::filter(category == "total_female") %>%
+    dplyr::group_by(year) %>%
+    dplyr::group_modify(~calculate_group_stats(.)) %>%
+    dplyr::ungroup()
   
   # Find key years
-  stats_2013 <- drive_time_stats %>% filter(year == 2013)
-  stats_2022 <- drive_time_stats %>% filter(year == 2022)
-  stats_2015 <- drive_time_stats %>% filter(year == 2015)
-  stats_2019 <- drive_time_stats %>% filter(year == 2019)
+  stats_2013 <- drive_time_stats %>% dplyr::filter(year == 2013)
+  stats_2022 <- drive_time_stats %>% dplyr::filter(year == 2022)
+  stats_2015 <- drive_time_stats %>% dplyr::filter(year == 2015)
+  stats_2019 <- drive_time_stats %>% dplyr::filter(year == 2019)
   
   # 2. Geographic Access
   low_access_stats <- data %>%
-    filter(range > DRIVE_TIME_60_MIN_SEC, category == "total_female") %>%
-    group_by(year) %>%
-    summarise(
+    dplyr::filter(range > DRIVE_TIME_60_MIN_SEC, category == "total_female") %>%
+    dplyr::group_by(year) %>%
+    dplyr::summarise(
       low_access_pop = sum(count) / MILLION,
       .groups = "drop"
     )
   
   # 3. Racial Disparities 2015
   racial_stats_2015 <- data %>%
-    filter(
+    dplyr::filter(
       year == 2015,
       category != "total_female"
     ) %>%
-    group_by(category) %>%
-    group_modify(~calculate_group_stats(.)) %>%
-    ungroup() %>%
-    mutate(
+    dplyr::group_by(category) %>%
+    dplyr::group_modify(~calculate_group_stats(.)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(
       category = str_remove(category, "total_female_"),
       category = str_to_upper(category)
     ) %>%
-    arrange(desc(weighted_mean))
+    dplyr::arrange(desc(weighted_mean))
   
   # Generate text with improved formatting
   results_text <- glue::glue("
@@ -919,37 +919,37 @@ generate_results_text <- function(data_path) {
   library(stats)
   
   # Read data
-  data <- read_csv(data_path, show_col_types = FALSE)
+  data <- readr::read_csv(data_path, show_col_types = FALSE)
   
   # 1. Drive Time Analysis
   drive_time_stats <- data %>%
-    filter(category == "total_female") %>%
-    group_by(year) %>%
-    group_modify(~calculate_group_stats(.)) %>%
-    ungroup()
+    dplyr::filter(category == "total_female") %>%
+    dplyr::group_by(year) %>%
+    dplyr::group_modify(~calculate_group_stats(.)) %>%
+    dplyr::ungroup()
   
   # Test for temporal trend
   temporal_model <- lm(weighted_mean ~ year, data = drive_time_stats)
   temporal_test <- summary(temporal_model)
   
   # Find key years
-  stats_2013 <- drive_time_stats %>% filter(year == 2013)
-  stats_2022 <- drive_time_stats %>% filter(year == 2022)
-  stats_2015 <- drive_time_stats %>% filter(year == 2015)
-  stats_2019 <- drive_time_stats %>% filter(year == 2019)
+  stats_2013 <- drive_time_stats %>% dplyr::filter(year == 2013)
+  stats_2022 <- drive_time_stats %>% dplyr::filter(year == 2022)
+  stats_2015 <- drive_time_stats %>% dplyr::filter(year == 2015)
+  stats_2019 <- drive_time_stats %>% dplyr::filter(year == 2019)
   
   # 2. Geographic Access
   low_access_stats <- data %>%
-    filter(range > DRIVE_TIME_60_MIN_SEC, category == "total_female") %>%
-    group_by(year) %>%
-    summarise(
+    dplyr::filter(range > DRIVE_TIME_60_MIN_SEC, category == "total_female") %>%
+    dplyr::group_by(year) %>%
+    dplyr::summarise(
       low_access_pop = sum(count) / MILLION,
       .groups = "drop"
     )
   
   # 3. Racial Disparities 2015
   racial_data_2015 <- data %>%
-    filter(
+    dplyr::filter(
       year == 2015,
       category != "total_female"
     )
@@ -963,14 +963,14 @@ generate_results_text <- function(data_path) {
   
   # Calculate racial stats with weighted means
   racial_stats_2015 <- racial_data_2015 %>%
-    group_by(category) %>%
-    group_modify(~calculate_group_stats(.)) %>%
-    ungroup() %>%
-    mutate(
+    dplyr::group_by(category) %>%
+    dplyr::group_modify(~calculate_group_stats(.)) %>%
+    dplyr::ungroup() %>%
+    dplyr::mutate(
       category = str_remove(category, "total_female_"),
       category = str_to_upper(category)
     ) %>%
-    arrange(desc(weighted_mean))
+    dplyr::arrange(desc(weighted_mean))
   
   # Function to format p-values
   format_pvalue <- function(p) {
@@ -1058,7 +1058,7 @@ For a single location (id = 1):
 This pattern repeats across 4,128 rows covering multiple locations and years.
 
 ```{r, include = FALSE}
-all_isochrone_demographics <- read_csv(params$all_isochrone_path)
+all_isochrone_demographics <- readr::read_csv(params$all_isochrone_path)
 ```
 
 ### Data Set
@@ -1066,7 +1066,7 @@ all_isochrone_demographics <- read_csv(params$all_isochrone_path)
 # Reshape the data to have demographic categories as rows
 long_format_data <- all_isochrone_demographics %>%
   # Extract year from departure
-  mutate(year = if("departure" %in% names(.)) as.numeric(substr(departure, 1, 4)) else NA,
+  dplyr::mutate(year = if("departure" %in% names(.)) as.numeric(substr(departure, 1, 4)) else NA,
          drive_time_min = range/60) %>%
   # Gather demographic columns
   pivot_longer(
@@ -1076,7 +1076,7 @@ long_format_data <- all_isochrone_demographics %>%
     values_to = "count"
   ) %>%
   # Clean up category names
-  mutate(
+  dplyr::mutate(
     category = case_when(
       category == "total_female" ~ "Total Female",
       category == "total_female_white" ~ "White",
@@ -1088,14 +1088,14 @@ long_format_data <- all_isochrone_demographics %>%
     )
   ) %>%
   # Calculate percentage of total population
-  group_by(unique_id, drive_time_min, year) %>%
-  mutate(
+  dplyr::group_by(unique_id, drive_time_min, year) %>%
+  dplyr::mutate(
     total = first(count[category == "Total Female"]),
     percent = round(count / total * 100, 1)
   ) %>%
-  ungroup() %>%
+  dplyr::ungroup() %>%
   # Keep relevant columns
-  select(unique_id, year, drive_time_min,  category, count, total, percent)
+  dplyr::select(unique_id, year, drive_time_min,  category, count, total, percent)
 
 # Now use this with your original datatable code
 dt <- datatable(
@@ -1166,7 +1166,7 @@ explore_isochrone_demographics <- function(file_path) {
   library(sf)
   
   # Read the data
-  all_isochrone_demographics <- read.csv(file_path)
+  all_isochrone_demographics <- readr::read_csv(file_path, show_col_types = FALSE)
   
   # Basic data inspection
   cat("===== BASIC DATA SUMMARY =====\n")
@@ -1176,21 +1176,21 @@ explore_isochrone_demographics <- function(file_path) {
   # Extract year from departure timestamp if available
   if("departure" %in% names(all_isochrone_demographics)) {
     all_isochrone_demographics <- all_isochrone_demographics %>%
-      mutate(year = as.numeric(substr(departure, 1, 4)))
+      dplyr::mutate(year = as.numeric(substr(departure, 1, 4)))
     
     cat("Years covered:", paste(sort(unique(all_isochrone_demographics$year)), collapse = ", "), "\n")
   }
   
   # Calculate drive time in minutes
   all_isochrone_demographics <- all_isochrone_demographics %>%
-    mutate(drive_time_min = range/60)
+    dplyr::mutate(drive_time_min = range/60)
   
   cat("Drive time thresholds (minutes):", 
       paste(sort(unique(all_isochrone_demographics$drive_time_min)), collapse = ", "), "\n\n")
   
   # Demographic calculations
   all_isochrone_demographics <- all_isochrone_demographics %>%
-    mutate(
+    dplyr::mutate(
       # Calculate percentages for each demographic group
       pct_white = total_female_white / total_female * 100,
       pct_black = total_female_black / total_female * 100,
@@ -1206,8 +1206,8 @@ explore_isochrone_demographics <- function(file_path) {
   
   # Summary by drive time
   drive_time_summary <- all_isochrone_demographics %>%
-    group_by(drive_time_min) %>%
-    summarize(
+    dplyr::group_by(drive_time_min) %>%
+    dplyr::summarize(
       num_isochrones = n(),
       avg_population = mean(total_female, na.rm = TRUE),
       min_population = min(total_female, na.rm = TRUE),
@@ -1222,8 +1222,8 @@ explore_isochrone_demographics <- function(file_path) {
   
   # Calculate average demographic percentages by drive time
   demographic_summary <- all_isochrone_demographics %>%
-    group_by(drive_time_min) %>%
-    summarize(
+    dplyr::group_by(drive_time_min) %>%
+    dplyr::summarize(
       avg_white_pct = mean(pct_white, na.rm = TRUE),
       avg_black_pct = mean(pct_black, na.rm = TRUE),
       avg_aian_pct = mean(pct_aian, na.rm = TRUE),
@@ -1240,21 +1240,21 @@ explore_isochrone_demographics <- function(file_path) {
   # Temporal trend if year is available
   if(exists("year", where = all_isochrone_demographics)) {
     yearly_summary <- all_isochrone_demographics %>%
-      group_by(year, drive_time_min) %>%
-      summarize(
+      dplyr::group_by(year, drive_time_min) %>%
+      dplyr::summarize(
         total_population = sum(total_female, na.rm = TRUE),
         white_population = sum(total_female_white, na.rm = TRUE),
         black_population = sum(total_female_black, na.rm = TRUE),
         .groups = "drop"
       ) %>%
-      mutate(
+      dplyr::mutate(
         white_pct = white_population / total_population * 100,
         black_pct = black_population / total_population * 100
       )
     
     cat("===== YEARLY TRENDS IN POPULATION ACCESS =====\n")
-    print(kable(yearly_summary %>% select(year, drive_time_min, total_population) %>% 
-                spread(drive_time_min, total_population), digits = 0))
+    print(kable(yearly_summary %>% dplyr::select(year, drive_time_min, total_population) %>%
+                tidyr::spread(drive_time_min, total_population), digits = 0))
     cat("\n")
   }
   
@@ -1278,7 +1278,7 @@ explore_isochrone_demographics <- function(file_path) {
       names_to = "demographic",
       values_to = "percentage"
     ) %>%
-    mutate(
+    dplyr::mutate(
       demographic = case_when(
         demographic == "avg_white_pct" ~ "White",
         demographic == "avg_black_pct" ~ "Black",
@@ -1304,8 +1304,8 @@ explore_isochrone_demographics <- function(file_path) {
   
   # Visualization 3: Total Population by Drive Time
   total_by_drive_time <- all_isochrone_demographics %>%
-    group_by(drive_time_min) %>%
-    summarize(
+    dplyr::group_by(drive_time_min) %>%
+    dplyr::summarize(
       total_population = sum(total_female),
       .groups = "drop"
     )
@@ -1329,23 +1329,23 @@ explore_isochrone_demographics <- function(file_path) {
     # For the most recent year
     latest_year <- max(all_isochrone_demographics$year)
     
-    latest_data <- all_isochrone_demographics %>%
-      filter(year == latest_year) %>%
-      group_by(drive_time_min) %>%
-      summarize(
-        total_female_count = sum(total_female),
-        white_count = sum(total_female_white),
-        black_count = sum(total_female_black),
-        aian_count = sum(total_female_aian),
-        asian_count = sum(total_female_asian),
-        hipi_count = sum(total_female_hipi),
-        .groups = "drop"
-      )
+  latest_data <- all_isochrone_demographics %>%
+    dplyr::filter(year == latest_year) %>%
+    dplyr::group_by(drive_time_min) %>%
+    dplyr::summarize(
+      total_female_count = sum(total_female),
+      white_count = sum(total_female_white),
+      black_count = sum(total_female_black),
+      aian_count = sum(total_female_aian),
+      asian_count = sum(total_female_asian),
+      hipi_count = sum(total_female_hipi),
+      .groups = "drop"
+    )
     
     cat(paste0("Analysis for year ", latest_year, ":\n"))
     
     for(dt in unique(latest_data$drive_time_min)) {
-      row <- latest_data %>% filter(drive_time_min == dt)
+      row <- latest_data %>% dplyr::filter(drive_time_min == dt)
       total <- row$total_female_count
       
       cat(paste0("Within ", dt, "-minute drive time:\n"))
@@ -1374,7 +1374,7 @@ explore_isochrone_demographics <- function(file_path) {
   if(nrow(all_isochrone_demographics) > 0) {
     # Calculate overall demographic percentages across all isochrones
     overall_demographics <- all_isochrone_demographics %>%
-      summarize(
+      dplyr::summarize(
         total_pop = sum(total_female),
         white_pct = sum(total_female_white) / total_pop * 100,
         black_pct = sum(total_female_black) / total_pop * 100,
@@ -1388,17 +1388,17 @@ explore_isochrone_demographics <- function(file_path) {
     
     # Calculate disparity index by drive time
     disparity_by_drive_time <- all_isochrone_demographics %>%
-      group_by(drive_time_min) %>%
-      summarize(
+      dplyr::group_by(drive_time_min) %>%
+      dplyr::summarize(
         total_pop = sum(total_female),
         white_pct = sum(total_female_white) / total_pop * 100,
         black_pct = sum(total_female_black) / total_pop * 100,
         aian_pct = sum(total_female_aian) / total_pop * 100,
         asian_pct = sum(total_female_asian) / total_pop * 100,
-        hipi_pct = sum(total_female_hipi) / total_pop * 100,
-        .groups = "drop"
-      ) %>%
-      mutate(
+      hipi_pct = sum(total_female_hipi) / total_pop * 100,
+      .groups = "drop"
+    ) %>%
+      dplyr::mutate(
         white_disparity = white_pct - overall_demographics$white_pct,
         black_disparity = black_pct - overall_demographics$black_pct,
         aian_disparity = aian_pct - overall_demographics$aian_pct,
@@ -1406,21 +1406,21 @@ explore_isochrone_demographics <- function(file_path) {
         hipi_disparity = hipi_pct - overall_demographics$hipi_pct
       )
     
-    print(kable(disparity_by_drive_time %>% 
-                select(drive_time_min, contains("disparity")), 
+    print(kable(disparity_by_drive_time %>%
+                dplyr::select(drive_time_min, contains("disparity")),
                 digits = 1,
                 caption = "Demographic Representation Gap by Drive Time (percentage points)"))
     cat("\nPositive values indicate overrepresentation; negative values indicate underrepresentation\n")
     
     # Create disparity chart
     disparity_long <- disparity_by_drive_time %>%
-      select(drive_time_min, contains("disparity")) %>%
-      pivot_longer(
+      dplyr::select(drive_time_min, contains("disparity")) %>%
+      tidyr::pivot_longer(
         cols = contains("disparity"),
         names_to = "demographic",
         values_to = "disparity_value"
       ) %>%
-      mutate(
+      dplyr::mutate(
         demographic = case_when(
           demographic == "white_disparity" ~ "White",
           demographic == "black_disparity" ~ "Black",
@@ -1472,20 +1472,20 @@ results$plot4
 
 ```{r}
 # Assuming the data is loaded
-access_data <- read.csv(params$urban_rural_path)
+access_data <- readr::read_csv(params$urban_rural_path, show_col_types = FALSE)
 
 # Create a summary table with the correct range value (1800 seconds = 30 minutes)
 access_summary <- access_data %>%
-  filter(year == max(year) & range == DRIVE_TIME_30_MIN_SEC) %>%
-  select(urban, category, percent) %>%
+  dplyr::filter(year == max(year) & range == DRIVE_TIME_30_MIN_SEC) %>%
+  dplyr::select(urban, category, percent) %>%
   # Use values_from and names_from arguments more explicitly
-  pivot_wider(
-    names_from = urban, 
+  tidyr::pivot_wider(
+    names_from = urban,
     values_from = percent
   ) %>%
   # Now use the correct lowercase column names since that's what appears in your data
-  mutate(Difference = urban - rural) %>%
-  arrange(desc(urban))
+  dplyr::mutate(Difference = urban - rural) %>%
+  dplyr::arrange(desc(urban))
 ```
 
 
@@ -1506,7 +1506,7 @@ library(DT)
 
 # Clean up the category names for display
 access_summary_clean <- access_summary %>%
-  mutate(category = case_when(
+  dplyr::mutate(category = dplyr::case_when(
     category == "total_female" ~ "Total Female",
     category == "total_female_white" ~ "White",
     category == "total_female_black" ~ "Black",
@@ -1544,8 +1544,8 @@ library(scales)
 
 # For the total_female category with clearer visualization
 time_trend <- access_data %>%
-  filter(category == "total_female") %>%
-  mutate(
+  dplyr::filter(category == "total_female") %>%
+  dplyr::mutate(
     drive_time_min = range/60, # Convert seconds to minutes
     # Convert year to factor to ensure equal spacing and clear labeling
     year_factor = factor(year)
@@ -1621,16 +1621,16 @@ For example, this analysis might show that 45% of women can reach essential serv
 Decay analysis helps planners understand service coverage, identify accessibility gaps for different populations, and determine optimal facility locations to maximize access while minimizing travel time.
 ```{r, include = FALSE}
 # Read data
-data <- read_csv(params$input_data_path)
+data <- readr::read_csv(params$input_data_path)
 ```
 
 
 ```{r, include = TRUE}
 # Calculate overall means across all years for each drive time
 distance_decay <- data %>%
-  filter(category == "total_female") %>%
-  group_by(range) %>%
-  summarize(
+  dplyr::filter(category == "total_female") %>%
+  dplyr::group_by(range) %>%
+  dplyr::summarize(
     drive_time_min = first(range)/60,  # Convert seconds to minutes
     mean_access = mean(percent),
     sd_access = sd(percent),
@@ -1665,13 +1665,13 @@ results_text <- paste0(
 # This script visualizes how accessibility increases with drive time
 
 # Read data
-data <- read_csv(params$input_data_path)
+data <- readr::read_csv(params$input_data_path)
 
 # Calculate overall means across all years for each drive time
 distance_decay <- data %>%
-  filter(category == "total_female") %>%
-  group_by(range) %>%
-  summarize(
+  dplyr::filter(category == "total_female") %>%
+  dplyr::group_by(range) %>%
+  dplyr::summarize(
     drive_time_min = first(range)/60,  # Convert seconds to minutes
     mean_access = mean(percent),
     sd_access = sd(percent),
@@ -1758,7 +1758,7 @@ ggsave("figures/accessibility_decay_curve.png", width = 10, height = 6, dpi = 30
 
 # Additional Analysis: Calculate rate of change
 distance_decay <- distance_decay %>%
-  mutate(
+  dplyr::mutate(
     next_drive_time = lead(drive_time_min),
     next_access = lead(mean_access),
     time_diff = next_drive_time - drive_time_min,
@@ -1775,8 +1775,8 @@ library(kableExtra)
 
 # Create your table with consistent decimal places
 distance_decay_table <- distance_decay %>%
-  select(drive_time_min, mean_access, sd_access) %>%
-  rename(
+  dplyr::select(drive_time_min, mean_access, sd_access) %>%
+  dplyr::rename(
     "Drive Time (minutes)" = drive_time_min,
     "Mean Access (%)" = mean_access,
     "Standard Deviation (%)" = sd_access
@@ -1792,12 +1792,12 @@ kable(distance_decay_table,
 
 # Method 2: Format specific columns using mutate before kable
 distance_decay_table <- distance_decay %>%
-  select(drive_time_min, mean_access, sd_access) %>%
-  mutate(
+  dplyr::select(drive_time_min, mean_access, sd_access) %>%
+  dplyr::mutate(
     mean_access = round(mean_access, 1),
     sd_access = round(sd_access, 1)
   ) %>%
-  rename(
+  dplyr::rename(
     "Drive Time (minutes)" = drive_time_min,
     "Mean Access (%)" = mean_access,
     "Standard Deviation (%)" = sd_access
@@ -1808,11 +1808,11 @@ kable(distance_decay_table, format = "html") %>%
 
 # Method 3: Use cell_spec for even more control over individual cells
 distance_decay_table <- distance_decay %>%
-  select(drive_time_min, mean_access, sd_access) %>%
-  mutate(
+  dplyr::select(drive_time_min, mean_access, sd_access) %>%
+  dplyr::mutate(
     drive_time_min = drive_time_min,
     mean_access = cell_spec(
-      round(mean_access, 1), 
+      round(mean_access, 1),
       format = "html", 
       bold = mean_access > 70  # Bold values over 70%
     ),
@@ -1839,15 +1839,15 @@ kable(distance_decay_table, format = "html", escape = FALSE) %>%
 # This visualization shows how accessibility varies across different demographic groups
 
 # Read data
-data <- read_csv(params$input_data_path)
+data <- readr::read_csv(params$input_data_path)
 
 # Filter to relevant categories and clean up category names for display
 racial_groups <- data %>%
-  filter(
+  dplyr::filter(
     !category %in% c("total_female"), # Exclude overall total
     stringr::str_detect(category, "total_female_") # Only include racial/ethnic categories
   ) %>%
-  mutate(
+  dplyr::mutate(
     display_category = case_when(
       category == "total_female_white" ~ "White",
       category == "total_female_black" ~ "Black",
@@ -1860,8 +1860,8 @@ racial_groups <- data %>%
 
 # Calculate decay curves for each racial/ethnic group
 racial_decay_curves <- racial_groups %>%
-  group_by(category, display_category, range) %>%
-  summarize(
+  dplyr::group_by(category, display_category, range) %>%
+  dplyr::summarize(
     drive_time_min = first(range)/60,  # Convert seconds to minutes
     mean_access = mean(percent),
     sd_access = sd(percent),
@@ -1873,27 +1873,27 @@ racial_decay_curves <- racial_groups %>%
 # Create a dataframe for the ideal access curve
 # Using Asian population as benchmark since they have highest access
 ideal_curve <- data %>%
-  filter(category == "total_female_asian") %>%
-  group_by(range) %>%
-  summarize(
+  dplyr::filter(category == "total_female_asian") %>%
+  dplyr::group_by(range) %>%
+  dplyr::summarize(
     drive_time_min = first(range)/60,
     ideal_access = mean(percent) + 5, # Adding 5% as an aspirational target
     .groups = "drop"
   ) %>%
   # Cap at 100%
-  mutate(ideal_access = pmin(ideal_access, 100)) %>%
-  arrange(drive_time_min)
+  dplyr::mutate(ideal_access = pmin(ideal_access, 100)) %>%
+  dplyr::arrange(drive_time_min)
 
 # Calculate overall average for comparison
 overall_average <- data %>%
-  filter(category == "total_female") %>%
-  group_by(range) %>%
-  summarize(
+  dplyr::filter(category == "total_female") %>%
+  dplyr::group_by(range) %>%
+  dplyr::summarize(
     drive_time_min = first(range)/60,
     mean_access = mean(percent),
     .groups = "drop"
   ) %>%
-  arrange(drive_time_min)
+  dplyr::arrange(drive_time_min)
 
 # Set a color palette for the racial/ethnic groups
 racial_colors <- viridis::viridis(n = length(unique(racial_decay_curves$display_category)))
@@ -1988,9 +1988,9 @@ p <- ggplot() +
 
 # Get the calculated access rates at key time points for annotations
 key_points <- racial_decay_curves %>%
-  filter(drive_time_min %in% c(30, 60, 180)) %>%
-  group_by(display_category) %>%
-  mutate(
+  dplyr::filter(drive_time_min %in% c(30, 60, 180)) %>%
+  dplyr::group_by(display_category) %>%
+  dplyr::mutate(
     label = paste0(round(mean_access), "%"),
     vjust = if_else(drive_time_min == 180, -0.5, 1.5)
   )
@@ -2027,7 +2027,7 @@ ggsave("figures/racial_decay_curves.png", p_final, width = 12, height = 8, dpi =
 ```{r, include = TRUE}
 # Print rate of change analysis
 print("Rate of Change in Accessibility per Minute:")
-print(distance_decay %>% select(drive_time_min, mean_access, access_rate))
+print(distance_decay %>% dplyr::select(drive_time_min, mean_access, access_rate))
 ```
 
 
@@ -2042,8 +2042,8 @@ cat(results_text)
 # Optional: Create a table for publication
 
 distance_decay_table <- distance_decay %>%
-  select(drive_time_min, mean_access, sd_access) %>%
-  rename(
+  dplyr::select(drive_time_min, mean_access, sd_access) %>%
+  dplyr::rename(
     "Drive Time (minutes)" = drive_time_min,
     "Mean Access (%)" = mean_access,
     "Standard Deviation (%)" = sd_access
@@ -2057,7 +2057,7 @@ knitr::kable(distance_decay_table, digits = 1)
 https://onlinelibrary.wiley.com/doi/full/10.1111/1468-0009.12668
 ```{r}
 # Load data (assuming the data includes a column 'travel_time' in minutes and 'urban_rural' classification)
-census_tracts <- read.csv(params$urban_rural_path)  # Replace with actual file path
+census_tracts <- readr::read_csv(params$urban_rural_path, show_col_types = FALSE)  # Replace with actual file path
 
 gyn_oncologist_access <- census_tracts %>%
   dplyr::filter(year == 2022) %>%
@@ -2070,15 +2070,15 @@ urban_over_30 <- gyn_oncologist_access %>%
   nrow()
 
 total_urban <- gyn_oncologist_access %>%
-  filter(urban_rural == "urban") %>%
+  dplyr::filter(urban_rural == "urban") %>%
   nrow()
 
 rural_over_30 <- gyn_oncologist_access %>%
-  filter(urban_rural == "rural", over_30_min) %>%
+  dplyr::filter(urban_rural == "rural", over_30_min) %>%
   nrow()
 
 total_rural <- gyn_oncologist_access %>%
-  filter(urban_rural == "rural") %>%
+  dplyr::filter(urban_rural == "rural") %>%
   nrow()
 
 total_over_30 <- urban_over_30 + rural_over_30
@@ -4523,7 +4523,7 @@ library(tigris)
 isos <- sf::st_read("/Users/tylermuffly/Dropbox (Personal)/walker_maps/data/20241013161700.shp") %>%
 
 #isos <- st_read("data/HERE_isochrone_results (1)/20241013161700.shp") %>%
-  mutate(year = str_sub(departure, 1, 4))
+  dplyr::mutate(year = stringr::str_sub(departure, 1, 4))
 
 # Let's make a list of isochrone maps, named by year. Styling can be modified as needed.
 years <- 2013:2023
@@ -4537,12 +4537,12 @@ state_borders <- tigris::states(cb = TRUE, resolution = "20m") %>% tigris::shift
 # Iterate over the years and create a map for each year
 yearly_maps <- map(years, function(yr) {
   isos1 <- isos %>%
-    filter(year == yr) %>%
+    dplyr::filter(year == yr) %>%
     shift_geometry() %>%
-    group_by(range) %>%
-    summarize() %>%
-    arrange(desc(range)) %>%
-    mutate(range = range / 60)
+    dplyr::group_by(range) %>%
+    dplyr::summarize() %>%
+    dplyr::arrange(desc(range)) %>%
+    dplyr::mutate(range = range / 60)
 
   ggplot() +
     geom_sf(data = state_borders, color = "darkgrey", fill = "white") +
@@ -4563,12 +4563,12 @@ library(patchwork)
 
 yearly_maps_min <- map(years, function(yr) {
   isos1 <- isos %>%
-    filter(year == yr) %>%
+    dplyr::filter(year == yr) %>%
     shift_geometry() %>%
-    group_by(range) %>%
-    summarize() %>%
-    arrange(desc(range)) %>%
-    mutate(range = range / 60)
+    dplyr::group_by(range) %>%
+    dplyr::summarize() %>%
+    dplyr::arrange(desc(range)) %>%
+    dplyr::mutate(range = range / 60)
 
   ggplot() +
     geom_sf(data = state_borders, color = "darkgrey", fill = "white") +
@@ -5308,9 +5308,9 @@ urban_rural_long <- urban_rural_data %>%
   pivot_longer(cols = starts_with("min_"),
                names_to = "drive_time",
                values_to = "accessibility") %>%
-  mutate(drive_time = factor(drive_time, 
-                           levels = c("min_30", "min_60", "min_120", "min_180"),
-                           labels = c("30 min", "60 min", "120 min", "180 min")))
+  dplyr::mutate(drive_time = factor(drive_time,
+                             levels = c("min_30", "min_60", "min_120", "min_180"),
+                             labels = c("30 min", "60 min", "120 min", "180 min")))
 
 # Plot 2: Urban-Rural comparison
 plot_urban_rural <- ggplot(urban_rural_long, 
@@ -5345,7 +5345,7 @@ racial_data <- data.frame(
   # Order by decreasing accessibility for better visualization
   arrange(desc(accessibility)) %>%
   # Create factors in the correct order for plotting
-  mutate(race_ethnicity = factor(race_ethnicity, levels = race_ethnicity))
+  dplyr::mutate(race_ethnicity = factor(race_ethnicity, levels = race_ethnicity))
 
 # Create full race/ethnicity labels for clarity
 race_labels <- c(
