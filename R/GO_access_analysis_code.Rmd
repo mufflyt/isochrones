@@ -678,15 +678,6 @@ create_benchmark_comparison <- function(data_path = params$input_data_path) {
 ```
 
 ### GO Access versus Benchmarks
-References:
-    "Healthy People 2030 Target", 85, "Healthcare access goal set by HHS", 
-      "U.S. Department of Health and Human Services. (2020). Healthy People 2030. https://health.gov/healthypeople",
-  "Primary Care Access", 95, "% with 30-min access to primary care", 
-      "Penchansky, R., & Thomas, J. W. (1981). The concept of access: definition and relationship to consumer satisfaction. Medical Care, 19(2), 127-140.",
-  "Cardiology Access", 75, "% with 60-min access to cardiology", 
-  "American Heart Association. (2019). Systems of Care for ST-Segment–Elevation Myocardial Infarction. Circulation, 140(5), e310-e369.",
-  "Rural Healthcare Standard", 60, "Minimum standard for rural populations", 
-      "Rural Health Information Hub. (2021). Rural Access to Healthcare. https://www.ruralhealthinfo.org/topics/healthcare-access"
 ```{r, include = TRUE}
 create_benchmark_comparison(params$input_data_path)
 ```
@@ -826,95 +817,6 @@ generate_detailed_impact_narrative <- function(data_path) {
 ```{r, include = TRUE}
 generate_detailed_impact_narrative(params$input_data_path)
 ```
-
-```{r, echo=FALSE, include = TRUE}
-results <- analyze_go_access(params$input_data_path)
-```
-
-```{r}
-# Function to generate nicely formatted results text
-generate_results_text <- function(data_path) {
-  library(tidyverse)
-  library(glue)
-  
-  # Read and prepare data
-  data <- read_csv(data_path, show_col_types = FALSE)
-  
-  # 1. Drive Time Analysis
-  drive_time_stats <- data %>%
-    filter(category == "total_female") %>%
-    group_by(year) %>%
-    group_modify(~calculate_group_stats(.)) %>%
-    ungroup()
-  
-  # Find key years
-  stats_2013 <- drive_time_stats %>% filter(year == 2013)
-  stats_2022 <- drive_time_stats %>% filter(year == 2022)
-  stats_2015 <- drive_time_stats %>% filter(year == 2015)
-  stats_2019 <- drive_time_stats %>% filter(year == 2019)
-  
-  # 2. Geographic Access
-  low_access_stats <- data %>%
-    filter(range > DRIVE_TIME_60_MIN_SEC, category == "total_female") %>%
-    group_by(year) %>%
-    summarise(
-      low_access_pop = sum(count) / MILLION,
-      .groups = "drop"
-    )
-  
-  # 3. Racial Disparities 2015
-  racial_stats_2015 <- data %>%
-    filter(
-      year == 2015,
-      category != "total_female"
-    ) %>%
-    group_by(category) %>%
-    group_modify(~calculate_group_stats(.)) %>%
-    ungroup() %>%
-    mutate(
-      category = str_remove(category, "total_female_"),
-      category = str_to_upper(category)
-    ) %>%
-    arrange(desc(weighted_mean))
-  
-  # Generate text with improved formatting
-  results_text <- glue::glue("
-Results
-
-Drive Time Analysis and Population Access
-Mean drive times to gynecologic oncologists (GOs) showed significant variation over the study period. The population-weighted mean access rate in 2013 was {sprintf('%.1f', stats_2013$weighted_mean)}% ± {sprintf('%.1f', stats_2013$weighted_sd)}%, decreasing to {sprintf('%.1f', stats_2022$weighted_mean)}% ± {sprintf('%.1f', stats_2022$weighted_sd)}% in 2022. The highest access rate was observed in 2015 ({sprintf('%.1f', stats_2015$weighted_mean)}% ± {sprintf('%.1f', stats_2015$weighted_sd)}%), while the lowest was in 2019 ({sprintf('%.1f', stats_2019$weighted_mean)}% ± {sprintf('%.1f', stats_2019$weighted_sd)}%).
-
-Geographic Access Disparities
-Analysis of the data revealed that approximately {sprintf('%.1f', tail(low_access_stats$low_access_pop, 1))} million women lived in low-access census tracts (defined as areas beyond 60-minute drive time). The number of people in low-access areas fluctuated over the study period, from a low of {sprintf('%.1f', min(low_access_stats$low_access_pop))} million to a high of {sprintf('%.1f', max(low_access_stats$low_access_pop))} million.
-
-Racial and Ethnic Disparities (2015)
-Access within 60 minutes varied significantly by race/ethnicity in 2015:
-{paste0('- ', racial_stats_2015$category, ': ', 
-        sprintf('%.1f', racial_stats_2015$weighted_mean), '% ± ', 
-        sprintf('%.1f', racial_stats_2015$weighted_sd), '%\\n', 
-        collapse='')}
-
-Note: Standard deviations reflect variability across different drive time ranges.")
-
-  return(results_text)
-}
-```
-
-
-```{r, include = TRUE}
-# Then if types look good, run the analysis
-results_text <- generate_results_text(params$input_data_path)
-cat(results_text)
-```
-Based on the output from the `generate_results_text` function:
-
-The results show a concerning decline in access to gynecologic oncologists (GOs) over time. In 2013, about 69.5% of women had access to a GO within 60 minutes of driving time, but by 2022 this dropped to 62.0%, representing a 7.5 percentage point decrease. Interestingly, access peaked in 2015 at 70.1% before declining to its lowest point in 2019 at 58.3%, with a slight recovery by 2022.
-
-The analysis also reveals substantial geographic disparities, with approximately 277.3 million women living in areas considered "low-access" (beyond 60-minute drive time). This number fluctuated throughout the study period, ranging from 250.5 million to 285.8 million women.
-
-Perhaps most striking are the racial and ethnic disparities identified in 2015. Asian women had the highest access rate at 86.5%, followed by Black women (77.2%), Native Hawaiian and Pacific Islander women (HIPI, 75.3%), and white women (66.8%). American Indian and Alaska Native women (AIAN) had dramatically lower access at just 50.9% - meaning nearly half of this population lacked reasonable access to gynecologic oncology care.
-
-These findings suggest significant and persistent issues with healthcare accessibility that could have serious implications for cancer outcomes among women in underserved populations.
 
 ```{r, include = FALSE}
 # Function to generate results text with corrected formatting
