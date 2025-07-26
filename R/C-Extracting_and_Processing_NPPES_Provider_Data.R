@@ -1,18 +1,319 @@
-#######################
-source("R/01-setup.R")
-#######################
+# NPPES OB/GYN Provider Data Processing - Database-Driven Extraction ----
+# Script: C-Extracting_and_Processing_NPPES_Provider_Data.R ----
+#
+#
+# PURPOSE: ----
+# Connects to a pre-loaded DuckDB database of National Provider Identifier (NPI)
+# data to efficiently extract and analyze OB/GYN practitioners across multiple
+# years with advanced query optimization and reference data integration.
+#
+# RESEARCH QUESTION: Which physician practiced in what year in what location? ----
+#
+#
+# SCRIPT ARCHITECTURE ----
+#
+#
+# APPROACH: Database-driven extraction with intelligent table mapping ----
+# - Connects to pre-loaded DuckDB database with historical NPPES tables
+# - Auto-generates mapping between database tables and years
+# - Uses optimized SQL queries with multiple fallback strategies
+# - Integrates reference datasets (NUCC taxonomy, Physician Compare)
+# - Provides specialty change analysis and provider tracking
+#
+# PROCESSING STRATEGY: ----
+# 1. Database Connection → Table Mapping → Provider Extraction → Integration
+# 2. Multiple query approaches (dplyr, SQL, direct) with fallback handling
+# 3. Reference data integration for enhanced analysis
+# 4. Specialty change tracking and longitudinal analysis
+# 5. State standardization and basic data cleaning
+#
+#
+# DATA SOURCES & DATABASE STRUCTURE
+#
+#
+# PRIMARY DATABASE:
+# db_path = "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/unzipped_p_files/nppes_my_duckdb.duckdb"
+#
+# DATABASE STRUCTURE:
+# - Multiple tables representing different years of NPPES data
+# - Table naming: Complex paths reflecting original file locations
+# - Example: "_Volumes_Video_Projects_Muffly_1_nppes_historical_downloads_..."
+#
+# TABLE-YEAR MAPPING METHOD:
+# create_nppes_table_mapping <- function(connection) {
+#   # Strategy 1: Extract year from table name
+#   for (year in expected_years) {
+#     if (grepl(year_str, table_name)) {
+#       table_year <- year
+#     }
+#   }
+#   # Strategy 2: Sample table data for date extraction
+#   date_value <- sample_data[["Last Update Date"]][1]
+#   extracted_year <- regexpr("20[0-9]{2}", date_value)
+# }
+#
+# TEMPORAL COVERAGE: 2005-2022+ (based on available database tables)
+#
+#
+# ADVANCED QUERY STRATEGIES
+#
+#
+# MULTI-APPROACH PROVIDER EXTRACTION:
+# The script uses sophisticated fallback strategies for maximum data retrieval:
+#
+# APPROACH 1: dplyr-based querying
+# try_dplyr_approach <- function() {
+#   nppes_table <- dplyr::tbl(connection, current_table)
+#   taxonomy_columns <- grep("Healthcare Provider Taxonomy Code_[0-9]+", col_names)
+#   
+#   # Dynamic filter construction across all taxonomy columns
+#   filter_expr <- build_combined_taxonomy_filter(taxonomy_columns, taxonomy_codes)
+#   
+#   query <- nppes_table %>%
+#     dplyr::filter(!!filter_expr) %>%
+#     dplyr::filter(`Entity Type Code` == 1L) %>%  # Individual providers only
+#     dplyr::select(core_columns, additional_columns) %>%
+#     dplyr::collect(n = max_results_per_year)
+# }
+#
+# APPROACH 2: Direct SQL with comprehensive column handling
+# try_sql_approach <- function() {
+#   # Build dynamic SQL with all available taxonomy columns
+#   taxonomy_filter <- paste(taxonomy_filters, collapse = " OR ")
+#   
+#   query <- sprintf("
+#     SELECT %s, %d AS Year
+#     FROM \"%s\"  
+#     WHERE (%s) AND \"Entity Type Code\" = 1
+#     LIMIT %d", 
+#                    column_sql, current_year, current_table, taxonomy_filter, max_results_per_year)
+# }
+#
+# APPROACH 3: Fallback direct approach with fixed column structure
+# try_direct_approach <- function() {
+#   # Uses hardcoded taxonomy column names as last resort
+#   query <- sprintf("SELECT * FROM \"%s\" 
+#     WHERE \"Entity Type Code\" = 1
+#     AND (\"Healthcare Provider Taxonomy Code_1\" IN (%s) OR ...)", 
+#                    current_table, taxonomy_values)
+# }
+#
+#
+# TAXONOMY CODE PROCESSING
+#
+#
+# TARGET OB/GYN TAXONOMY CODES:
+# obgyn_taxonomy_codes <- c(
+#   "207V00000X",    # Obstetrics & Gynecology
+#   "207VX0201X",    # Gynecologic Oncology  
+#   "207VE0102X",    # Reproductive Endocrinology
+#   "207VG0400X",    # Gynecology
+#   "207VM0101X",    # Maternal & Fetal Medicine
+#   "207VF0040X",    # Female Pelvic Medicine
+#   "207VB0002X",    # Bariatric Medicine
+#   "207VC0200X",    # Critical care medicine
+#   "207VC0040X",    # Gynecology subspecialty
+#   "207VC0300X",    # Complex family planning
+#   "207VH0002X",    # Palliative care
+#   "207VX0000X"     # Obstetrics only
+# )
+#
+# TAXONOMY COLUMN DETECTION:
+# - Automatically detects available taxonomy columns in each table
+# - Builds dynamic OR conditions across all taxonomy fields
+# - Handles variable numbers of taxonomy columns per table
+#
+#
+# LOCATION DATA EXTRACTION
+#
+#
+# CORE LOCATION FIELDS:
+# cols_to_select <- c(
+#   "NPI", 
+#   "Provider Last Name (Legal Name)", 
+#   "Provider First Name",
+#   "Provider Middle Name", 
+#   "Provider Gender Code",
+#   "Provider Business Practice Location Address City Name",      # Practice location
+#   "Provider Business Practice Location Address State Name",     # Practice state
+#   "Provider Business Practice Location Address Postal Code",    # Practice ZIP
+#   "Provider First Line Business Mailing Address",              # Mailing address
+#   "Provider Business Mailing Address City Name",               # Mailing city  
+#   "Provider Business Mailing Address State Name",              # Mailing state
+#   "Provider Business Mailing Address Postal Code"              # Mailing ZIP
+# )
+#
+# LOCATION DATA STANDARDIZATION:
+# - ZIP code cleaning to 5-digit format
+# - State abbreviation to full name conversion using tyler package
+# - Geographic filtering for US-based providers only
+#
+# ZIP CLEANING:
+# if ("Zip" %in% colnames(providers_data)) {
+#   providers_data <- providers_data %>%
+#     dplyr::mutate(Zip = stringr::str_sub(Zip, 1, 5))
+# }
+# #
+# # STATE STANDARDIZATION:
+# obgyn_physicians_all_years$`Provider Business Practice Location Address State Name` <- 
+#   tyler::phase0_convert_state_abbreviations(
+#     obgyn_physicians_all_years$`Provider Business Practice Location Address State Name`)
+#
+#
+# REFERENCE DATA INTEGRATION
+#
+#
+# NUCC TAXONOMY CODES:
+# Integrates official healthcare provider taxonomy reference
+# nucc_data <- read.csv("/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/nucc/nucc_taxonomy_201.csv")
+# dbWriteTable(con, "nucc_taxonomy", nucc_data, overwrite = TRUE)
+# #
+# # PHYSICIAN COMPARE DATASET:
+# # Adds contemporary provider information from CMS
+# physician_data <- readr::read_csv("/Volumes/Video Projects Muffly 1/nppes_historical_downloads/DAC_NationalDownloadableFile.csv")
+# clean_physician_data <- physician_data %>%
+#   filter(pri_spec %in% c("GYNECOLOGICAL ONCOLOGY", "OBSTETRICS/GYNECOLOGY")) %>%
+#   mutate(year = "2023")
+#
+#
+# PROVIDER TRACKING & LONGITUDINAL ANALYSIS
+#
+#
+# SPECIALTY CHANGE ANALYSIS:
+# analyze_specialty_changes <- function(provider_data, include_unchanged = FALSE) {
+#   specialty_changes <- provider_data %>%
+#     dplyr::arrange(NPI, Year) %>%
+#     dplyr::group_by(NPI) %>%
+#     dplyr::mutate(
+#       PreviousTaxonomyCode = dplyr::lag(TaxonomyCode1),
+#       PreviousYear = dplyr::lag(Year),
+#       YearsSincePrevious = Year - PreviousYear,
+#       ChangedSpecialty = TaxonomyCode1 != PreviousTaxonomyCode & !is.na(PreviousTaxonomyCode)
+#     )
+# }
+#
+# MISSING PROVIDER DETECTION:
+# Checks for specific important providers and attempts direct lookup
+# check_for_missing_providers <- function(connection, combined_providers, important_npis) {
+#   missing_npis <- setdiff(important_npis, combined_providers$NPI)
+#   # Direct NPI lookup across all tables if providers missing
+# }
+#
+#
+# OUTPUT STRUCTURE & FINAL DATASET
+#
+#
+# PRIMARY OUTPUT: ----
+# "data/C_extracting_and_processing_NPPES_obgyn_physicians_all_years.rds"
+# #
+# # FINAL COLUMN STRUCTURE:
+# obgyn_physicians_all_years <- tibble(
+#   Year,                                                    # Integer year from table mapping
+#   NPI,                                                     # Provider identifier (character)
+#   LastName,                                               # Provider last name (character)
+#   FirstName,                                              # Provider first name (character) 
+#   MiddleName,                                             # Provider middle name (character)
+#   Gender,                                                 # Provider gender code (character)
+#   TaxonomyCode1,                                          # Primary taxonomy code (character)
+#   City,                                                   # Practice city (character)
+#   State,                                                  # Practice state (character)
+#   Zip,                                                    # Practice ZIP - 5 digits (character)
+#   `NPI Deactivation Date`,                               # Deactivation date (character)
+#   `Last Update Date`,                                    # Last update (character)
+#   `Provider Enumeration Date`,                           # Enumeration date (character)
+#   `Provider Organization Name (Legal Business Name)`,     # Organization name (character)
+#   `Provider Credential Text`,                            # Credentials (character)
+#   `Provider First Line Business Mailing Address`,        # Mailing address (character)
+#   `Provider Business Mailing Address City Name`,         # Mailing city (character)
+#   `Provider Business Mailing Address State Name`,        # Mailing state (character)
+#   `Provider Business Mailing Address Postal Code`        # Mailing ZIP (character)
+# )
+#
+# DATA TYPE STANDARDIZATION:
+# All columns converted to character type to prevent binding conflicts
+# Use convert_key_columns_to_proper_types() for post-processing type conversion
+#
+#
+# ADVANCED FEATURES & CAPABILITIES
+#
+#
+# INTELLIGENT TABLE MAPPING:
+# - Automatically discovers and maps database tables to years
+# - Handles complex table naming schemes from file imports
+# - Extracts year information from table names and date columns
+#
+# ROBUST QUERY EXECUTION:
+# - Multiple fallback strategies ensure maximum data retrieval
+# - Graceful handling of missing columns across tables
+# - Dynamic taxonomy column detection and filtering
+#
+# REFERENCE DATA INTEGRATION:
+# - NUCC taxonomy codes for specialty validation
+# - Physician Compare data for contemporary provider information
+# - Seamless integration with main NPPES dataset
+#
+# LONGITUDINAL ANALYSIS:
+# - Provider specialty change tracking over time
+# - Missing provider detection and recovery
+# - Temporal analysis of provider characteristics
+#
+#
+# ADVANTAGES OF FILE C APPROACH
+#
+#
+# ✓ PERFORMANCE & EFFICIENCY:
+#   - Fast database-driven queries using DuckDB
+#   - Efficient memory usage with lazy evaluation
+#   - Optimized SQL execution with multiple fallback strategies
+#
+# ✓ REFERENCE DATA INTEGRATION:
+#   - Seamless integration of NUCC taxonomy codes
+#   - Physician Compare dataset integration
+#   - Enhanced provider validation and analysis
+#
+# ✓ ADVANCED ANALYTICS:
+#   - Specialty change analysis functions
+#   - Provider tracking across multiple years
+#   - Missing provider detection and recovery
+#
+# ✓ ROBUST DATABASE HANDLING:
+#   - Automatic table-year mapping
+#   - Intelligent column detection
+#   - Graceful handling of schema variations
+#
+#
+# USE CASES FOR FILE C
+#
+#
+# IDEAL FOR:
+# - Analysis of pre-loaded NPPES databases
+# - Research requiring fast query performance
+# - Studies needing reference data integration
+# - Longitudinal provider tracking analysis
+# - Specialty change and career transition studies
+#
+# RESEARCH APPLICATIONS:
+# - Provider workforce trend analysis
+# - Specialty transition tracking (General OB/GYN → Subspecialty)
+# - Geographic mobility studies using database efficiency
+# - Integration with external datasets for validation
+# - Rapid prototyping of provider accessibility analysis
+#
+#
 
-#==============================================================================
-# Extracting and Processing NPPES Provider Data
+
+#
+# Extracting and Processing NPPES Provider Data ----
 #
 # Purpose: This script connects to a DuckDB database of National Provider 
 # Identifier (NPI) data, analyzes the tables, and extracts information about
 # OBGYN practitioners across multiple years.
-#==============================================================================
+# 
 
-#------------------------------------------------------------------------------
-# 1. Load Required Packages
-#------------------------------------------------------------------------------
+source("R/01-setup.R")
+#
+# 1. Load Required Packages ----
+#
 # Core database packages
 library(DBI)
 library(duckdb)
@@ -25,14 +326,14 @@ library(logger)     # For logging operations
 library(assertthat) # For input validation
 library(tibble)     # For enhanced data frames
 
-# Load custom functions for NPPES data processing
-source("R/bespoke_functions.R"); invisible(gc()); invisible(gc())
+# Load custom functions for NPPES data processing -----
+source("R/bespoke_functions.R"); invisible(gc())
 
-#------------------------------------------------------------------------------
-# 2. Database Connection and Exploration
-#------------------------------------------------------------------------------
+#
+# 2. Database Connection and Exploration ----
+#
 # Define database path
-db_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/unzipped_p_files/nppes_my_duckdb.duckdb"
+db_path <- "/Volumes/MufflyNew/nppes_historical_downloads/unzipped_p_files/nppes_my_duckdb.duckdb"
 
 # Connect to the DuckDB database
 con <- dbConnect(duckdb::duckdb(), db_path)
@@ -63,9 +364,9 @@ print(tables)
 #   print(sample_data)
 # }
 
-#------------------------------------------------------------------------------
+#
 # 3. Year-to-Table Mapping
-#------------------------------------------------------------------------------
+#
 
 # Create a mapping between years and table names for historical NPPES data
 # Generate the table mapping automatically
@@ -74,9 +375,9 @@ table_year_mapping <- create_nppes_table_mapping(con)
 # Print the mapping to verify
 print(table_year_mapping)
 
-#------------------------------------------------------------------------------
-# 4. Define OBGYN Taxonomy Codes
-#------------------------------------------------------------------------------
+#
+# 4. Define OBGYN Taxonomy Codes ----
+#
 # These codes identify different specialties within obstetrics and gynecology
 obgyn_taxonomy_codes <- c(
   "207V00000X",    # Obstetrics & Gynecology
@@ -94,7 +395,7 @@ obgyn_taxonomy_codes <- c(
 )
 
 #' #------------------------------------------------------------------------------
-#' # 5. Find and Process OBGYN Practitioners
+# 5. Find and Process OBGYN Practitioners ----
 #' #------------------------------------------------------------------------------
 #' # Extract OBGYN practitioners from all available years
 #' # Note: The find_physicians_across_years function is defined in bespoke_functions.R
@@ -1157,7 +1458,7 @@ library(duckdb)
 library(tidyr)
 
 # Set up database connection
-db_path <- "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/unzipped_p_files/nppes_my_duckdb.duckdb"
+db_path <-"/Volumes/MufflyNew/nppes_historical_downloads/unzipped_p_files/nppes_my_duckdb.duckdb"
 connection <- dbConnect(duckdb::duckdb(), db_path)
 
 # Auto-generate table mapping
@@ -1166,53 +1467,67 @@ table_year_mapping <- create_nppes_table_mapping(connection)
 # Define taxonomy codes (including all possible OBGYN-related codes)
 obgyn_taxonomy_codes <- c(
   "207V00000X",    # Obstetrics & Gynecology
-  "207VF0040X",    # Female Pelvic Medicine
+  "207VX0201X",    # Gynecologic Oncology
+  "207VE0102X",    # Reproductive Endocrinology
   "207VG0400X",    # Gynecology
-  "207VM0101X"     # Maternal & Fetal Medicine
+  "207VM0101X",    # Maternal & Fetal Medicine
+  "207VF0040X",    # Female Pelvic Medicine
+  "207VB0002X",    # Bariatric Medicine
+  "207VC0200X",    # Critical care medicine
+  "207VC0040X",    # Gynecology subspecialty
+  "207VC0300X",    # Complex family planning
+  "207VH0002X",    # Palliative care
+  "207VX0000X"     # Obstetrics only
 )
 
-# Retrieve all physicians with these taxonomy codes
+# Create the validate_inputs function that your find_providers_across_years expects
+validate_inputs <- function(connection, table_year_mapping, taxonomy_codes, 
+                            years_to_include = NULL, max_results_per_year = 1000000) {
+  tryCatch({
+    assertthat::assert_that(DBI::dbIsValid(connection), 
+                            msg = "Database connection is not valid")
+    assertthat::assert_that(is.list(table_year_mapping), 
+                            msg = "table_year_mapping must be a list")
+    assertthat::assert_that(is.character(taxonomy_codes), 
+                            msg = "taxonomy_codes must be character vector")
+    assertthat::assert_that(length(taxonomy_codes) > 0, 
+                            msg = "taxonomy_codes cannot be empty")
+    if (!is.null(years_to_include)) {
+      assertthat::assert_that(is.character(years_to_include), 
+                              msg = "years_to_include must be character vector")
+    }
+    assertthat::assert_that(is.numeric(max_results_per_year), 
+                            msg = "max_results_per_year must be numeric")
+    assertthat::assert_that(max_results_per_year > 0, 
+                            msg = "max_results_per_year must be positive")
+  }, error = function(e) {
+    logger::log_error("Validation error: {e$message}")
+    stop(e$message)
+  })
+}
+
+# Now use your original function
 obgyn_physicians_all_years <- find_providers_across_years(
   connection = connection,
   table_year_mapping = table_year_mapping,
   taxonomy_codes = obgyn_taxonomy_codes,
   verbose = TRUE
 ) %>% 
-
-
-
-
-
-
-######
-# obgyn_physicians_all_years <- find_physicians_across_years(
-#   con = con,
-#   table_year_mapping = table_year_mapping,
-#   taxonomy_codes = obgyn_taxonomy_codes,
-#   max_results_per_year = 6000000L,
-#   years_to_include = NULL,  # Include all years
-#   verbose = TRUE
-# ) 
-
-#cleaned_all_providers <- all_providers %>%
   dplyr::mutate(NPI = as.character(NPI)) %>%
-  # Remove duplicate entries for the same NPI in the same year
   dplyr::distinct(NPI, Year, .keep_all = TRUE) %>%
-  # Filter for US-based providers only
   dplyr::filter(
     `Provider Business Mailing Address Country Code (If outside U.S.)` %in% c("US") &
       `Provider Business Practice Location Address Country Code (If outside U.S.)` == "US"
   ) %>%
-  # Remove unnecessary country code columns
   dplyr::select(
     -`Provider Business Mailing Address Country Code (If outside U.S.)`,
     -`Provider Business Practice Location Address Country Code (If outside U.S.)`
-  ) 
+  )
 
-View(obgyn_physicians_all_years)
+obgyn_physicians_all_years
 
 
-# THIS CODE REALLY FUCKED THINGS UP BY REMOVING PEOPLE LIKE TYLER MUFFLY ALL THE TIME FOR NO REASONS.  
+# THIS CODE REALLY FUCKED THINGS UP BY REMOVING PEOPLE LIKE TYLER MUFFLY ALL THE TIME FOR NO REASONS. ----
 #%>%
   # Clean up credential text by removing special characters
   # dplyr::mutate(`Provider Credential Text` = stringr::str_remove_all(
@@ -1244,16 +1559,51 @@ View(obgyn_physicians_all_years)
 
 # Check dimensions of the resulting dataset
 dim(obgyn_physicians_all_years)
-View(obgyn_physicians_all_years)
+#View(obgyn_physicians_all_years)
 
 # Display a sample of the data
 print(head(obgyn_physicians_all_years, 10))
 glimpse(obgyn_physicians_all_years)
 hist(obgyn_physicians_all_years$Year)
 
-#------------------------------------------------------------------------------
-# 6. Final Data Processing
-#------------------------------------------------------------------------------
+# Quick data quality assessment ----
+
+# Check the breakdown of taxonomy codes
+obgyn_physicians_all_years %>%
+  count(`Healthcare Provider Taxonomy Code_1`, sort = TRUE) %>%
+  head(10)
+
+# Check geographic distribution
+obgyn_physicians_all_years %>%
+  count(`Provider Business Practice Location Address State Name`, sort = TRUE) %>%
+  head(10)
+
+# Check for missing critical data
+obgyn_physicians_all_years %>%
+  summarise(
+    missing_npi = sum(is.na(NPI)),
+    missing_state = sum(is.na(`Provider Business Practice Location Address State Name`)),
+    missing_taxonomy = sum(is.na(`Healthcare Provider Taxonomy Code_1`)),
+    total_rows = n()
+  )
+
+# Check year distribution (if Year column exists)
+if ("Year" %in% names(obgyn_physicians_all_years)) {
+  obgyn_physicians_all_years %>%
+    count(Year, sort = TRUE)
+}
+
+# Quick preview of subspecialist geographic distribution
+gynecologic_oncologists <- obgyn_physicians_all_years %>%
+  filter(`Healthcare Provider Taxonomy Code_1` == "207VX0201X") %>%
+  count(`Provider Business Practice Location Address State Name`, sort = TRUE)
+
+print(gynecologic_oncologists)
+# This will show you the exact distribution pattern the study analyzed!
+
+#
+# 6. Final Data Processing ----
+#
 # Convert state abbreviations to full state names
 obgyn_physicians_all_years$`Provider Business Practice Location Address State Name` <- 
   tyler::phase0_convert_state_abbreviations(
@@ -1268,26 +1618,22 @@ obgyn_physicians_all_years$`Provider Business Mailing Address State Name` <-
 # Ensure Year is stored as character for consistency
 obgyn_physicians_all_years$Year <- as.character(obgyn_physicians_all_years$Year)
 
-#------------------------------------------------------------------------------
-# 7. Save Results and Cleanup
-#------------------------------------------------------------------------------
+#
+# 7. Save Results and Cleanup ----
+#
 # Save the processed data to an RDS file
 saveRDS(obgyn_physicians_all_years, "data/C_extracting_and_processing_NPPES_obgyn_physicians_all_years.rds"); invisible(gc())
 
 # Close the database connection
 dbDisconnect(con)
 
-# End of script
+# End of script -----
 
+#
+# Reference tables in DuckDB ----
+#
 
-
-
-
-###############################################################################
-# Reference tables in DuckDB
-###############################################################################
-
-# NUCC TAXONOMY CODES
+# NUCC TAXONOMY CODES -----
 #Read in reference files to DuckDB
 # First check if DuckDB can see the file
 file_exists <- file.exists("/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/nucc/nucc_taxonomy_201.csv")
@@ -1324,7 +1670,7 @@ print(tables)
 
 
 
-# PHYSICIAN COMPARE
+# PHYSICIAN COMPARE ----
 #### Physician compare read into the database
 # Load CSV file with error handling
 
@@ -1368,11 +1714,11 @@ physician_compare_data <- clean_physician_data %>%
 write_csv(physician_compare_data, "data/C_physician_compare_data.csv")
 
 
-#############
-# Look at a table
-#############
+#
+# Look at a table ----
+#
 # Connect to database
-con <- dbConnect(duckdb::duckdb(), "/Volumes/Video Projects Muffly 1/nppes_historical_downloads/unzipped_p_files/nppes_my_duckdb.duckdb")
+con <- dbConnect(duckdb::duckdb(), "/Volumes/MufflyNew/nppes_historical_downloads/unzipped_p_files/nppes_my_duckdb.duckdb")
 
 # View tables
 all_tables <- dbListTables(con)
@@ -1396,4 +1742,5 @@ nppes_table %>%
   select(NPI, `Healthcare Provider Taxonomy Code_1`, starts_with("Provider")) %>%
   glimpse()
 
+# fin ----
 

@@ -1,3 +1,250 @@
+#
+# NPPES OB/GYN Provider Data Processing - File-Based Multi-Year Combination ----
+# Script: B-nber_nppes_combine_columns.R -----
+#
+#
+# PURPOSE: -----
+# Processes multiple years of National Provider Identifier (NPI) data files 
+# from a directory to extract OB/GYN providers with intelligent schema alignment
+# and comprehensive data cleaning.
+#
+# RESEARCH QUESTION: Which physician practiced in what year in what location? -----
+#
+#
+# SCRIPT ARCHITECTURE
+#
+#
+# APPROACH: File-based processing with intelligent schema detection -----
+# - Discovers NPI files in input directory using regex patterns
+# - Performs comprehensive schema analysis across all files
+# - Harmonizes different column structures using union/intersect strategies
+# - Applies advanced data cleaning and type conversion
+# - Combines all years into single standardized dataset
+#
+# PROCESSING STRATEGY:  -----
+# 1. File Discovery → Schema Analysis → Column Harmonization → Data Extraction
+# 2. Comprehensive cleaning with exploratory package
+# 3. Advanced address standardization using postmastr
+# 4. Mode-based imputation within provider groups
+# 5. Extensive validation and reporting
+#
+#
+# DATA SOURCES & INPUT STRUCTURE -----
+#
+#
+# INPUT DIRECTORY: -----
+# npi_input_directory_path = "/Volumes/MufflyNew/nppes_historical_downloads/nber_shaped"
+#
+# EXPECTED FILE PATTERNS:
+# - npi2013.csv, npi2014.csv, npi2015.parquet, etc.
+# - Regex pattern: "npi\\d{4,5}\\.(csv|parquet)$"
+# - Supports both CSV and Parquet formats
+#
+# YEAR EXTRACTION METHOD:
+# extract_year_from_filename("npi2013.csv") → "2013"
+# extract_year_from_filename("npi20204.parquet") → "2020"
+#
+# SCHEMA COMPATIBILITY STRATEGIES:
+# - "strict": Only columns present in ALL files
+# - "intersect": Common columns across files  
+# - "union": All unique columns (NA for missing) ← DEFAULT
+#
+#
+# TAXONOMY CODE DETECTION -----
+#
+#
+# SUPPORTED FORMATS:
+# NBER-style: ptaxcode1, ptaxcode2, pprimtax1, etc.
+# NPPES-style: "Healthcare Provider Taxonomy Code_1", etc.
+#
+# TARGET OB/GYN CODES:
+# obgyn_taxonomy_code_vector = c(
+#   "207V00000X",    # Obstetrics & Gynecology (General)
+#   "207VX0201X",    # Gynecologic Oncology *** PRIMARY FOCUS ***
+#   "207VE0102X",    # Reproductive Endocrinology & Infertility
+#   "207VG0400X",    # Gynecology (General)
+#   "207VM0101X",    # Maternal & Fetal Medicine
+#   "207VF0040X",    # Female Pelvic Medicine & Reconstructive Surgery
+#   "207VB0002X",    # Bariatric Medicine (OBGYN)
+#   "207VC0200X",    # Critical Care Medicine (OBGYN)
+#   "207VC0040X",    # Gynecology subspecialty
+#   "207VC0300X",    # Complex Family Planning
+#   "207VH0002X",    # Hospice and Palliative Medicine (OBGYN)
+#   "207VX0000X"     # Obstetrics Only
+# )
+#
+#
+# COMPREHENSIVE DATA CLEANING PIPELINE -----
+#
+#
+# PHASE 1: TYPE CONVERSION & BASIC CLEANING -----
+# - Uses readr::type_convert() for intelligent type detection
+# - Applies exploratory::clean_data_frame() for advanced cleaning
+# - Removes institutional address and unnecessary identifier columns
+#
+# PHASE 2: GROUPED DATA IMPUTATION (by NPI) -----
+# Provider-specific imputation using mode values within each NPI group:
+# - lastupdate field processing and standardization
+# - Certification date field processing  
+# - Provider name cleaning (remove punctuation from middle names)
+# - Final credential processing with mode imputation
+#
+# PHASE 3: ADVANCED ADDRESS PROCESSING -----
+# Standard ZIP code cleaning:
+# ploczip = stringr::str_sub(ploczip, 1, 5)  # 5-digit format
+#
+# Suite/apartment removal using comprehensive regex:
+# suite_apartment_regex_pattern = "(?i),?\\s*((ste|suite|apt|apartment|unit|floor|fl|room|rm|bldg|building)\\s*[#\\-\\s]*[0-9a-z\\-]*|#\\s*[0-9a-z\\-]+)$"
+# plocline1_cleaned = stringr::str_remove(plocline1, suite_apartment_regex_pattern)
+#
+# PHASE 4: POSTMASTR ADDRESS STANDARDIZATION -----
+# Uses postmastr package for professional address parsing:
+# library(postmastr)
+# dirs <- pm_dictionary(type = "directional", filter = c("N", "S", "E", "W"))
+# sushi_parsed <- pm_parse(input = "full", address = "practice_address", 
+#                          output = "full", dir_dict = dirs)
+#
+#
+# LOCATION DATA STRUCTURE -----
+#
+#
+# PRACTICE LOCATION (Primary):
+# - practice_address: Cleaned street address (suite/apt removed)
+# - practice_city: Provider practice city  
+# - practice_state: Full state name (converted from abbreviations)
+# - practice_zip: 5-digit ZIP code
+# - pm_address: Postmastr-standardized address
+#
+# MAILING LOCATION (Secondary):
+# - Provider Business Mailing Address fields
+# - Used for address comparison analysis
+#
+# GEOGRAPHIC FILTERING:
+# - Continental US only (excludes territories and military codes)
+# - Filters out: AS, GU, MP, VI, AA, AE, AP
+# - Both practice and mailing addresses must be US-based
+#
+#
+# ADVANCED IMPUTATION STRATEGY -----
+#
+#
+# MODE-BASED IMPUTATION BY NPI GROUP: -----
+# For each provider (NPI), calculate mode values across all years:
+# grouped_provider_records %>%
+#   dplyr::group_by(npi) %>%
+#   dplyr::mutate(
+#     pmname_mode_imputed = exploratory::impute_na(pmname, type = "mode"),
+#     pcredential_final_imputed = exploratory::impute_na(pcredential, type = "mode"),
+#     lastupdate_standardized = lubridate::parse_date_time(lastupdate_imputed, 
+#                                                          orders = c("ymd", "mdy")) %>% lubridate::as_date()
+#   )
+#
+# INTELLIGENT NAME COMPLETION: -----
+# Fill in most complete names within provider groups:
+# - Uses longest available first/middle names per NPI
+# - Applies mode values for missing credential information
+# - Standardizes address variations using edit distance ≤ 2
+#
+#
+# OUTPUT STRUCTURE & FINAL DATASET
+#
+#
+# PRIMARY OUTPUT:
+# obgyn_output_file_path = "/Volumes/MufflyNew/nppes_historical_downloads/combined_obgyn_providers.csv"
+# #
+# # FINAL COLUMN STRUCTURE:
+# final_obgyn_provider_dataset <- tibble(
+#   data_year,                    # Year extracted from filename (character)
+#   npi,                         # Provider identifier (character)  
+#   provider_first_name,         # Cleaned and mode-imputed (character)
+#   provider_middle_name,        # Longest available within NPI group (character)
+#   provider_last_name,          # Provider last name (character)
+#   practice_address,            # Cleaned address, suite/apt removed (character)
+#   practice_city,               # Practice city (character)
+#   practice_state,              # Full state name (character)
+#   practice_zip,                # 5-digit ZIP (character)
+#   pm_address,                  # Postmastr standardized address (character)
+#   primary_taxonomy_code,       # ptaxcode1 (character)
+#   secondary_taxonomy_code,     # ptaxcode2 (character) 
+#   last_update_date,           # Parsed date (Date)
+#   certification_date          # Parsed certification date (Date)
+# )
+#
+#
+# COMPREHENSIVE REPORTING & VALIDATION  -----
+#
+#
+# GENERATED REPORTS:
+# 1. Schema Analysis Report:
+# schema_analysis_report_path = "/Volumes/MufflyNew/nppes_historical_downloads/schema_analysis_report.csv"
+#   - Column compatibility across files
+#   - Taxonomy column identification
+#   - File processing success/failure rates
+#
+# 2. Filtering Analysis Report:
+#   - Step-by-step record retention
+#   - Waterfall chart of filtering process
+#   - Efficiency trend analysis
+#
+# 3. Address Comparison Analysis:
+#   - Practice vs mailing address differences
+#   - Geographic distribution validation
+#
+# KEY STATISTICS TRACKED:  -----
+# - Initial record count vs final record count
+# - Processing efficiency percentage  
+# - Valid ZIP code count
+# - Address modifications count
+# - Missing value imputation counts
+#
+#
+# ADVANTAGES OF FILE APPROACH -----
+#
+#
+# ✓ COMPREHENSIVE CLEANING:
+#   - Advanced imputation using exploratory package
+#   - Professional address standardization with postmastr
+#   - Suite/apartment removal from addresses
+#   - Mode-based imputation within provider groups
+#
+# ✓ FLEXIBLE SCHEMA HANDLING:
+#   - Supports both NBER and NPPES taxonomy formats
+#   - Intelligent column harmonization across different file structures
+#   - Multiple file format support (CSV, Parquet)
+#
+# ✓ EXTENSIVE VALIDATION:
+#   - Comprehensive processing reports
+#   - Detailed filtering analysis with visualizations
+#   - Address comparison and validation
+#   - Step-by-step efficiency tracking
+#
+# ✓ ROBUST ERROR HANDLING:
+#   - Multiple fallback strategies for file reading
+#   - Graceful handling of schema differences
+#   - Detailed logging throughout processing pipeline
+#
+#
+#
+#
+# IDEAL FOR:
+# - Processing raw NPPES file downloads from CMS
+# - Research requiring high-quality address standardization
+# - Studies needing comprehensive data validation
+# - Analysis spanning multiple NPPES data formats
+# - Projects requiring detailed processing documentation
+#
+# RESEARCH APPLICATIONS:
+# - Maternity care desert identification
+# - Provider accessibility analysis by geographic region
+# - Longitudinal studies of provider practice locations
+# - Address-based geocoding for distance calculations
+# - Provider mobility and retention studies
+#
+#
+
+# At the start of your script
+options(max.print = 1000)  # Limit console output
+
 # Process NPI Data Files to Extract OB/GYN Providers with Intelligent Schema----
 #' Alignment
 #'
@@ -1285,7 +1532,7 @@ convert_key_columns_to_proper_types <- function(combined_dataset,
 }
 
 
-# execute process_npi_obgyn_data ----
+# run process_npi_obgyn_data ----
 combined_obgyn_provider_dataset <- process_npi_obgyn_data(
   npi_input_directory_path = "/Volumes/MufflyNew/nppes_historical_downloads/nber_shaped",
   obgyn_output_file_path = "/Volumes/MufflyNew/nppes_historical_downloads/combined_obgyn_providers.csv",
@@ -1328,6 +1575,10 @@ calculate_group_mode <- function(input_vector) {
     return(mode_value)
   }
 }
+
+# Force garbage collection
+gc_result <- base::gc()
+logger::log_info("Garbage collection completed")
 
 # CLEANING OF DATA WITH MODE ----
 # Configure logging with verbose output
@@ -1796,6 +2047,10 @@ logger::log_info("Final dataset validation successful")
 ## output ----
 readr::write_csv(final_obgyn_provider_dataset, "data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv")
 
+# Force garbage collection
+gc_result <- base::gc()
+logger::log_info("Garbage collection completed")
+
 # Further cleaning: THIS TAKES A WHILE -----
 # Quick fix for missing variables
 output_cleaned_provider_csv_path <- "data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv"
@@ -1827,9 +2082,14 @@ for (dir in project_dirs) {
     cat("Created:", dir, "\n")
   }
 }
-# ============================================================================
-# ADVANCED DATA CLEANING AND TYPE CONVERSION
-# ============================================================================
+
+# Force garbage collection
+gc_result <- base::gc()
+logger::log_info("Garbage collection completed")
+
+#
+# ADVANCED DATA CLEANING AND TYPE CONVERSION -----
+#
 
 logger::log_info("=== ADVANCED DATA CLEANING PHASE ===")
 logger::log_info("Beginning comprehensive data cleaning and type conversion")
@@ -1908,9 +2168,17 @@ advanced_cleaned_provider_records <- advanced_cleaned_provider_records %>%
 
 logger::log_info("Data frame cleaning completed")
 
-# ============================================================================
-# COLUMN REMOVAL - INSTITUTIONAL ADDRESS FIELDS
-# ============================================================================
+# Force garbage collection
+gc_result <- base::gc()
+logger::log_info("Garbage collection completed")
+
+# Force garbage collection
+gc_result <- base::gc()
+logger::log_info("Garbage collection completed")
+
+#
+# COLUMN REMOVAL - INSTITUTIONAL ADDRESS FIELDS -----
+#
 
 logger::log_info("=== STEP 3: REMOVE INSTITUTIONAL ADDRESS FIELDS ===")
 logger::log_info("Removing institutional address and unnecessary identifier columns")
@@ -1943,9 +2211,9 @@ advanced_cleaned_provider_records <- advanced_cleaned_provider_records %>%
 
 logger::log_info("Institutional address column removal completed")
 
-# ============================================================================
+#
 # DATA YEAR COLUMN REORDERING
-# ============================================================================
+#
 
 logger::log_info("=== STEP 4: COLUMN REORDERING ===")
 logger::log_info("Moving data_year column to front for better visibility")
@@ -1961,9 +2229,9 @@ advanced_cleaned_provider_records <- advanced_cleaned_provider_records %>%
 
 logger::log_info("Column reordering completed - data_year moved to front")
 
-# ============================================================================
-# GROUPED DATA IMPUTATION BY NPI
-# ============================================================================
+#
+# GROUPED DATA IMPUTATION BY NPI ----
+#
 
 logger::log_info("=== STEP 5: GROUPED DATA IMPUTATION ===")
 logger::log_info("Performing grouped data imputation by NPI identifier")
@@ -1985,9 +2253,9 @@ unique_npi_count_for_imputation <- grouped_provider_records_for_imputation %>%
 logger::log_info("Grouped dataset statistics:")
 logger::log_info("  Unique NPIs: {scales::comma(unique_npi_count_for_imputation)}")
 
-# ============================================================================
-# LASTUPDATE FIELD IMPUTATION AND CONVERSION
-# ============================================================================
+#
+# LASTUPDATE FIELD IMPUTATION AND CONVERSION ----
+#
 
 logger::log_info("=== SUBSTEP 5A: LASTUPDATE FIELD PROCESSING ===")
 logger::log_info("Imputing missing lastupdate values using mode within each NPI group")
@@ -2038,9 +2306,9 @@ if ("lastupdate" %in% base::colnames(grouped_provider_records_for_imputation)) {
   logger::log_warn("lastupdate column not found in dataset - skipping lastupdate processing")
 }
 
-# ============================================================================
-# CERTIFICATION DATE FIELD PROCESSING
-# ============================================================================
+#
+# CERTIFICATION DATE FIELD PROCESSING ----
+#
 
 logger::log_info("=== SUBSTEP 5B: CERTIFICATION DATE PROCESSING ===")
 logger::log_info("Processing certification date fields with imputation and conversion")
@@ -2082,9 +2350,9 @@ if ("certdate" %in% base::colnames(grouped_provider_records_for_imputation)) {
   logger::log_warn("certdate column not found - skipping certdate processing")
 }
 
-# ============================================================================
-# UNIFIED DATE FIELD PROCESSING
-# ============================================================================
+#
+# UNIFIED DATE FIELD PROCESSING -----
+#
 
 logger::log_info("=== SUBSTEP 5C: UNIFIED DATE FIELD PROCESSING ===")
 
@@ -2138,9 +2406,9 @@ if ("certdate" %in% base::colnames(grouped_provider_records_for_imputation)) {
   logger::log_info("Enhanced certdate conversion completed")
 }
 
-# ============================================================================
-# PROVIDER NAME FIELD PROCESSING
-# ============================================================================
+#
+# PROVIDER NAME FIELD PROCESSING ----
+#
 
 logger::log_info("=== SUBSTEP 5D: PROVIDER NAME PROCESSING ===")
 logger::log_info("Processing provider middle name with imputation and cleaning")
@@ -2178,9 +2446,9 @@ if ("pmname" %in% base::colnames(grouped_provider_records_for_imputation)) {
   logger::log_warn("pmname column not found - skipping middle name processing")
 }
 
-# ============================================================================
-# CREDENTIAL FIELD FINAL PROCESSING
-# ============================================================================
+#
+# CREDENTIAL FIELD FINAL PROCESSING ----
+#
 
 logger::log_info("=== SUBSTEP 5E: CREDENTIAL FINAL PROCESSING ===")
 logger::log_info("Final processing of provider credentials with mode imputation")
@@ -2207,9 +2475,9 @@ if ("pcredential" %in% base::colnames(grouped_provider_records_for_imputation)) 
   logger::log_warn("pcredential column not found - skipping credential processing")
 }
 
-# ============================================================================
-# LOCATION ADDRESS PROCESSING
-# ============================================================================
+#
+# LOCATION ADDRESS PROCESSING ----
+#
 
 logger::log_info("=== SUBSTEP 5F: LOCATION ADDRESS PROCESSING ===")
 logger::log_info("Processing provider location addresses")
@@ -2271,9 +2539,9 @@ if ("plocline1" %in% base::colnames(grouped_provider_records_for_imputation)) {
   logger::log_warn("plocline1 column not found - skipping address line processing")
 }
 
-# ============================================================================
-# UNGROUPING AND DATASET FINALIZATION
-# ============================================================================
+#
+# UNGROUPING AND DATASET FINALIZATION ----
+#
 
 logger::log_info("=== STEP 6: DATASET FINALIZATION ===")
 logger::log_info("Ungrouping dataset and finalizing processed records")
@@ -2356,6 +2624,9 @@ comprehensively_cleaned_provider_records <- grouped_provider_records_for_imputat
   }, .by = c(npi, provider_first_name, provider_last_name)) %>%
   dplyr::group_by(npi)
 
+# Force garbage collection
+gc_result <- base::gc()
+logger::log_info("Garbage collection completed")
 
 # Postmastr standardization because there are lots of people who work at the same place but have different addresses.----
 # install.packages("remotes")
@@ -2392,9 +2663,13 @@ logger::log_info("Post-cleaning dataset: {scales::comma(post_cleaning_record_cou
 
 comprehensively_cleaned_provider_records$pm_address
 
-# ============================================================================
+# Force garbage collection
+gc_result <- base::gc()
+logger::log_info("Garbage collection completed")
+
+#
 # FINAL DATASET OUTPUT ----
-# ============================================================================
+#
 
 logger::log_info("=== STEP 7: DATASET EXPORT ===")
 logger::log_info("Exporting comprehensively cleaned dataset to CSV")
@@ -2432,9 +2707,9 @@ tryCatch({
 
 readr::read_csv("data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv")
 
-# ============================================================================
+#
 # ADDRESS COMPARISON ANALYSIS
-# ============================================================================
+#
 
 logger::log_info("=== STEP 8: ADDRESS COMPARISON ANALYSIS ===")
 logger::log_info("Analyzing differences between practice and mailing addresses")
@@ -2496,9 +2771,9 @@ if (length(available_address_columns) >= 4) {  # Need at least city and state co
   logger::log_warn("Insufficient address columns available for comparison analysis")
 }
 
-# ============================================================================
+#
 # DATABASE CLEANUP
-# ============================================================================
+#
 
 logger::log_info("=== STEP 9: DATABASE RESOURCE CLEANUP ===")
 logger::log_info("Cleaning up database connections and resources")
@@ -2518,7 +2793,7 @@ tryCatch({
 # Clear large objects from memory
 logger::log_info("Clearing large intermediate objects from memory")
 
-# Remove large intermediate datasets
+# Remove large intermediate datasets ----
 base::rm(list = base::c(
   "raw_nppes_provider_records", 
   "individual_provider_filtered_records",
@@ -2531,9 +2806,9 @@ base::rm(list = base::c(
 gc_result <- base::gc()
 logger::log_info("Garbage collection completed")
 
-# ============================================================================
+#
 # COMPREHENSIVE SUMMARY LOGGING
-# ============================================================================
+#
 
 logger::log_info("=== PROCESSING PIPELINE COMPLETION SUMMARY ===")
 
@@ -2555,9 +2830,9 @@ nppes_obgyn_processed_provider_dataset <- comprehensively_cleaned_provider_recor
 logger::log_info("=== NPPES OB/GYN PROVIDER DATA PROCESSING COMPLETED SUCCESSFULLY ===")
 logger::log_info("Processed dataset available as: nppes_obgyn_processed_provider_dataset")
 
-# ============================================================================
+#
 # DETAILED FILTERING ANALYSIS AND REPORTING
-# ============================================================================
+#
 
 logger::log_info("=== COMPREHENSIVE FILTERING ANALYSIS ===")
 logger::log_info("Creating detailed step-by-step filtering analysis and visualizations")
@@ -2624,355 +2899,387 @@ comprehensive_filtering_analysis <- tibble::tibble(
 
 logger::log_info("Filtering analysis data frame created successfully")
 
-# ============================================================================
-# DETAILED FILTERING STEP LOGGING
-# ============================================================================
+# Force garbage collection
+gc_result <- base::gc()
+logger::log_info("Garbage collection completed")
 
-logger::log_info("=== STEP-BY-STEP FILTERING ANALYSIS DETAILS ===")
-
-for (step_index in 1:base::nrow(comprehensive_filtering_analysis)) {
-  current_step_info <- comprehensive_filtering_analysis[step_index, ]
-  
-  if (step_index == 1) {
-    logger::log_info("Step {current_step_info$step_sequence_number}: {current_step_info$filtering_step_description}")
-    logger::log_info("  Initial records: {scales::comma(current_step_info$records_remaining_count)}")
-    logger::log_info("  Baseline efficiency: {current_step_info$cumulative_retention_efficiency}%")
-  } else {
-    logger::log_info("Step {current_step_info$step_sequence_number}: {current_step_info$filtering_step_description}")
-    logger::log_info("  Records retained: {scales::comma(current_step_info$records_remaining_count)}")
-    logger::log_info("  Records removed: {scales::comma(current_step_info$records_removed_this_step)}")
-    logger::log_info("  Removal percentage: {current_step_info$percentage_removed_this_step}%")
-    logger::log_info("  Cumulative efficiency: {current_step_info$cumulative_retention_efficiency}%")
-  }
-  logger::log_info("  " %+% base::paste(base::rep("-", 50), collapse = ""))
-}
-
-# ============================================================================
-# FORMATTED FILTERING SUMMARY TABLE
-# ============================================================================
-
-logger::log_info("Creating publication-ready filtering summary table")
-
-publication_ready_filtering_summary <- comprehensive_filtering_analysis %>%
-  dplyr::mutate(
-    records_remaining_formatted = scales::comma(records_remaining_count),
-    records_removed_formatted = dplyr::case_when(
-      step_sequence_number == 1 ~ "—",
-      TRUE ~ scales::comma(records_removed_this_step)
-    ),
-    percentage_removed_formatted = dplyr::case_when(
-      step_sequence_number == 1 ~ "—",
-      TRUE ~ base::paste0(percentage_removed_this_step, "%")
-    ),
-    cumulative_efficiency_formatted = base::paste0(cumulative_retention_efficiency, "%")
-  ) %>%
-  dplyr::select(
-    `Step Number` = step_sequence_number,
-    `Filtering Operation` = filtering_step_description,
-    `Records Remaining` = records_remaining_formatted,
-    `Records Removed` = records_removed_formatted,
-    `% Removed This Step` = percentage_removed_formatted,
-    `Cumulative Efficiency` = cumulative_efficiency_formatted
-  )
-
-logger::log_info("=== PUBLICATION-READY FILTERING SUMMARY ===")
-base::print(publication_ready_filtering_summary, n = Inf)
-
-# ============================================================================
-# KEY INSIGHTS CALCULATION
-# ============================================================================
-
-logger::log_info("Calculating key filtering insights and statistics")
-
-total_records_filtered_out <- initial_total_record_count - continental_us_count
-overall_data_retention_rate <- base::round((continental_us_count / initial_total_record_count) * 100, 2)
-
-# Identify largest and smallest filtering steps
-largest_filtering_operation <- comprehensive_filtering_analysis %>%
-  dplyr::filter(step_sequence_number > 1) %>%
-  dplyr::arrange(dplyr::desc(records_removed_this_step)) %>%
-  dplyr::slice(1)
-
-smallest_filtering_operation <- comprehensive_filtering_analysis %>%
-  dplyr::filter(step_sequence_number > 1) %>%
-  dplyr::arrange(records_removed_this_step) %>%
-  dplyr::slice(1)
-
-logger::log_info("=== KEY FILTERING INSIGHTS SUMMARY ===")
-logger::log_info("Total records filtered out: {scales::comma(total_records_filtered_out)}")
-logger::log_info("Overall data retention rate: {overall_data_retention_rate}%")
-logger::log_info("Largest filtering step: {largest_filtering_operation$filtering_step_description}")
-logger::log_info("  Removed: {scales::comma(largest_filtering_operation$records_removed_this_step)} records")
-logger::log_info("Smallest filtering step: {smallest_filtering_operation$filtering_step_description}")
-logger::log_info("  Removed: {scales::comma(smallest_filtering_operation$records_removed_this_step)} records")
-
-# ============================================================================
-# VISUALIZATION GENERATION
-# ============================================================================
-
-logger::log_info("=== FILTERING VISUALIZATION GENERATION ===")
-logger::log_info("Creating comprehensive filtering pipeline visualizations")
-
-# Prepare visualization data
-waterfall_visualization_data <- comprehensive_filtering_analysis %>%
-  dplyr::mutate(
-    step_label_wrapped = stringr::str_wrap(filtering_step_description, width = 15),
-    records_in_millions = records_remaining_count / 1000000
-  )
-
-# ============================================================================
-# WATERFALL CHART GENERATION ----
-# ============================================================================
-
-logger::log_info("Generating waterfall chart visualization")
-
-waterfall_chart_output_path <- "nppes_filtering_waterfall_chart.png"
-
-grDevices::png(
-  filename = waterfall_chart_output_path, 
-  width = 1200, 
-  height = 800, 
-  res = 150
-)
-
-graphics::par(mar = base::c(8, 5, 4, 2))
-
-graphics::barplot(
-  height = waterfall_visualization_data$records_in_millions,
-  names.arg = waterfall_visualization_data$step_label_wrapped,
-  main = "NPPES OB/GYN Provider Filtering Pipeline\nRecord Retention Analysis",
-  ylab = "Provider Records (Millions)",
-  xlab = "",
-  col = base::c("#2E86AB", "#A23B72", "#F18F01", "#C73E1D", "#593E2C"),
-  border = "white",
-  las = 2,
-  cex.names = 0.8,
-  ylim = base::c(0, base::max(waterfall_visualization_data$records_in_millions) * 1.1)
-)
-
-# Add value labels on bars
-graphics::text(
-  x = 1:base::nrow(waterfall_visualization_data) * 1.2 - 0.5,
-  y = waterfall_visualization_data$records_in_millions + 0.02,
-  labels = scales::comma(waterfall_visualization_data$records_remaining_count),
-  cex = 0.8,
-  pos = 3
-)
-
-# Add efficiency percentages
-graphics::text(
-  x = 1:base::nrow(waterfall_visualization_data) * 1.2 - 0.5,
-  y = waterfall_visualization_data$records_in_millions / 2,
-  labels = base::paste0(waterfall_visualization_data$cumulative_retention_efficiency, "%"),
-  cex = 0.9,
-  col = "white",
-  font = 2
-)
-
-grDevices::dev.off()
-
-logger::log_info("Waterfall chart generated: {waterfall_chart_output_path}")
-
-# ============================================================================
-# EFFICIENCY TREND CHART GENERATION -----
-# ============================================================================
-
-logger::log_info("Generating efficiency trend visualization")
-
-efficiency_trend_output_path <- "nppes_filtering_efficiency_trend.png"
-
-grDevices::png(
-  filename = efficiency_trend_output_path, 
-  width = 1000, 
-  height = 600, 
-  res = 150
-)
-
-graphics::par(mar = base::c(10, 5, 4, 2))
-
-graphics::plot(
-  x = comprehensive_filtering_analysis$step_sequence_number,
-  y = comprehensive_filtering_analysis$cumulative_retention_efficiency,
-  type = "b",
-  pch = 19,
-  col = "#2E86AB",
-  lwd = 3,
-  cex = 1.5,
-  main = "Cumulative Data Retention Efficiency\nThrough Filtering Pipeline",
-  xlab = "",
-  ylab = "Cumulative Retention Efficiency (%)",
-  xaxt = "n",
-  ylim = base::c(60, 105)
-)
-
-# Add grid lines
-graphics::grid()
-
-# Add custom x-axis labels
-graphics::axis(
-  side = 1, 
-  at = comprehensive_filtering_analysis$step_sequence_number, 
-  labels = stringr::str_wrap(comprehensive_filtering_analysis$filtering_step_description, width = 12), 
-  las = 2, 
-  cex.axis = 0.8
-)
-
-# Add efficiency value labels
-graphics::text(
-  x = comprehensive_filtering_analysis$step_sequence_number,
-  y = comprehensive_filtering_analysis$cumulative_retention_efficiency + 1.5,
-  labels = base::paste0(comprehensive_filtering_analysis$cumulative_retention_efficiency, "%"),
-  cex = 0.9,
-  font = 2
-)
-
-# Add horizontal reference lines
-graphics::abline(h = base::c(70, 80, 90, 100), col = "gray80", lty = 2)
-
-grDevices::dev.off()
-
-logger::log_info("Efficiency trend chart generated: {efficiency_trend_output_path}")
-
-# ============================================================================
-# ANALYSIS EXPORT AND REPORTING
-# ============================================================================
-
-logger::log_info("=== ANALYSIS EXPORT AND COMPREHENSIVE REPORTING ===")
-
-# Export filtering analysis to CSV
-filtering_analysis_csv_path <- filtering_analysis_output_csv_path
-
-readr::write_csv(
-  comprehensive_filtering_analysis, 
-  file = filtering_analysis_csv_path
-)
-
-logger::log_info("Filtering analysis exported to: {filtering_analysis_csv_path}")
-
-# Quick fix - define the missing variable
-address_comparison_output_path <- "reports/nppes_address_comparison_analysis.csv"
-
-# Create comprehensive analysis report
-comprehensive_processing_report <- base::list(
-  dataset_summary_information = base::list(
-    initial_record_count = initial_total_record_count,
-    final_record_count = continental_us_count,
-    total_records_removed = total_records_filtered_out,
-    overall_retention_rate = overall_data_retention_rate
-  ),
-  filtering_pipeline_steps = comprehensive_filtering_analysis,
-  key_processing_insights = base::list(
-    largest_filtering_step = largest_filtering_operation$filtering_step_description,
-    largest_filter_records_removed = largest_filtering_operation$records_removed_this_step,
-    smallest_filtering_step = smallest_filtering_operation$filtering_step_description,
-    smallest_filter_records_removed = smallest_filtering_operation$records_removed_this_step
-  ),
-  visualization_outputs = base::list(
-    waterfall_chart_path = waterfall_chart_output_path,
-    efficiency_trend_path = efficiency_trend_output_path
-  ),
-  dataset_file_outputs = base::list(
-    cleaned_dataset_path = output_cleaned_provider_csv_path,
-    filtering_analysis_path = filtering_analysis_csv_path,
-    address_comparison_path = address_comparison_output_path
-  )
-)
-
-# ============================================================================
-# DATA VALIDATION REPORT GENERATION -----
-# ============================================================================
-
-logger::log_info("=== GENERATING DATA VALIDATION REPORT ===")
-logger::log_info("Creating comprehensive data validation summary")
-
-# Create validation report with safe variable access
-validation_variables_available <- base::c(
-  "post_cleaning_record_count", "unique_npi_count_for_imputation", 
-  "valid_zip_count", "address_modifications_count",
-  "lastupdate_missing_count_before", "certdate_missing_count_before", 
-  "pmname_missing_count_before"
-)
-
-# Check which validation variables are available
-available_validation_vars <- base::c()
-missing_validation_vars <- base::c()
-
-for (var_name in validation_variables_available) {
-  if (base::exists(var_name)) {
-    available_validation_vars <- base::c(available_validation_vars, var_name)
-  } else {
-    missing_validation_vars <- base::c(missing_validation_vars, var_name)
-  }
-}
-
-if (base::length(missing_validation_vars) > 0) {
-  logger::log_warn("Missing validation variables: {paste(missing_validation_vars, collapse=', ')}")
-  logger::log_warn("Setting default values for missing validation metrics")
-  
-  # Set safe defaults for missing variables
-  if (!base::exists("valid_zip_count")) valid_zip_count <- 0
-  if (!base::exists("address_modifications_count")) address_modifications_count <- 0
-  if (!base::exists("lastupdate_missing_count_before")) lastupdate_missing_count_before <- 0
-  if (!base::exists("certdate_missing_count_before")) certdate_missing_count_before <- 0
-  if (!base::exists("pmname_missing_count_before")) pmname_missing_count_before <- 0
-}
-
-data_validation_summary <- tibble::tibble(
-  validation_check = base::c(
-    "Total records processed",
-    "Unique NPI count", 
-    "Records with valid ZIP codes",
-    "Records with cleaned addresses",
-    "Records with imputed credentials",
-    "Records with standardized dates",
-    "Missing lastupdate before imputation",
-    "Missing certdate before imputation",
-    "Missing pmname before imputation"
-  ),
-  validation_result = base::c(
-    scales::comma(post_cleaning_record_count),
-    scales::comma(unique_npi_count_for_imputation),
-    scales::comma(valid_zip_count),
-    scales::comma(address_modifications_count),
-    "Available in dataset",
-    "Multiple date formats processed",
-    scales::comma(lastupdate_missing_count_before),
-    scales::comma(certdate_missing_count_before), 
-    scales::comma(pmname_missing_count_before)
-  ),
-  validation_status = base::c(
-    "PASS", "PASS", "PASS", "PASS", "PASS", 
-    "PASS", "INFO", "INFO", "INFO"
-  )
-)
-
-# Quick fix - define the missing variable
-validation_report_output_path <- "validation/nppes_data_validation_report.csv"
-
-# Export validation report
-readr::write_csv(
-  data_validation_summary,
-  file = validation_report_output_path
-)
-
-logger::log_info("Data validation report saved: {validation_report_output_path}")
-base::print(data_validation_summary)
-
-# Export comprehensive report as RDS
-comprehensive_report_rds_path <- comprehensive_report_rds_output_path
-
-base::saveRDS(
-  comprehensive_processing_report, 
-  file = comprehensive_report_rds_path
-)
-
-logger::log_info("Comprehensive processing report saved: {comprehensive_report_rds_path}")
-
-# ============================================================================
-# PIPELINE COMPLETION
-# ============================================================================
-
-logger::log_info("=== NPPES OB/GYN PROCESSING PIPELINE COMPLETED ===")
-logger::log_info("All filtering analysis and visualization generation completed successfully")
-logger::log_info("Final processed dataset available as: nppes_obgyn_processed_provider_dataset")
-logger::log_info("Processing pipeline execution completed successfully")
+# #
+# # DETAILED FILTERING STEP LOGGING ----
+# #
+# 
+# logger::log_info("=== STEP-BY-STEP FILTERING ANALYSIS DETAILS ===")
+# 
+# for (step_index in 1:base::nrow(comprehensive_filtering_analysis)) {
+#   current_step_info <- comprehensive_filtering_analysis[step_index, ]
+#   
+#   if (step_index == 1) {
+#     logger::log_info("Step {current_step_info$step_sequence_number}: {current_step_info$filtering_step_description}")
+#     logger::log_info("  Initial records: {scales::comma(current_step_info$records_remaining_count)}")
+#     logger::log_info("  Baseline efficiency: {current_step_info$cumulative_retention_efficiency}%")
+#   } else {
+#     logger::log_info("Step {current_step_info$step_sequence_number}: {current_step_info$filtering_step_description}")
+#     logger::log_info("  Records retained: {scales::comma(current_step_info$records_remaining_count)}")
+#     logger::log_info("  Records removed: {scales::comma(current_step_info$records_removed_this_step)}")
+#     logger::log_info("  Removal percentage: {current_step_info$percentage_removed_this_step}%")
+#     logger::log_info("  Cumulative efficiency: {current_step_info$cumulative_retention_efficiency}%")
+#   }
+#   logger::log_info("  " %+% base::paste(base::rep("-", 50), collapse = ""))
+# }
+# 
+# #
+# # FORMATTED FILTERING SUMMARY TABLE
+# #
+# 
+# logger::log_info("Creating publication-ready filtering summary table")
+# 
+# publication_ready_filtering_summary <- comprehensive_filtering_analysis %>%
+#   dplyr::mutate(
+#     records_remaining_formatted = scales::comma(records_remaining_count),
+#     records_removed_formatted = dplyr::case_when(
+#       step_sequence_number == 1 ~ "—",
+#       TRUE ~ scales::comma(records_removed_this_step)
+#     ),
+#     percentage_removed_formatted = dplyr::case_when(
+#       step_sequence_number == 1 ~ "—",
+#       TRUE ~ base::paste0(percentage_removed_this_step, "%")
+#     ),
+#     cumulative_efficiency_formatted = base::paste0(cumulative_retention_efficiency, "%")
+#   ) %>%
+#   dplyr::select(
+#     `Step Number` = step_sequence_number,
+#     `Filtering Operation` = filtering_step_description,
+#     `Records Remaining` = records_remaining_formatted,
+#     `Records Removed` = records_removed_formatted,
+#     `% Removed This Step` = percentage_removed_formatted,
+#     `Cumulative Efficiency` = cumulative_efficiency_formatted
+#   )
+# 
+# logger::log_info("=== PUBLICATION-READY FILTERING SUMMARY ===")
+# base::print(publication_ready_filtering_summary, n = Inf)
+# 
+# #
+# # KEY INSIGHTS CALCULATION ----
+# #
+# 
+# logger::log_info("Calculating key filtering insights and statistics")
+# 
+# total_records_filtered_out <- initial_total_record_count - continental_us_count
+# overall_data_retention_rate <- base::round((continental_us_count / initial_total_record_count) * 100, 2)
+# 
+# # Identify largest and smallest filtering steps
+# largest_filtering_operation <- comprehensive_filtering_analysis %>%
+#   dplyr::filter(step_sequence_number > 1) %>%
+#   dplyr::arrange(dplyr::desc(records_removed_this_step)) %>%
+#   dplyr::slice(1)
+# 
+# smallest_filtering_operation <- comprehensive_filtering_analysis %>%
+#   dplyr::filter(step_sequence_number > 1) %>%
+#   dplyr::arrange(records_removed_this_step) %>%
+#   dplyr::slice(1)
+# 
+# logger::log_info("=== KEY FILTERING INSIGHTS SUMMARY ===")
+# logger::log_info("Total records filtered out: {scales::comma(total_records_filtered_out)}")
+# logger::log_info("Overall data retention rate: {overall_data_retention_rate}%")
+# logger::log_info("Largest filtering step: {largest_filtering_operation$filtering_step_description}")
+# logger::log_info("  Removed: {scales::comma(largest_filtering_operation$records_removed_this_step)} records")
+# logger::log_info("Smallest filtering step: {smallest_filtering_operation$filtering_step_description}")
+# logger::log_info("  Removed: {scales::comma(smallest_filtering_operation$records_removed_this_step)} records")
+# 
+# #
+# # VISUALIZATION GENERATION -----
+# #
+# 
+# logger::log_info("=== FILTERING VISUALIZATION GENERATION ===")
+# logger::log_info("Creating comprehensive filtering pipeline visualizations")
+# 
+# # Prepare visualization data
+# waterfall_visualization_data <- comprehensive_filtering_analysis %>%
+#   dplyr::mutate(
+#     step_label_wrapped = stringr::str_wrap(filtering_step_description, width = 15),
+#     records_in_millions = records_remaining_count / 1000000
+#   )
+# 
+# #
+# # WATERFALL CHART GENERATION ----
+# #
+# 
+# logger::log_info("Generating waterfall chart visualization")
+# 
+# waterfall_chart_output_path <- "nppes_filtering_waterfall_chart.png"
+# 
+# grDevices::png(
+#   filename = waterfall_chart_output_path, 
+#   width = 1200, 
+#   height = 800, 
+#   res = 150
+# )
+# 
+# graphics::par(mar = base::c(8, 5, 4, 2))
+# 
+# graphics::barplot(
+#   height = waterfall_visualization_data$records_in_millions,
+#   names.arg = waterfall_visualization_data$step_label_wrapped,
+#   main = "NPPES OB/GYN Provider Filtering Pipeline\nRecord Retention Analysis",
+#   ylab = "Provider Records (Millions)",
+#   xlab = "",
+#   col = base::c("#2E86AB", "#A23B72", "#F18F01", "#C73E1D", "#593E2C"),
+#   border = "white",
+#   las = 2,
+#   cex.names = 0.8,
+#   ylim = base::c(0, base::max(waterfall_visualization_data$records_in_millions) * 1.1)
+# )
+# 
+# # Add value labels on bars
+# graphics::text(
+#   x = 1:base::nrow(waterfall_visualization_data) * 1.2 - 0.5,
+#   y = waterfall_visualization_data$records_in_millions + 0.02,
+#   labels = scales::comma(waterfall_visualization_data$records_remaining_count),
+#   cex = 0.8,
+#   pos = 3
+# )
+# 
+# # Add efficiency percentages
+# graphics::text(
+#   x = 1:base::nrow(waterfall_visualization_data) * 1.2 - 0.5,
+#   y = waterfall_visualization_data$records_in_millions / 2,
+#   labels = base::paste0(waterfall_visualization_data$cumulative_retention_efficiency, "%"),
+#   cex = 0.9,
+#   col = "white",
+#   font = 2
+# )
+# 
+# grDevices::dev.off()
+# 
+# logger::log_info("Waterfall chart generated: {waterfall_chart_output_path}")
+# 
+# #
+# # EFFICIENCY TREND CHART GENERATION -----
+# #
+# 
+# logger::log_info("Generating efficiency trend visualization")
+# 
+# efficiency_trend_output_path <- "nppes_filtering_efficiency_trend.png"
+# 
+# grDevices::png(
+#   filename = efficiency_trend_output_path, 
+#   width = 1000, 
+#   height = 600, 
+#   res = 150
+# )
+# 
+# graphics::par(mar = base::c(10, 5, 4, 2))
+# 
+# graphics::plot(
+#   x = comprehensive_filtering_analysis$step_sequence_number,
+#   y = comprehensive_filtering_analysis$cumulative_retention_efficiency,
+#   type = "b",
+#   pch = 19,
+#   col = "#2E86AB",
+#   lwd = 3,
+#   cex = 1.5,
+#   main = "Cumulative Data Retention Efficiency\nThrough Filtering Pipeline",
+#   xlab = "",
+#   ylab = "Cumulative Retention Efficiency (%)",
+#   xaxt = "n",
+#   ylim = base::c(60, 105)
+# )
+# 
+# # Add grid lines
+# graphics::grid()
+# 
+# # Add custom x-axis labels
+# graphics::axis(
+#   side = 1, 
+#   at = comprehensive_filtering_analysis$step_sequence_number, 
+#   labels = stringr::str_wrap(comprehensive_filtering_analysis$filtering_step_description, width = 12), 
+#   las = 2, 
+#   cex.axis = 0.8
+# )
+# 
+# # Add efficiency value labels
+# graphics::text(
+#   x = comprehensive_filtering_analysis$step_sequence_number,
+#   y = comprehensive_filtering_analysis$cumulative_retention_efficiency + 1.5,
+#   labels = base::paste0(comprehensive_filtering_analysis$cumulative_retention_efficiency, "%"),
+#   cex = 0.9,
+#   font = 2
+# )
+# 
+# # Add horizontal reference lines
+# graphics::abline(h = base::c(70, 80, 90, 100), col = "gray80", lty = 2)
+# 
+# grDevices::dev.off()
+# 
+# logger::log_info("Efficiency trend chart generated: {efficiency_trend_output_path}")
+# 
+# # Force garbage collection
+# gc_result <- base::gc()
+# logger::log_info("Garbage collection completed")
+# 
+# #
+# # ANALYSIS EXPORT AND REPORTING ----
+# #
+# 
+# logger::log_info("=== ANALYSIS EXPORT AND COMPREHENSIVE REPORTING ===")
+# 
+# # Export filtering analysis to CSV
+# filtering_analysis_csv_path <- filtering_analysis_output_csv_path
+# 
+# readr::write_csv(
+#   comprehensive_filtering_analysis, 
+#   file = filtering_analysis_csv_path
+# )
+# 
+# logger::log_info("Filtering analysis exported to: {filtering_analysis_csv_path}")
+# 
+# # Quick fix - define the missing variable
+# address_comparison_output_path <- "reports/nppes_address_comparison_analysis.csv"
+# 
+# # Create comprehensive analysis report
+# comprehensive_processing_report <- base::list(
+#   dataset_summary_information = base::list(
+#     initial_record_count = initial_total_record_count,
+#     final_record_count = continental_us_count,
+#     total_records_removed = total_records_filtered_out,
+#     overall_retention_rate = overall_data_retention_rate
+#   ),
+#   filtering_pipeline_steps = comprehensive_filtering_analysis,
+#   key_processing_insights = base::list(
+#     largest_filtering_step = largest_filtering_operation$filtering_step_description,
+#     largest_filter_records_removed = largest_filtering_operation$records_removed_this_step,
+#     smallest_filtering_step = smallest_filtering_operation$filtering_step_description,
+#     smallest_filter_records_removed = smallest_filtering_operation$records_removed_this_step
+#   ),
+#   visualization_outputs = base::list(
+#     waterfall_chart_path = waterfall_chart_output_path,
+#     efficiency_trend_path = efficiency_trend_output_path
+#   ),
+#   dataset_file_outputs = base::list(
+#     cleaned_dataset_path = output_cleaned_provider_csv_path,
+#     filtering_analysis_path = filtering_analysis_csv_path,
+#     address_comparison_path = address_comparison_output_path
+#   )
+# )
+# 
+# # Force garbage collection
+# gc_result <- base::gc()
+# logger::log_info("Garbage collection completed")
+# 
+# # Force garbage collection
+# gc_result <- base::gc()
+# logger::log_info("Garbage collection completed")
+# 
+# #
+# # DATA VALIDATION REPORT GENERATION -----
+# #
+# 
+# logger::log_info("=== GENERATING DATA VALIDATION REPORT ===")
+# logger::log_info("Creating comprehensive data validation summary")
+# 
+# # Create validation report with safe variable access
+# validation_variables_available <- base::c(
+#   "post_cleaning_record_count", "unique_npi_count_for_imputation", 
+#   "valid_zip_count", "address_modifications_count",
+#   "lastupdate_missing_count_before", "certdate_missing_count_before", 
+#   "pmname_missing_count_before"
+# )
+# 
+# # Check which validation variables are available
+# available_validation_vars <- base::c()
+# missing_validation_vars <- base::c()
+# 
+# for (var_name in validation_variables_available) {
+#   if (base::exists(var_name)) {
+#     available_validation_vars <- base::c(available_validation_vars, var_name)
+#   } else {
+#     missing_validation_vars <- base::c(missing_validation_vars, var_name)
+#   }
+# }
+# 
+# if (base::length(missing_validation_vars) > 0) {
+#   logger::log_warn("Missing validation variables: {paste(missing_validation_vars, collapse=', ')}")
+#   logger::log_warn("Setting default values for missing validation metrics")
+#   
+#   # Set safe defaults for missing variables
+#   if (!base::exists("valid_zip_count")) valid_zip_count <- 0
+#   if (!base::exists("address_modifications_count")) address_modifications_count <- 0
+#   if (!base::exists("lastupdate_missing_count_before")) lastupdate_missing_count_before <- 0
+#   if (!base::exists("certdate_missing_count_before")) certdate_missing_count_before <- 0
+#   if (!base::exists("pmname_missing_count_before")) pmname_missing_count_before <- 0
+# }
+# 
+# data_validation_summary <- tibble::tibble(
+#   validation_check = base::c(
+#     "Total records processed",
+#     "Unique NPI count", 
+#     "Records with valid ZIP codes",
+#     "Records with cleaned addresses",
+#     "Records with imputed credentials",
+#     "Records with standardized dates",
+#     "Missing lastupdate before imputation",
+#     "Missing certdate before imputation",
+#     "Missing pmname before imputation"
+#   ),
+#   validation_result = base::c(
+#     scales::comma(post_cleaning_record_count),
+#     scales::comma(unique_npi_count_for_imputation),
+#     scales::comma(valid_zip_count),
+#     scales::comma(address_modifications_count),
+#     "Available in dataset",
+#     "Multiple date formats processed",
+#     scales::comma(lastupdate_missing_count_before),
+#     scales::comma(certdate_missing_count_before), 
+#     scales::comma(pmname_missing_count_before)
+#   ),
+#   validation_status = base::c(
+#     "PASS", "PASS", "PASS", "PASS", "PASS", 
+#     "PASS", "INFO", "INFO", "INFO"
+#   )
+# )
+# 
+# # Force garbage collection
+# gc_result <- base::gc()
+# logger::log_info("Garbage collection completed")
+# 
+# # Quick fix - define the missing variable ----
+# validation_report_output_path <- "validation/nppes_data_validation_report.csv"
+# 
+# # Export validation report
+# readr::write_csv(
+#   data_validation_summary,
+#   file = validation_report_output_path
+# )
+# 
+# logger::log_info("Data validation report saved: {validation_report_output_path}")
+# base::print(data_validation_summary)
+# 
+# # Force garbage collection
+# gc_result <- base::gc()
+# logger::log_info("Garbage collection completed")
+# 
+# # Force garbage collection
+# gc_result <- base::gc()
+# logger::log_info("Garbage collection completed")
+# 
+# # Export comprehensive report as RDS ----
+# comprehensive_report_rds_path <- comprehensive_report_rds_output_path
+# 
+# base::saveRDS(
+#   comprehensive_processing_report, 
+#   file = comprehensive_report_rds_path
+# )
+# 
+# logger::log_info("Comprehensive processing report saved: {comprehensive_report_rds_path}")
+# 
+# #
+# # PIPELINE COMPLETION -----
+# #
+# 
+# logger::log_info("=== NPPES OB/GYN PROCESSING PIPELINE COMPLETED ===")
+# logger::log_info("All filtering analysis and visualization generation completed successfully")
+# logger::log_info("Final processed dataset available as: nppes_obgyn_processed_provider_dataset")
+# logger::log_info("Processing pipeline execution completed successfully")
+# 
+# # Force garbage collection
+# gc_result <- base::gc()
+# logger::log_info("Garbage collection completed")
