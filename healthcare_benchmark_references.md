@@ -1,23 +1,23 @@
 # References for Healthcare Benchmarks
 
 ## Healthy People 2030 Target (85%)
-Healthcare access goal set by HHS
+HHS target for healthcare access
 
-**Reference:** U.S. Department of Health and Human Services. (2020). Healthy People 2030. https://health.gov/healthypeople
+**Reference:** U.S. Dept of Health and Human Services (2020)
 
 ## Primary Care Access (95%)
-% with 30-min access to primary care
+Access within 30 min to primary care
 
-**Reference:** Penchansky, R., & Thomas, J. W. (1981). The concept of access: definition and relationship to consumer satisfaction. Medical Care, 19(2), 127-140.
+**Reference:** Penchansky & Thomas, Med Care, 1981
 
 ## Cardiology Access (75%)
-% with 60-min access to cardiology
+60-min access to cardiology
 
-**Reference:** American Heart Association. (2019). Systems of Care for ST-Segment–Elevation Myocardial Infarction. Circulation, 140(5), e310-e369.
+**Reference:** American Heart Assoc, Circulation, 2019
 
 ## Rural Healthcare Standard (60%)
-Minimum standard for rural populations
+Minimum rural access standard
 
-**Reference:** Rural Health Information Hub. (2021). Rural Access to Healthcare. https://www.ruralhealthinfo.org/topics/healthcare-access
+**Reference:** Rural Health Info Hub, 2021
 
 

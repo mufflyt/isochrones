@@ -2705,10 +2705,172 @@ tryCatch({
   base::stop("Dataset export failed")
 })
 
+# All physicians in this data set.  All generalists and specialists.  
 readr::read_csv("data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv")
 
 #
-# ADDRESS COMPARISON ANALYSIS
+# GOBA to help with self-described posers like Steve Holt as gyn onc? ----
+goba <- readr::read_csv("data/02.5-subspecialists_over_time/goba_unrestricted_cleaned.csv")
+
+head(goba)
+glimpse(goba)
+
+## Validate NPPES taxonomy using GOBA subspecialty mapping and NPI ----
+#' Validate NPPES taxonomy by NPI and subspecialty across years
+#'
+#' @param nppes_data NPPES dataframe with multiple years
+#' @param goba_data GOBA dataframe with validated subspecialists
+#' @param goba_subspecialties List of subspecialties to validate (default includes general OB/GYN)
+#' @param ptaxcode_col Character vector of column names (e.g., c("ptaxcode1", "ptaxcode2_imputed"))
+#' @param year_col Column name for year grouping (default = "data_year")
+#' @param goba_sub_col Column in goba indicating subspecialty (default: "sub1")
+#' @param npi_col NPI column name shared by both
+#' @param write_false_positives Write unmatched potential false positives to CSV? (default: FALSE)
+#' @param return_only_validated Return only rows validated? (default: FALSE)
+#' @param summarize_output Print summary by specialty and year? (default: TRUE)
+#' @param drop_goba_sub Remove internal match column from result? (default: FALSE)
+#' @param filter_nppes_years Optional character/numeric vector to subset NPPES by year
+#'
+#' @return NPPES dataframe with `validated_taxonomy` and `validated_specialty` columns
+#' @export
+validate_nppes_taxonomy_by_npi <- function(nppes_data,
+                                           goba_data,
+                                           goba_subspecialties = c("ONC", "REI", "MFM", "FPM", "MIG", "PAG", "GEN"),
+                                           ptaxcode_col = c("ptaxcode1", "ptaxcode2_imputed"),
+                                           year_col = "data_year",
+                                           goba_sub_col = "sub1",
+                                           npi_col = "npi",
+                                           write_false_positives = FALSE,
+                                           return_only_validated = FALSE,
+                                           summarize_output = TRUE,
+                                           drop_goba_sub = FALSE,
+                                           filter_nppes_years = NULL) {
+  logger::log_info("Starting taxonomy validation across specialties and years.")
+  if (!is.null(filter_nppes_years)) {
+    nppes_data <- nppes_data %>%
+      dplyr::filter(.data[[year_col]] %in% filter_nppes_years)
+    logger::log_info("Filtered NPPES to {nrow(nppes_data)} rows for years: {paste(filter_nppes_years, collapse = ', ')}")
+  }
+  
+  # Specialty → Taxonomy Code Mapping
+  specialty_taxonomy_map <- list(
+    ONC  = c("207VX0201X", "207VC0200X"),
+    REI  = c("207VE0102X"),
+    MFM  = c("207VM0101X"),
+    FPM  = c("207VF0040X"),
+    MIG  = c("207VC0040X"),
+    PAG  = c("207VC0300X"),
+    GEN  = c("207V00000X")  # General OB/GYN
+  )
+  
+  # Get valid GOBA NPIs
+  goba_valid <- goba_data %>%
+    dplyr::filter(.data[[goba_sub_col]] %in% goba_subspecialties) %>%
+    dplyr::select(goba_npi = {{npi_col}}, goba_sub = .data[[goba_sub_col]]) %>%
+    dplyr::distinct()
+  
+  logger::log_info("GOBA: Found {nrow(goba_valid)} unique NPIs for selected subspecialties")
+  
+  # Join to NPPES
+  joined <- dplyr::left_join(
+    nppes_data,
+    goba_valid,
+    by = setNames("goba_npi", npi_col)
+  )
+  
+  logger::log_info("Joined NPPES + GOBA: {nrow(joined)} rows")
+  
+  # Validation helper
+  validate_codes_vectorized <- function(subspecialty, ...) {
+    codes <- c(...)
+    if (is.na(subspecialty)) return(FALSE)
+    valid_codes <- specialty_taxonomy_map[[subspecialty]]
+    any(codes %in% valid_codes)
+  }
+  
+  # Apply validation
+  joined <- joined %>%
+    dplyr::mutate(
+      validated_taxonomy = purrr::pmap_lgl(
+        c(list(goba_sub), dplyr::across(dplyr::all_of(ptaxcode_col))),
+        validate_codes_vectorized
+      ),
+      validated_specialty = dplyr::if_else(validated_taxonomy, goba_sub, NA_character_)
+    )
+  
+  logger::log_info("Validated taxonomy TRUE for {sum(joined$validated_taxonomy)} of {nrow(joined)} rows")
+  
+  # Optional: write false positives
+  if (write_false_positives) {
+    bad <- joined %>%
+      dplyr::filter(
+        !validated_taxonomy &
+          dplyr::if_any(dplyr::all_of(ptaxcode_col), ~ . %in% unlist(specialty_taxonomy_map))
+      )
+    
+    timestamp <- format(Sys.time(), "%Y%m%d-%H%M%S")
+    path <- glue::glue("data/nppes_false_positives_{timestamp}.csv")
+    readr::write_csv(bad, path)
+    logger::log_info("Saved {nrow(bad)} false positives to: {path}")
+  }
+  
+  # Optional: summary table
+  if (summarize_output) {
+    summary_tbl <- joined %>%
+      dplyr::filter(!is.na(goba_sub)) %>%
+      dplyr::group_by(.data[[year_col]], goba_sub) %>%
+      dplyr::summarize(
+        validated_n = sum(validated_taxonomy),
+        unmatched_n = sum(!validated_taxonomy),
+        .groups = "drop"
+      )
+    print(summary_tbl)
+  }
+  
+  # Message summary
+  matched_count <- sum(joined$validated_taxonomy)
+  unmatched_count <- sum(!joined$validated_taxonomy & !is.na(joined$goba_sub))
+  
+  message(glue::glue("✅ Validated: {scales::comma(matched_count)}"))
+  message(glue::glue("❌ Unmatched (with subspecialty): {scales::comma(unmatched_count)}"))
+  
+  if (drop_goba_sub) {
+    joined <- joined %>% dplyr::select(-goba_sub)
+  }
+  
+  if (return_only_validated) {
+    return(dplyr::filter(joined, validated_taxonomy))
+  }
+  
+  beepr::beep(2)
+  return(joined)
+}
+
+
+nppes_cleaned <- readr::read_csv(
+  "data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv"
+)
+dim(nppes_cleaned)
+
+goba <- readr::read_csv("data/02.5-subspecialists_over_time/goba_unrestricted_cleaned.csv")
+
+# Excludes Mastro and Moroney because they were not board-certified when goba was last run. WE NEED TO RUN THE GOBA SEARCH AGAIN.  
+validated <- validate_nppes_taxonomy_by_npi(
+  nppes_data = nppes_cleaned,
+  goba_data = goba,
+  ptaxcode_col = c("ptaxcode1", "ptaxcode2_imputed"),
+  year_col = "data_year",
+  write_false_positives = TRUE
+) %>% 
+  dplyr::filter(validated_taxonomy==TRUE) 
+
+View(validated)
+
+readr::write_rds(validated, "data/02.5-subspecialists_over_time/validated_goba_unrestricted_subspecialists.rds")
+
+#####
+#
+# ADDRESS COMPARISON ANALYSIS ----
 #
 
 logger::log_info("=== STEP 8: ADDRESS COMPARISON ANALYSIS ===")

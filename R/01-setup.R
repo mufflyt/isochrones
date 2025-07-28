@@ -1057,5 +1057,226 @@ retrieve_clinician_data <- function(input_data, no_results_csv = "no_results_npi
   return(updated_records)
 }
 
+# magnitude function
+magnitude_of_things <- function(value,
+                                comparison_csv = "magnitude_comparisons_master.csv",
+                                log_scale = TRUE,
+                                notes = TRUE,
+                                exact_only = FALSE,
+                                as_table = FALSE,
+                                include_rank = FALSE,
+                                percent_tolerance = 0.05,
+                                fallback_multiples = TRUE,
+                                fallback_rank = TRUE,
+                                pluralize = TRUE,
+                                round_digits = 1,
+                                scale_comparison = TRUE,
+                                output_style = c("table", "narrative"),
+                                reference_url_column = NULL) {
+  output_style <- match.arg(output_style)
+  
+  comparisons <- readr::read_csv(comparison_csv, show_col_types = FALSE) %>%
+    dplyr::mutate(`Approximate Count` = suppressWarnings(as.numeric(`Approximate Count`))) %>%
+    dplyr::filter(!is.na(`Approximate Count`))
+  
+  comparisons <- comparisons %>%
+    dplyr::mutate(
+      Clean_Group = gsub("^(number of|count of) ", "", `Comparison Group`, ignore.case = TRUE),
+      Clean_Group = stringr::str_replace_all(Clean_Group, "\\bnyc\\b", "NYC"),
+      Clean_Group = stringr::str_replace_all(Clean_Group, "\\busa\\b", "USA"),
+      Clean_Group = stringr::str_replace_all(Clean_Group, "\\buk\\b", "UK"),
+      Magnitude_Difference = if (log_scale) abs(log10(`Approximate Count`) - log10(value)) else abs(`Approximate Count` - value),
+      Ratio = value / `Approximate Count`
+    )
+  
+  get_phrase <- function(value, count) {
+    diff_ratio <- abs(value - count) / count
+    if (diff_ratio <= 0.03) {
+      return("approximately equal to")
+    } else if (diff_ratio <= 0.05) {
+      return("roughly the same as")
+    } else if (value > count) {
+      multiplier <- round(value / count, 1)
+      return(paste0(multiplier, " times more than"))
+    } else {
+      fraction <- round(count / value, 1)
+      return(paste0("about 1/", fraction, " the size of"))
+    }
+  }
+  
+  construct_sentence <- function(row) {
+    label <- if (pluralize) {
+      stringr::str_to_lower(substr(row$Clean_Group, 1, 1)) %>%
+        paste0(substr(row$Clean_Group, 2, nchar(row$Clean_Group)))
+    } else {
+      row$Clean_Group
+    }
+    
+    phrase <- get_phrase(value, row$`Approximate Count`)
+    
+    sentence <- paste0(
+      "The number (", format(value, big.mark = ",", scientific = FALSE), 
+      ") was ", phrase, " the ", label,
+      " (", format(row$`Approximate Count`, big.mark = ",", scientific = FALSE), ")."
+    )
+    
+    if (!is.null(reference_url_column) && reference_url_column %in% names(row)) {
+      sentence <- paste0(sentence, " [Source: ", row[[reference_url_column]], "]")
+    } else if (notes && "Notes" %in% names(row) && !is.na(row$Notes)) {
+      sentence <- paste0(sentence, " [", row$Notes, "]")
+    }
+    
+    return(sentence)
+  }
+  
+  filtered <- comparisons %>%
+    dplyr::filter(abs(`Approximate Count` - value) / value <= percent_tolerance)
+  
+  if (nrow(filtered) > 0) {
+    filtered <- filtered %>%
+      dplyr::mutate(Comparison = purrr::map_chr(dplyr::row_number(), ~ construct_sentence(dplyr::slice(filtered, .x))),
+                    Rank = dplyr::row_number())
+    
+    return(if (output_style == "narrative") filtered$Comparison else filtered)
+  }
+  
+  if (scale_comparison) {
+    scale_match <- comparisons %>%
+      dplyr::filter(value / `Approximate Count` > 2) %>%
+      dplyr::mutate(n_units = round(value / `Approximate Count`)) %>%
+      dplyr::arrange(n_units) %>%
+      dplyr::slice(1)
+    
+    if (nrow(scale_match) > 0) {
+      label <- if (pluralize) {
+        paste0(stringr::str_to_title(scale_match$Clean_Group), "s")
+      } else {
+        scale_match$Clean_Group
+      }
+      
+      sentence <- paste0(
+        "The number (", format(value, big.mark = ",", scientific = FALSE), 
+        ") is approximately equal to ", scale_match$n_units,
+        " full groups of ", label,
+        " (each ≈ ", format(scale_match$`Approximate Count`, big.mark = ",", scientific = FALSE), ")."
+      )
+      
+      if (!is.null(reference_url_column) && reference_url_column %in% names(scale_match)) {
+        sentence <- paste0(sentence, " [Source: ", scale_match[[reference_url_column]], "]")
+      } else if (notes && "Notes" %in% names(scale_match)) {
+        sentence <- paste0(sentence, " [", scale_match$Notes, "]")
+      }
+      
+      return(sentence)
+    }
+  }
+  
+  if (fallback_rank) {
+    closest <- comparisons %>%
+      dplyr::arrange(abs(value - `Approximate Count`)) %>%
+      dplyr::slice(1)
+    return(construct_sentence(closest))
+  }
+  
+  return("No suitable comparison found.")
+}
+
+generate_go_access_summary <- function(data_path, race_category = "total_female") {
+  library(dplyr)
+  library(readr)
+  library(glue)
+  
+  access_data <- read_csv(data_path, show_col_types = FALSE)
+  data_race <- access_data %>% filter(category == race_category, range == 3600)
+  
+  # Time trends
+  baseline <- data_race %>% filter(year == min(year))
+  latest   <- data_race %>% filter(year == max(year))
+  peak     <- data_race %>% filter(percent == max(percent))
+  trough   <- data_race %>% filter(percent == min(percent))
+  
+  # Year-over-year absolute and relative changes
+  yoy_changes <- data_race %>%
+    arrange(year) %>%
+    mutate(
+      absolute_change = percent - lag(percent),
+      relative_change = (percent - lag(percent)) / lag(percent) * 100
+    )
+  
+  # Slope (rate of change per year)
+  annual_slope <- if (nrow(data_race %>% filter(!is.na(percent))) >= 2) {
+    coef(lm(percent ~ year, data = data_race))[["year"]]
+  } else {
+    NA
+  }
+  
+  # Low access counts (beyond 60 min = 3600)
+  low_access_count <- access_data %>%
+    filter(category == race_category, range == 3600) %>%
+    mutate(low_access_women = total - count)
+  
+  max_low_access <- max(low_access_count$low_access_women, na.rm = TRUE)
+  min_low_access <- min(low_access_count$low_access_women, na.rm = TRUE)
+  latest_low_access <- low_access_count %>% filter(year == max(year)) %>% pull(low_access_women)
+  
+  # Race/ethnic disparities in latest year
+  by_race_latest <- access_data %>%
+    filter(year == max(year), range == 3600, grepl("^total_female", category)) %>%
+    arrange(desc(percent)) %>%
+    mutate(rank = row_number())
+  
+  top_races <- by_race_latest %>% slice(1:4)
+  worst_race <- by_race_latest %>% slice(n())
+  
+  lack_pct <- 100 - worst_race$percent
+  fraction_label <- case_when(
+    between(lack_pct, 70, 80) ~ "three-quarters",
+    between(lack_pct, 60, 70) ~ "two-thirds",
+    between(lack_pct, 40, 60) ~ "half",
+    between(lack_pct, 20, 40) ~ "one-quarter",
+    TRUE ~ "a large share"
+  )
+  
+  # Format numbers
+  format_pct <- function(x) sprintf("%.1f%%", round(x, 1))
+  format_mil <- function(x) paste0(format(round(x / 1e6, 1), nsmall = 1), " million")
+  format_slope <- function(x) if (!is.na(x)) sprintf("%.2f%% per year", round(x, 2)) else "insufficient data"
+  
+  glue(
+    "The results show a concerning _decline_ in access to gynecologic oncologists (GOs) over time. ",
+    "In {baseline$year}, about {format_pct(baseline$percent)} of women had access to a GO within 60 minutes of driving time, ",
+    "but by {latest$year} this _dropped_ to {format_pct(latest$percent)}, representing a {format_pct(abs(latest$percent - baseline$percent))} percentage point change. ",
+    "Interestingly, access peaked in {peak$year} at {format_pct(peak$percent)} before declining to its lowest point in {trough$year} at {format_pct(trough$percent)}, ",
+    "with a slight recovery by {latest$year}. The average annual rate of change was {format_slope(annual_slope)}.\n\n",
+    
+    "The analysis also reveals _substantial geographic disparities_, with approximately {format_mil(latest_low_access)} women living in areas considered \"low-access\" (beyond 60-minute drive time). ",
+    "This number fluctuated throughout the study period, ranging from {format_mil(min_low_access)} to {format_mil(max_low_access)} women.\n\n",
+    
+    "Perhaps most striking are the racial and ethnic disparities identified in {latest$year}. ",
+    "{top_races$category[1]} women had the highest access rate at {format_pct(top_races$percent[1])}, followed by ",
+    "{top_races$category[2]} women ({format_pct(top_races$percent[2])}), ",
+    "{top_races$category[3]} ({format_pct(top_races$percent[3])}), and ",
+    "{top_races$category[4]} women ({format_pct(top_races$percent[4])}). ",
+    "{worst_race$category} had dramatically lower access at {format_pct(worst_race$percent)}—meaning nearly _{fraction_label}_ of this population lacked reasonable access to gynecologic oncology care.\n\n",
+    
+    "These findings suggest significant and persistent issues with healthcare accessibility that could have serious implications for cancer outcomes among women in underserved populations."
+  )
+}
+
+obgyn_taxonomy_code_vector = c(
+  "207V00000X",    # Obstetrics & Gynecology (General)
+  "207VX0201X",    # Gynecologic Oncology *** PRIMARY FOCUS ***
+  "207VE0102X",    # Reproductive Endocrinology & Infertility
+  "207VG0400X",    # Gynecology (General)
+  "207VM0101X",    # Maternal & Fetal Medicine
+  "207VF0040X",    # Female Pelvic Medicine & Reconstructive Surgery
+  "207VB0002X",    # Bariatric Medicine (OBGYN)
+  "207VC0200X",    # Critical Care Medicine (OBGYN)
+  "207VC0040X",    # Gynecology subspecialty
+  "207VC0300X",    # Complex Family Planning
+  "207VH0002X",    # Hospice and Palliative Medicine (OBGYN)
+  "207VX0000X"     # Obstetrics Only
+)
+
 # fin
 print("Setup is complete!")

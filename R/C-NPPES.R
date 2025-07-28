@@ -1,13 +1,11 @@
-#######################
-source("R/01-setup.R")
-#######################
 
-#==============================================================================
-# Extracting and Processing NPPES Provider Data for OBGYN Practitioners
-#==============================================================================
+source("R/01-setup.R")
+
+
+# Extracting and Processing NPPES Provider Data for OBGYN Practitioners ----
 
 #------------------------------------------------------------------------------
-# 1. Load Required Packages
+# 1. Load Required Packages ----
 #------------------------------------------------------------------------------
 library(DBI)
 library(duckdb)
