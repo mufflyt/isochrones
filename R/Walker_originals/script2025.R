@@ -150,9 +150,9 @@ write_rds(yearly_tables, "data/yearly_tables.rds")
 
 
 # We'll now convert our ACS data to centroids prior to the isochrone spatial join.
-acs_centroids <- map(acs_pulls, function(x) {
+acs_centroids <- purrr::map(acs_pulls, function(x) {
   x %>%
-    st_centroid()
+    sf::st_centroid()
 })
 write_rds(acs_centroids, "data/acs_centroids.rds")
 

@@ -87,15 +87,6 @@ source("R/01-setup.R")
 #' @importFrom logger log_info log_threshold
 #' @importFrom assertthat assert_that
 
-# Load required packages
-library(readr)
-library(dplyr)
-library(tidyr)
-library(stringr)
-library(logger)
-library(assertthat)
-library(exploratory)
-
 # Set up logging
 verbose <- TRUE
 if (verbose) {

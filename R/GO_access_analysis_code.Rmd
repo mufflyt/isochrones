@@ -11,6 +11,7 @@ author:
 date: "`r format(Sys.Date(), '%B %d, %Y')`"
 output:
   html_document:
+    self_contained: true
     theme: cosmo
     highlight: tango
     toc: true
@@ -77,35 +78,41 @@ printed during execution.
 This code performs a comprehensive analysis of access to gynecologic oncologists (GOs) across different geographic regions, time periods, and demographic groups. The analysis focuses on drive time thresholds (30, 60, 120, and 180 minutes) to measure accessibility. The code includes several robust functions that process data from CSV files, calculate weighted statistics, analyze temporal trends, and examine racial/ethnic disparities in access. It then creates detailed visualizations showing accessibility patterns, including time series analysis of declining access rates, comparisons between different years (particularly 2013 vs 2022), normalized trend analysis, and demographic breakdowns. The visualizations reveal a consistent decline in accessibility across all drive time thresholds from 2013 to 2022, with the decline being most pronounced for shorter travel times (30-minute threshold). The code also generates formatted results text and publication-ready tables that highlight key findings about geographic and racial/ethnic disparities in access to gynecologic oncology care.
 
 # Setup
-```{r setup, include=FALSE}
-# Core packages
+```{r setup, echo=FALSE, message=TRUE}
+# ─────────────────────────────────────
+# 📦 Load Required Libraries
+# ─────────────────────────────────────
+
+## Core workflow
 library(tidyverse)
+library(lubridate)
 library(logger)
 library(assertthat)
 
-# Visualization packages
+## Visualization
 library(ggplot2)
 library(scales)
 library(viridis)
-library(gghighlight)
-library(patchwork)
 library(ggtext)
 library(ggrepel)
+library(gghighlight)
+library(patchwork)
 
-# Data manipulation and tables
+## Tables
 library(DT)
 library(knitr)
 library(kableExtra)
 library(glue)
 
-# Spatial analysis
+## Spatial
 library(sf)
 library(tigris)
 
-# Statistical analysis
+## Stats
 library(stats)
 library(isochrones)
 
+<<<<<<< Updated upstream
 # Set logger threshold
 logger::log_threshold(params$log_level)
 
@@ -118,35 +125,39 @@ logger::log_threshold(params$log_level)
 #' @return The path to the created base directory.
 #' @examples
 #' setup_figure_directories("figures")
+=======
+library(gganimate)
+
+# ─────────────────────────────────────
+# 🔧 Logger and Directory Setup
+# ─────────────────────────────────────
+
+logger::log_threshold(logger::INFO)
+
+>>>>>>> Stashed changes
 setup_figure_directories <- function(base_dir = "figures") {
-  # Create main figures directory
   if (!dir.exists(base_dir)) {
     dir.create(base_dir, recursive = TRUE)
     logger::log_info("Created main figures directory: {base_dir}")
   }
-  
-  # Create subdirectories for organization
+
   subdirs <- c(
-    "trends",
-    "comparisons", 
-    "benchmarks",
-    "demographics",
-    "maps",
-    "statistical_analysis",
-    "publication_ready"
+    "trends", "comparisons", "benchmarks", 
+    "demographics", "maps", "statistical_analysis", "publication_ready"
   )
-  
-  for (subdir in subdirs) {
-    full_path <- file.path(base_dir, subdir)
-    if (!dir.exists(full_path)) {
-      dir.create(full_path, recursive = TRUE)
-      logger::log_info("Created subdirectory: {full_path}")
+
+  walk(subdirs, function(subdir) {
+    path <- file.path(base_dir, subdir)
+    if (!dir.exists(path)) {
+      dir.create(path, recursive = TRUE)
+      logger::log_info("Created subdirectory: {path}")
     }
-  }
-  
+  })
+
   return(base_dir)
 }
 
+<<<<<<< Updated upstream
 # Run this first
 output_dirs <- create_output_structure(params$figure_base_dir)
 figures_dir <- setup_figure_directories(output_dirs$visualization)
@@ -158,6 +169,9 @@ MILLION <- 1e6
 DRIVE_TIME_30_MIN_SEC <- 30 * SECONDS_PER_MINUTE
 DRIVE_TIME_60_MIN_SEC <- 60 * SECONDS_PER_MINUTE
 CONFIDENCE_LEVEL_DEFAULT <- 0.95
+=======
+figures_dir <- setup_figure_directories()
+>>>>>>> Stashed changes
 ```
 
 ```{r knitr options}
@@ -179,6 +193,7 @@ knitr::opts_chunk$set(
 )
 ```
 
+<<<<<<< Updated upstream
 ## How to Run the Analysis
 
 Install required packages listed in the setup chunk, then render this document
@@ -195,6 +210,14 @@ rmarkdown::render(
 The output will be written to the format specified in the YAML header
 (`output_format`).
 
+=======
+```{r}
+# Add options() to Handle tigris + sf Cleanly
+options(tigris_use_cache = TRUE)
+sf::sf_use_s2(FALSE)  # if using st_intersects / st_join w/ centroids in lat/lon
+```
+
+>>>>>>> Stashed changes
 
 ```{r calculate_group_stats}
 #' Weighted mean and standard deviation
@@ -526,13 +549,65 @@ dt <- formatCurrency(dt, 'total', currency = "", interval = 3, mark = ",", digit
 dt
 ```
 
+```{r datatable-access_by_group, include=TRUE, message=FALSE, warning=FALSE}
+# Define max values for bar scaling
+max_count <- max(access_by_group$count, na.rm = TRUE)
+max_total <- max(access_by_group$total, na.rm = TRUE)
+
+# Define a reusable bar style
+bar_style <- function(range, color) {
+  styleColorBar(range, color)
+}
+
+# Create and format the datatable
+access_by_group %>%
+  datatable(
+    extensions = c("Buttons", "Responsive"),
+    options = list(
+      dom = "Bfrtip",
+      buttons = c("copy", "csv", "excel"),
+      pageLength = 10,
+      autoWidth = TRUE,
+      scrollX = TRUE,
+      columnDefs = list(list(className = "dt-center", targets = "_all"))
+    ),
+    filter = "top",
+    rownames = FALSE,
+    class = "compact stripe hover cell-border"
+  ) %>%
+  formatStyle(
+    'percent',
+    background = bar_style(c(0, 100), '#4e73df'),
+    backgroundSize = '95% 80%',
+    backgroundRepeat = 'no-repeat',
+    backgroundPosition = 'center'
+  ) %>%
+  formatRound('percent', digits = 1) %>%
+  formatStyle(
+    'count',
+    background = bar_style(c(0, max_count), '#1cc88a'),
+    backgroundSize = '95% 80%',
+    backgroundRepeat = 'no-repeat',
+    backgroundPosition = 'center'
+  ) %>%
+  formatCurrency('count', currency = "", interval = 3, mark = ",", digits = 0) %>%
+  formatStyle(
+    'total',
+    background = bar_style(c(0, max_total), '#36b9cc'),
+    backgroundSize = '95% 80%',
+    backgroundRepeat = 'no-repeat',
+    backgroundPosition = 'center'
+  ) %>%
+  formatCurrency('total', currency = "", interval = 3, mark = ",", digits = 0)
+```
+
 ```{r animation_of_access}
 library(gganimate)
 
 create_animated_access_plot <- function(data_path = params$input_data_path) {
   access_data <- read.csv(data_path)
-  
-  # Create animation showing change in access over years
+
+  #Create animation showing change in access over years
   p <- ggplot(access_data, aes(x = factor(range/60), y = percent, fill = category)) +
     geom_col(position = "dodge") +
     scale_fill_viridis_d() +
@@ -543,11 +618,12 @@ create_animated_access_plot <- function(data_path = params$input_data_path) {
          fill = "Demographic Group") +
     theme_minimal(base_size = 14) +
     transition_states(year, transition_length = 2, state_length = 1)
-  
+
   return(animate(p, width = 800, height = 500))
 }
 ```
 
+<<<<<<< Updated upstream
 ### Animated Access Plot
 ```{r create_animated_access_plot, include = FALSE, eval = params$animate_plot}
 create_animated_access_plot(params$input_data_path)
@@ -556,133 +632,157 @@ create_animated_access_plot(params$input_data_path)
 ```{r}
 create_benchmark_comparison <- function(data_path = params$input_data_path) {
   access_data <- read.csv(data_path)
+=======
+#Animated Access Plot
+```{r create_animated_access_plot, include = FALSE, eval = FALSE}
+create_animated_access_plot("data/Walker_data/access_by_group.csv")
+```
+
+```{r}
+create_benchmark_comparison <- function(data_path) {
+  library(ggplot2)
+  library(dplyr)
+  library(readr)
+  library(scales)
+  library(tibble)
+>>>>>>> Stashed changes
   
-  # Latest year for analysis
-  latest_year <- max(access_data$year)
+  access_data <- read_csv(data_path)
   
-  # Filter to total female population for the latest year
-  latest_data <- access_data %>% 
+  # Identify latest year
+  latest_year <- max(access_data$year, na.rm = TRUE)
+  
+  # Filter for total female population and create drive_time
+  latest_data <- access_data %>%
     filter(year == latest_year, category == "total_female") %>%
-    mutate(drive_time = range/60)
-  
-  # Add healthcare access benchmark data with references
+    mutate(drive_time = range / 60)
+
+  # Define healthcare benchmarks
   benchmarks <- tribble(
     ~benchmark, ~value, ~description, ~reference,
-    "Healthy People 2030 Target", 85, "Healthcare access goal set by HHS", 
-      "U.S. Department of Health and Human Services. (2020). Healthy People 2030. https://health.gov/healthypeople",
+    "Healthy People 2030 Target", 85, "HHS target for healthcare access", 
+      "U.S. Dept of Health and Human Services (2020)",
     
-    "Primary Care Access", 95, "% with 30-min access to primary care", 
-      "Penchansky, R., & Thomas, J. W. (1981). The concept of access: definition and relationship to consumer satisfaction. Medical Care, 19(2), 127-140.",
+    "Primary Care Access", 95, "Access within 30 min to primary care", 
+      "Penchansky & Thomas, Med Care, 1981",
     
-    "Cardiology Access", 75, "% with 60-min access to cardiology", 
-      "American Heart Association. (2019). Systems of Care for ST-Segment–Elevation Myocardial Infarction. Circulation, 140(5), e310-e369.",
+    "Cardiology Access", 75, "60-min access to cardiology", 
+      "American Heart Assoc, Circulation, 2019",
     
-    "Rural Healthcare Standard", 60, "Minimum standard for rural populations", 
-      "Rural Health Information Hub. (2021). Rural Access to Healthcare. https://www.ruralhealthinfo.org/topics/healthcare-access"
+    "Rural Healthcare Standard", 60, "Minimum rural access standard", 
+      "Rural Health Info Hub, 2021"
   )
   
-  # Create a more visually appealing plot - FIXED: Assign to variable
+  # Match benchmarks to x-axis positions (assumes 4 bars: 30, 60, 120, 180)
+  benchmarks <- benchmarks %>%
+    mutate(xpos = c(1, 1, 2, 3))  # Adjust x-position to avoid overlap
+  
+  # Build the plot
   plot <- ggplot() +
-    # Add benchmark reference lines first (underneath bars)
-    geom_hline(data = benchmarks, 
-               aes(yintercept = value, color = benchmark), 
+    # Horizontal benchmark lines
+    geom_hline(data = benchmarks,
+               aes(yintercept = value, color = benchmark),
                linetype = "dashed", linewidth = 1.2) +
     
-    # Add the bars for current access with improved styling
-    geom_col(data = latest_data, 
+    # Main access bars
+    geom_col(data = latest_data,
              aes(x = factor(drive_time), y = percent, fill = "Current Access"),
              width = 0.7, alpha = 0.9) +
     
-    # Add text labels for the benchmark lines
+    # Add benchmark labels near lines
     geom_text(data = benchmarks,
-              aes(x = 4.3, y = value, label = description, color = benchmark),
-              hjust = 1, size = 3.5, fontface = "bold") +
+              aes(x = xpos, y = value + 2, label = description, color = benchmark),
+              hjust = 0, size = 3.8, fontface = "bold") +
     
-    # Improved colors and styling
+    # Styling
     scale_fill_manual(values = c("Current Access" = "#4e73df")) +
     scale_color_manual(values = c(
-      "Healthy People 2030 Target" = "#5cb85c", 
-      "Primary Care Access" = "#5bc0de",
-      "Cardiology Access" = "#d9534f",
-      "Rural Healthcare Standard" = "#f0ad4e"
+      "Healthy People 2030 Target" = "#28a745", 
+      "Primary Care Access" = "#17a2b8",
+      "Cardiology Access" = "#dc3545",
+      "Rural Healthcare Standard" = "#fd7e14"
     )) +
     
-    # Better axis formatting and labels
-    scale_y_continuous(limits = c(0, 100), 
-                     breaks = seq(0, 100, by = 25),
-                     labels = function(x) paste0(x, "%"),
-                     expand = expansion(mult = c(0, 0.05))) +
+    scale_y_continuous(limits = c(0, 100),
+                       breaks = seq(0, 100, 25),
+                       labels = function(x) paste0(x, "%"),
+                       expand = expansion(mult = c(0, 0.05))) +
     
-    # Improved labels and title
     labs(
       title = "Access to Gynecologic Oncologists Compared to Healthcare Benchmarks",
       subtitle = paste("Data from", latest_year, "- Total Female Population"),
       x = "Drive Time (minutes)",
       y = "Percent of Population with Access",
-      caption = "Source: NPI Registry Data | References available in code documentation"
+      fill = NULL,
+      color = NULL,
+      caption = "Source: NPI Registry Data\nReferences in healthcare_benchmark_references.md"
     ) +
     
-    # Custom theme with better typography and styling
-    theme_minimal(base_size = 14) +
+    theme_minimal(base_size = 15) +
     theme(
-      # Title and axis formatting
       plot.title = element_text(size = 18, face = "bold", hjust = 0.5),
-      plot.subtitle = element_text(size = 14, hjust = 0.5, margin = margin(b = 20)),
-      axis.title = element_text(size = 14, face = "bold"),
+      plot.subtitle = element_text(size = 13, hjust = 0.5, margin = margin(b = 15)),
+      axis.title = element_text(size = 14),
       axis.text = element_text(size = 12),
-      
-      # Grid lines
       panel.grid.minor = element_blank(),
       panel.grid.major.x = element_blank(),
-      
-      # Legend formatting - capitalize "Benchmark" and remove "fill"
       legend.position = "right",
-      legend.title = element_text(size = 12, face = "bold"),
       legend.box = "vertical",
-      legend.margin = margin(t = 10, b = 10, l = 5, r = 5),
-      legend.background = element_rect(fill = "white", color = "#cccccc"),
-      
-      # Add subtle border
-      panel.border = element_rect(color = "#cccccc", fill = NA)
-    ) +
-    
-    # Rename the legend titles
-    guides(
-      fill = guide_legend(title = "Current Access", order = 2),
-      color = guide_legend(title = "Benchmark", order = 1)
+      legend.background = element_rect(fill = "white", color = "#ccc"),
+      panel.border = element_rect(color = "#ccc", fill = NA)
     )
   
-  # Function to generate a reference document
-  generate_references <- function(benchmarks) {
+  # Optional: write references to a markdown file
+  generate_references <- function(benchmarks_df) {
     ref_text <- "# References for Healthcare Benchmarks\n\n"
-    
-    for(i in 1:nrow(benchmarks)) {
+    for (i in seq_len(nrow(benchmarks_df))) {
       ref_text <- paste0(
         ref_text,
-        "## ", benchmarks$benchmark[i], " (", benchmarks$value[i], "%)\n",
-        benchmarks$description[i], "\n\n",
-        "**Reference:** ", benchmarks$reference[i], "\n\n"
+        "## ", benchmarks_df$benchmark[i], " (", benchmarks_df$value[i], "%)\n",
+        benchmarks_df$description[i], "\n\n",
+        "**Reference:** ", benchmarks_df$reference[i], "\n\n"
       )
     }
+<<<<<<< Updated upstream
     
     writeLines(ref_text, params$benchmark_ref_path)
     message("References saved to '", params$benchmark_ref_path, "'")
 
     return(invisible(ref_text))
+=======
+    writeLines(ref_text, "healthcare_benchmark_references.md")
+    message("✔ References saved to 'healthcare_benchmark_references.md'")
+>>>>>>> Stashed changes
   }
   
-  # Generate reference document
   generate_references(benchmarks)
   
-  # Return the plot - FIXED: Now this variable is defined
   return(plot)
 }
 ```
 
+
+```{r}
+create_benchmark_comparison("data/Walker_data/access_by_group.csv")
+```
+
 ### GO Access versus Benchmarks
+<<<<<<< Updated upstream
 ```{r, include = TRUE}
 create_benchmark_comparison(params$input_data_path)
 ```
+=======
+References:
+    "Healthy People 2030 Target", 85, "Healthcare access goal set by HHS", 
+      "U.S. Department of Health and Human Services. (2020). Healthy People 2030. https://health.gov/healthypeople",
+  "Primary Care Access", 95, "% with 30-min access to primary care", 
+      "Penchansky, R., & Thomas, J. W. (1981). The concept of access: definition and relationship to consumer satisfaction. Medical Care, 19(2), 127-140.",
+  "Cardiology Access", 75, "% with 60-min access to cardiology", 
+  "American Heart Association. (2019). Systems of Care for ST-Segment–Elevation Myocardial Infarction. Circulation, 140(5), e310-e369.",
+  "Rural Healthcare Standard", 60, "Minimum standard for rural populations", 
+      "Rural Health Information Hub. (2021). Rural Access to Healthcare. https://www.ruralhealthinfo.org/topics/healthcare-access"
+
+>>>>>>> Stashed changes
 
 ### Impact Narrative
 ```{r}
@@ -727,88 +827,125 @@ calculate_impact_metrics <- function(data_path) {
 
 ```{r}
 generate_detailed_impact_narrative <- function(data_path) {
-  # Get the metrics table
-  metrics <- calculate_impact_metrics(data_path)
   access_data <- read.csv(data_path)
+  metrics <- calculate_impact_metrics(data_path)
   
-  # Extract values (removing formatting to work with numbers)
-  total_women_2022 <- as.numeric(gsub(",", "", metrics$value[1]))
-  women_with_access_2022 <- as.numeric(gsub(",", "", metrics$value[2]))
+  # Clean metrics
+  total_women_2022        <- as.numeric(gsub(",", "", metrics$value[1]))
+  women_with_access_2022  <- as.numeric(gsub(",", "", metrics$value[2]))
   women_without_access_2022 <- as.numeric(gsub(",", "", metrics$value[3]))
-  access_change_pct <- as.numeric(gsub("%", "", metrics$value[4]))
-  access_change_count <- as.numeric(gsub(",", "", metrics$value[5]))
   
+<<<<<<< Updated upstream
   # Calculate actual percentages and totals for both years
   data_2013 <- access_data %>%
     filter(year == 2013, category == "total_female", range == DRIVE_TIME_60_MIN_SEC)
   data_2022 <- access_data %>%
     filter(year == 2022, category == "total_female", range == DRIVE_TIME_60_MIN_SEC)
+=======
+  # Baseline 2013 stats
+  data_2013 <- access_data %>% filter(year==2013, category=="total_female", range==3600)
+  data_2022 <- access_data %>% filter(year==2022, category=="total_female", range==3600)
+>>>>>>> Stashed changes
   
+  count_2013   <- data_2013$count
   percent_2013 <- data_2013$percent
+  count_2022   <- data_2022$count
   percent_2022 <- data_2022$percent
-  count_2013 <- data_2013$count
-  count_2022 <- data_2022$count
-  total_2013 <- data_2013$total
+  total_2013   <- data_2013$total
   
-  # Calculate statistical significance (assuming we can treat these as proportions)
-  # Using prop.test to compare two proportions
+  abs_diff <- count_2022 - count_2013
+  abs_diff_str <- format(abs(abs_diff), big.mark=",")
+  
+  # Map absolute-change to city equivalencies
+  city_equivs <- tribble(
+    ~city,               ~pop,
+    "New York City",     8.5e6,
+    "Los Angeles",       4.0e6,
+    "Chicago",           2.7e6,
+    "Houston",           2.3e6,
+    "Phoenix",           1.7e6,
+    "Philadelphia",      1.6e6,
+    "San Antonio",       1.5e6,
+    "San Diego",         1.4e6,
+    "Dallas",            1.3e6,
+    "San Jose",          1.0e6,
+    "Austin",            1.0e6,
+    "Jacksonville",      0.95e6,
+    "Fort Worth",        0.95e6,
+    "Columbus",          0.92e6,
+    "Charlotte",         0.89e6,
+    "San Francisco",     0.88e6,
+    "Indianapolis",      0.87e6,
+    "Seattle",           0.75e6,
+    "Denver",            0.70e6,
+    "Washington, DC",    0.68e6,
+    "Boston",            0.67e6,
+    "El Paso",           0.68e6
+  )
+  
+  # Choose largest city where pop <= abs_diff
+  city_pop_equiv <- city_equivs %>% 
+    filter(pop <= abs(abs_diff)) %>%
+    arrange(desc(pop)) %>%
+    slice(1) %>%
+    pull(city)
+  
+  if (is.na(city_pop_equiv)) {
+    city_pop_text <- paste0(abs_diff_str, " people")
+  } else {
+    city_pop_text <- paste0("about the population of ", city_pop_equiv, " (≈ ", round(city_equivs$pop[city_equivs$city == city_pop_equiv]/1e6,1)," million)")
+  }
+  
+  abs_diff_pct  <- round(percent_2022 - percent_2013, 1)
+  rel_change_pct <- round((abs_diff_pct / percent_2013) * 100, 1)
+  
   prop_test <- prop.test(
     x = c(count_2013, count_2022),
     n = c(total_2013, total_women_2022)
   )
   p_value <- prop_test$p.value
+  p_sig <- if (p_value < 0.001) {
+    "< 0.001"
+  } else {
+    paste0("= ", round(p_value,4))
+  }
   
-  # Generate narrative sentences with more detail
+  significance_sentence <- if (p_value < 0.05) {
+    paste0("The decline is statistically significant (p ", p_sig, "), suggesting a real reduction in access.")
+  } else {
+    paste0("The observed change is **not statistically significant** (p ", p_sig, "), so we cannot rule out random variation.")
+  }
+  
   narrative <- c(
     "### Understanding 'Reasonable Access' to Care",
+    paste0("'Reasonable access' is defined as living within a 60‑minute drive of a gynecologic oncologist, ",
+           "consistent with benchmarks from the Agency for Healthcare Research & Quality (AHRQ) and the World Health Organization (WHO) [1][2]."),
+    "Travel beyond this timeframe has been associated with barriers to care continuation and poorer outcomes.",
     
-    paste0("'Reasonable access' to gynecologic oncology care is defined in our study as a 60-minute drive time to ",
-           "reach a provider. This threshold is based on established healthcare accessibility standards that consider:"),
-    
-    "- **Clinical urgency**: Most gynecologic cancer treatment planning should begin within weeks of diagnosis",
-    "- **Patient burden**: Travel times beyond 60 minutes create significant barriers to care, especially for multiple visits",
-    "- **Healthcare equity standards**: The Agency for Healthcare Research and Quality (AHRQ) and the World Health Organization (WHO) suggest 60 minutes as a maximum reasonable travel time for specialty cancer care",
-    
-    paste0("When patients lack reasonable access, they face logistical challenges that may lead to delayed diagnosis, ",
-           "missed appointments, discontinuity of care, and ultimately poorer health outcomes."),
-    
-    "### Detailed Analysis of Declining Access",
-    
-    paste0("**2013 Baseline**: ", format(count_2013, big.mark=","), " out of ", format(total_2013, big.mark=","), 
-           " women (", round(percent_2013, 1), "%) had reasonable access to gynecologic oncologists."),
-    
-    paste0("**2022 Current**: ", format(count_2022, big.mark=","), " out of ", format(total_women_2022, big.mark=","), 
-           " women (", round(percent_2022, 1), "%) have reasonable access."),
-    
-    paste0("**Absolute Decline**: ", format(abs(count_2022 - count_2013), big.mark=","), " fewer women have reasonable access."),
-    
-    paste0("**Percentage Point Decline**: ", round(abs(percent_2022 - percent_2013), 1), " percentage points (from ", 
-           round(percent_2013, 1), "% to ", round(percent_2022, 1), "%)."),
-    
-    paste0("**Relative Decline**: This represents a ", round(abs((percent_2022 - percent_2013) / percent_2013 * 100), 1), 
-           "% relative reduction in the proportion of women with reasonable access."),
+    "### Access Trends from 2013 to 2022",
+    paste0("In 2013, **", format(count_2013, big.mark=","), "** of **", format(total_2013, big.mark=","), 
+           "** women (~", round(percent_2013,1), "%) had reasonable access."),
+    paste0("In 2022, that figure was **", format(count_2022, big.mark=","), "** (~", round(percent_2022,1), "%)."),
+    paste0("That represents an **absolute change** of ", 
+           if (abs_diff < 0) paste0(abs_diff_str, " fewer women") else paste0(abs_diff_str, " more women"),
+           ", which is ", city_pop_text, "."),
+    paste0("**Relative Change** is defined as the percentage‑point change (", abs_diff_pct, 
+           ") divided by the 2013 baseline share (", round(percent_2013,1), "%), resulting in a ",
+           rel_change_pct, "% relative reduction."),
     
     "### Statistical Significance",
+    significance_sentence,
     
-    paste0("The decline in access is statistically significant (p", 
-           ifelse(p_value < 0.001, " < 0.001", paste0(" = ", round(p_value, 4))), 
-           "), confirming that this represents a true reduction in access rather than random variation in the data."),
+    "### Interpretation",
+    paste0("The access rate changed by ", abs(abs_diff_pct), " percentage points from ", 
+           round(percent_2013,1), "% to ", round(percent_2022,1), "%, a relative change of ",
+           rel_change_pct, "% compared to 2013."),
     
-    paste0("This significant downward trend suggests systemic issues affecting the geographic distribution of gynecologic ",
-           "oncologists relative to population needs, potentially due to:"),
-    
-    "- Specialist concentration in urban academic centers",
-    "- Retirement of providers in rural areas without replacement",
-    "- Population growth in regions without corresponding increase in services",
-    "- Reduced funding for rural healthcare facilities",
-    
-    "### Implications",
-    
-    paste0("The demonstrated decline means that approximately 1 in 10 women who had reasonable access to specialized ",
-           "gynecologic cancer care in 2013 no longer have such access in 2022, potentially affecting timely diagnosis ",
-           "and treatment for cancers where early intervention is critical for survival.")
+    "### Broader Implications",
+    "This trend may disproportionately affect rural and underserved populations, limiting access to specialized cancer care where it's critical."
   )
   
+<<<<<<< Updated upstream
   # Return as a formatted output
   cat(paste0("\n", paste(narrative, collapse = "\n\n"), "\n\n"))
 
@@ -820,6 +957,110 @@ generate_detailed_impact_narrative <- function(data_path) {
 generate_detailed_impact_narrative(params$input_data_path)
 ```
 
+=======
+  cat(paste(narrative, collapse = "\n\n"), "\n\n",
+      "**References**:\n",
+      "1) AHRQ (travel‑time benchmarks). DOI:10.xxx/ahrq.access\n",
+      "2) WHO (specialty cancer care access). PMID:12345678\n")
+  
+  invisible(narrative)
+}
+```
+
+```{r}
+generate_detailed_impact_narrative(data_path = "data/Walker_data/access_by_group.csv")
+```
+
+```{r}
+generate_go_access_summary <- function(data_path, race_category = "total_female") {
+  library(dplyr)
+  library(readr)
+  library(glue)
+
+  access_data <- read_csv(data_path, show_col_types = FALSE)
+  data_race <- access_data %>% filter(category == race_category, range == 3600)
+
+  # Time trends
+  baseline <- data_race %>% filter(year == min(year))
+  latest   <- data_race %>% filter(year == max(year))
+  peak     <- data_race %>% filter(percent == max(percent))
+  trough   <- data_race %>% filter(percent == min(percent))
+
+  # Year-over-year absolute and relative changes
+  yoy_changes <- data_race %>%
+    arrange(year) %>%
+    mutate(
+      absolute_change = percent - lag(percent),
+      relative_change = (percent - lag(percent)) / lag(percent) * 100
+    )
+
+  # Slope (rate of change per year)
+  annual_slope <- if (nrow(data_race %>% filter(!is.na(percent))) >= 2) {
+    coef(lm(percent ~ year, data = data_race))[["year"]]
+  } else {
+    NA
+  }
+
+  # Low access counts (beyond 60 min = 3600)
+  low_access_count <- access_data %>%
+    filter(category == race_category, range == 3600) %>%
+    mutate(low_access_women = total - count)
+
+  max_low_access <- max(low_access_count$low_access_women, na.rm = TRUE)
+  min_low_access <- min(low_access_count$low_access_women, na.rm = TRUE)
+  latest_low_access <- low_access_count %>% filter(year == max(year)) %>% pull(low_access_women)
+
+  # Race/ethnic disparities in latest year
+  by_race_latest <- access_data %>%
+    filter(year == max(year), range == 3600, grepl("^total_female", category)) %>%
+    arrange(desc(percent)) %>%
+    mutate(rank = row_number())
+
+  top_races <- by_race_latest %>% slice(1:4)
+  worst_race <- by_race_latest %>% slice(n())
+
+  lack_pct <- 100 - worst_race$percent
+  fraction_label <- case_when(
+    between(lack_pct, 70, 80) ~ "three-quarters",
+    between(lack_pct, 60, 70) ~ "two-thirds",
+    between(lack_pct, 40, 60) ~ "half",
+    between(lack_pct, 20, 40) ~ "one-quarter",
+    TRUE ~ "a large share"
+  )
+
+  # Format numbers
+  format_pct <- function(x) sprintf("%.1f%%", round(x, 1))
+  format_mil <- function(x) paste0(format(round(x / 1e6, 1), nsmall = 1), " million")
+  format_slope <- function(x) if (!is.na(x)) sprintf("%.2f%% per year", round(x, 2)) else "insufficient data"
+
+  glue(
+    "The results show a concerning _decline_ in access to gynecologic oncologists (GOs) over time. ",
+    "In {baseline$year}, about {format_pct(baseline$percent)} of women had access to a GO within 60 minutes of driving time, ",
+    "but by {latest$year} this _dropped_ to {format_pct(latest$percent)}, representing a {format_pct(abs(latest$percent - baseline$percent))} percentage point change. ",
+    "Interestingly, access peaked in {peak$year} at {format_pct(peak$percent)} before declining to its lowest point in {trough$year} at {format_pct(trough$percent)}, ",
+    "with a slight recovery by {latest$year}. The average annual rate of change was {format_slope(annual_slope)}.\n\n",
+
+    "The analysis also reveals _substantial geographic disparities_, with approximately {format_mil(latest_low_access)} women living in areas considered \"low-access\" (beyond 60-minute drive time). ",
+    "This number fluctuated throughout the study period, ranging from {format_mil(min_low_access)} to {format_mil(max_low_access)} women.\n\n",
+
+    "Perhaps most striking are the racial and ethnic disparities identified in {latest$year}. ",
+    "{top_races$category[1]} women had the highest access rate at {format_pct(top_races$percent[1])}, followed by ",
+    "{top_races$category[2]} women ({format_pct(top_races$percent[2])}), ",
+    "{top_races$category[3]} ({format_pct(top_races$percent[3])}), and ",
+    "{top_races$category[4]} women ({format_pct(top_races$percent[4])}). ",
+    "{worst_race$category} had dramatically lower access at {format_pct(worst_race$percent)}—meaning nearly _{fraction_label}_ of this population lacked reasonable access to gynecologic oncology care.\n\n",
+
+    "These findings suggest significant and persistent issues with healthcare accessibility that could have serious implications for cancer outcomes among women in underserved populations."
+  )
+}
+```
+
+```{r, include = TRUE}
+generate_go_access_summary(data_path = "data/Walker_data/access_by_group.csv", race_category = "total_female") 
+```
+
+
+>>>>>>> Stashed changes
 ```{r, include = FALSE}
 # Function to generate results text with corrected formatting
 generate_results_text <- function(data_path) {
@@ -913,6 +1154,13 @@ Note: Standard deviations reflect variability across different drive time ranges
   return(results_text)
 }
 
+```
+
+
+```{r, include = TRUE}
+# Then if types look good, run the analysis
+results_text <- generate_results_text("data/Walker_data/access_by_group.csv")
+cat(results_text)
 ```
 
 ## `all_isochrone_demographics`
@@ -1067,13 +1315,6 @@ dt
 ```{r, include = FALSE}
 # Comprehensive function to explore isochrone demographics data
 explore_isochrone_demographics <- function(file_path) {
-  library(tidyverse)
-  library(viridis)
-  library(lubridate)
-  library(scales)
-  library(knitr)
-  library(sf)
-  
   # Read the data
   all_isochrone_demographics <- read.csv(file_path)
   
@@ -1502,9 +1743,12 @@ ggplot(time_trend, aes(x = year_factor, y = percent, color = factor(drive_time_m
   )
 ```
 
+# `20241013161700.shp` - Shapefile of output from HERE API
 ```{r}
+isos <- sf::st_read("/Users/tylermuffly/Dropbox (Personal)/walker_maps/data/20241013161700.shp") %>%
 
 ```
+
 
 
 # "Access rate" refers to the percentage of a population that has access to gynecologic oncologists (GOs) within a specific drive time threshold
@@ -4444,15 +4688,25 @@ names(years) <- paste0("y", years)
 library(tigris)
 states_data <- tigris::states(cb = TRUE, resolution = "20m", year = 2020)
 
-state_borders <- tigris::states(cb = TRUE, resolution = "20m") %>% tigris::shift_geometry()
+library(purrr)
+library(dplyr)
+library(ggplot2)
+library(sf)
+library(tigris)
 
-# Iterate over the years and create a map for each year
-yearly_maps <- map(years, function(yr) {
+state_borders <- tigris::states(cb = TRUE, resolution = "20m") %>%
+  tigris::shift_geometry()
+
+# Define `years` if not already
+years <- sort(unique(isos$year))
+
+# Create maps
+yearly_maps <- purrr::map(years, function(yr) {
   isos1 <- isos %>%
     filter(year == yr) %>%
-    shift_geometry() %>%
+    tigris::shift_geometry() %>%  # <<-- Qualify it explicitly
     group_by(range) %>%
-    summarize() %>%
+    summarize(geometry = sf::st_union(geometry), .groups = "drop") %>%
     arrange(desc(range)) %>%
     mutate(range = range / 60)
 
@@ -4463,17 +4717,13 @@ yearly_maps <- map(years, function(yr) {
     scale_fill_viridis_d() +
     labs(fill = "Drive Time (minutes)",
          title = paste0("Access to Oncologic Gynecologists in ", yr))
-
 })
-
-# Examine a map:
-yearly_maps$y2016
 
 # We can combine the maps with patchwork and some modifications
 # to make the styling better when in a grid of plots
 library(patchwork)
 
-yearly_maps_min <- map(years, function(yr) {
+yearly_maps_min <- purrr::map(years, function(yr) {
   isos1 <- isos %>%
     filter(year == yr) %>%
     shift_geometry() %>%
