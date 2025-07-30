@@ -29,20 +29,20 @@ search_and_process_npi <- memoise(function(input_file,
   file_extension <- tools::file_ext(input_file)
 
   if (file_extension == "rds") {
-    data <- readRDS(input_file)
+    names_data <- readRDS(input_file)
   } else if (file_extension %in% c("csv", "xls", "xlsx")) {
     if (file_extension %in% c("xls", "xlsx")) {
-      data <- readxl::read_xlsx(input_file)
+      names_data <- readxl::read_xlsx(input_file)
     } else {
-      data <- readr::read_csv(input_file)
+      names_data <- readr::read_csv(input_file)
     }
   } else {
     stop("Unsupported file format. Please provide an RDS, CSV, or XLS/XLSX file of NAMES to search.")
   }
   cat("Data loaded from the input file.\n")
 
-  first_names <- data$first
-  last_names <- data$last
+  first_names <- names_data$first
+  last_names <- names_data$last
 
   # Define the list of taxonomies to filter
   vc <- c("Student in an Organized Health Care Education/Training Program")
@@ -51,7 +51,7 @@ search_and_process_npi <- memoise(function(input_file,
   # Create a function to search NPI based on first and last names
   search_npi <- function(first_name, last_name) {
     cat("Searching NPI for:", first_name, last_name, "\n")
-    result <- tryCatch(
+    search_result <- tryCatch(
       {
         npi_obj <- npi::npi_search(first_name = first_name, last_name = last_name)
         t <- npi::npi_flatten(npi_obj, cols = c("basic", "taxonomies"))
@@ -62,33 +62,33 @@ search_and_process_npi <- memoise(function(input_file,
         return(NULL)
       }
     )
-    return(result)
+    return(search_result)
   }
 
   # Create an empty list to receive the data
-  out <- list()
+  search_results <- list()
 
   # Initialize progress bar
   total_names <- length(first_names)
   pb <- progress::progress_bar$new(total = total_names)
 
   # Search NPI for each name in the input data
-  out <- purrr::map2(first_names, last_names, function(first_name, last_name) {
+  search_results <- purrr::map2(first_names, last_names, function(first_name, last_name) {
     pb$tick()
     search_npi(first_name, last_name)
   })
 
   # Filter npi_data to keep only elements that are data frames
-  npi_data <- Filter(is.data.frame, out)
+  npi_data <- Filter(is.data.frame, search_results)
 
   # Combine multiple data frames into a single data frame using data.table::rbindlist()
-  result <- data.table::rbindlist(npi_data, fill = TRUE)
+  combined_results <- data.table::rbindlist(npi_data, fill = TRUE)
 
-  return(result)
+  return(combined_results)
 })
 
 
 input_file <- "data/Anuja_OBGYN_resident_name_search___Sheet1.csv"
-output_result <- search_and_process_npi(input_file)
-readr::write_csv(output_result, "data/results_of_search_and_process_npi.csv")
+search_results_df <- search_and_process_npi(input_file)
+readr::write_csv(search_results_df, "data/results_of_search_and_process_npi.csv")
 

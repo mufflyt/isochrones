@@ -1,3 +1,4 @@
+testthat::local_edition(3)
 source(file.path("..", "..", "R", "formatting.R"))
 
 testthat::test_that("format_pct rounds and formats numbers", {

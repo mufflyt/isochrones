@@ -9,7 +9,11 @@
 #' @return Invisibly returns the lines of the ASCII art.
 #' @export
 print_ascii_art <- function(path = file.path("docs", "ascii_art.txt")) {
+  if (!file.exists(path)) {
+    stop(sprintf("ASCII art file '%s' not found", path))
+  }
+
   art <- readLines(path, warn = FALSE)
-  cat(paste(art, collapse = "\n"), "\n")
+  cat(art, sep = "\n")
   invisible(art)
 }

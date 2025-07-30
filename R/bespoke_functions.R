@@ -2917,8 +2917,8 @@ safe_read_csv <- function(file_path, required = FALSE) {
   
   tryCatch({
     # Use data.table::fread for faster reading of large files
-    df <- data.table::fread(file_path, data.table = TRUE, showProgress = TRUE)
-    return(df)
+    file_contents <- data.table::fread(file_path, data.table = TRUE, showProgress = TRUE)
+    return(file_contents)
   }, error = function(e) {
     if (required) {
       logger::log_error("Failed to read required file {file_path}: {e$message}")

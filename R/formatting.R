@@ -13,6 +13,9 @@
 #' @examples
 #' format_pct(0.1234, my_digits = 2)
 #' format_pct(c(0.1, 0.25), my_digits = 1)
+#' @export
 format_pct <- function(x, my_digits = 0) {
+  stopifnot(is.numeric(x), is.numeric(my_digits), length(my_digits) == 1)
+
   formatC(x, format = "f", digits = my_digits)
 }
