@@ -83,6 +83,7 @@
 #
 #
 
+# Setup ----
 source("R/01-setup.R")
 
 #
@@ -857,7 +858,7 @@ mid_range_search <- scrape_abog_physicians_fixed(
 #' )
 #'
 #' @export
-search_physicians_by_sequential_ids_complete <- function(start_physician_id,
+search_physicians_by_sequential_ids <- function(start_physician_id,
                                                          target_physician_count = 1000,
                                                          tor_proxy_port = 9150,
                                                          request_delay_seconds = 1.5,
@@ -880,8 +881,16 @@ search_physicians_by_sequential_ids_complete <- function(start_physician_id,
   }
   
   # Helper function: Extract safe value from API response
+  # Fixed helper function
   extract_safe_value <- function(value, default_value = "") {
-    if (is.null(value) || is.na(value) || length(value) == 0) {
+    if (is.null(value) || length(value) == 0) {
+      return(default_value)
+    }
+    # Handle vectors by taking the first element
+    if (length(value) > 1) {
+      value <- value[1]
+    }
+    if (is.na(value)) {
       return(default_value)
     }
     return(as.character(value))
@@ -1169,3 +1178,1324 @@ results <- search_physicians_by_sequential_ids(
   batch_save_size = 50
 )
 
+# Target the sweet spot for recent graduates
+recent_grad_results <- search_physicians_by_sequential_ids(
+  start_physician_id = 9042000,    # Start right at the recent grad zone
+  target_physician_count = 9000,    # Good sample size
+  batch_save_size = 50,
+  request_delay_seconds = 0.5,
+  verbose_logging = TRUE,
+  output_directory = "physician_data/discovery_results"
+)
+
+
+#Analysis: Range 9050000+ is a Dead Zone
+# The exploratory search confirms that 9050000-9050999 is completely empty - 0% success rate across 1,000 requests. This provides valuable intelligence about the ID allocation system.
+# Jump to a higher range that might have newer registrations
+explore_higher_range <- search_physicians_by_sequential_ids(
+  start_physician_id = 9050000,    # Skip potential gap
+  target_physician_count = 500,    # Smaller exploratory search
+  batch_save_size = 25,
+  request_delay_seconds = 1.0,
+  verbose_logging = TRUE
+)
+
+
+# RECOMMENDED: Continue the systematic search
+continuation_search <- search_physicians_by_sequential_ids(
+  start_physician_id = 9048947,    # Exactly where you stopped
+  target_physician_count = 1000,   # Conservative target
+  batch_save_size = 50,
+  request_delay_seconds = 0.8,     # Slightly more conservative
+  verbose_logging = TRUE,
+  output_directory = "physician_data/discovery_results"
+)
+
+# Search Dense Clusters Around Your Productive Range
+npi_list <- c(
+  "1689603763",   # Tyler Muffly, MD
+  "1528060639",   # John Curtin, MD
+  "1346355807",   # Pedro Miranda, MD
+  "1437904760",   # Lizeth Acosta, MD
+  "1568738854",   # Aaron Lazorwitz, MD
+  "1194571661",   # Ana Gomez, MD
+  "1699237040",   # Erin W. Franks, MD
+  "1003311044",   # CATHERINE Callinan, MD
+  "1609009943",   # Kristin Powell, MD
+  "1114125051",   # Nathan Kow, MD
+  "1043432123",   # Elena Tunitsky, MD
+  "1215490446",   # PK
+  "1487879987"    # Peter Jeppson
+)
+# List of physician names (optional, for better logging and output) ----
+names_list <- c(
+  "Tyler Muffly, MD",
+  "John Curtin, MD",
+  "Pedro Miranda, MD",
+  "Lizeth Acosta, MD",
+  "Aaron Lazorwitz, MD",
+  "Ana Gomez, MD",
+  "Erin W. Franks, MD", 
+  "Catherine Callinan, MD",
+  "Kristin Powell, MD",
+  "Nathan Kow, MD", 
+  "Elena Tunitsky, MD",
+  "Parisa Khalighi, MD",
+  "Peter Jeppson, MD"
+)
+
+# Search just before your main range (might be earlier graduates)
+earlier_range <- search_physicians_by_sequential_ids(
+  start_physician_id = 9040000,    # Search before your main range
+  target_physician_count = 5000,
+  batch_save_size = 100,
+  request_delay_seconds = 0.8,
+  verbose_logging = TRUE
+)
+
+# Search just after your productive range (before the dead zone)
+continuation_range <- search_physicians_by_sequential_ids(
+  start_physician_id = 9048947,    # Continue where you left off
+  target_physician_count = 800,    # Go until you hit the dead zone
+  batch_save_size = 50,
+  request_delay_seconds = 0.8,
+  verbose_logging = TRUE
+)
+
+
+# RECOMMENDED: Search the pre-2020 physician range
+earlier_physicians_search <- search_physicians_by_sequential_ids(
+  start_physician_id = 9020000,    # Much earlier range
+  target_physician_count = 20000,   # Good sample size
+  batch_save_size = 100,
+  request_delay_seconds = 0.7,     # Faster since likely productive
+  verbose_logging = TRUE,
+  output_directory = "physician_data/discovery_results"
+)
+
+# RECOMMENDED: Search the pre-2020 physician range
+earlier_physicians_search <- search_physicians_by_sequential_ids(
+  start_physician_id = 9000763,    # Much earlier range
+  target_physician_count = 80000,   # Good sample size
+  batch_save_size = 100,
+  request_delay_seconds = 0.7,     # Faster since likely productive
+  verbose_logging = TRUE,
+  output_directory = "physician_data/discovery_results"
+)
+
+# RECOMMENDED: Search the pre-2020 physician range
+earlier_physicians_search <- search_physicians_by_sequential_ids(
+  start_physician_id = 8920000,    # Much earlier range
+  target_physician_count = 80000,   # Good sample size
+  batch_save_size = 100,
+  request_delay_seconds = 0.7,     # Faster since likely productive
+  verbose_logging = TRUE,
+  output_directory = "physician_data/discovery_results"
+)
+
+
+# RECOMMENDED: Search the pre-2020 physician range
+earlier_physicians_search <- search_physicians_by_sequential_ids(
+  start_physician_id = 9020973,    # Much earlier range
+  target_physician_count = 80000,   # Good sample size
+  batch_save_size = 100,
+  request_delay_seconds = 5,     # Faster since likely productive
+  verbose_logging = TRUE,
+  output_directory = "physician_data/discovery_results"
+)
+
+
+# Search Dense Clusters Around Your Productive Range
+abog_id_list <- c(
+  "9014566",   # Tyler Muffly, MD
+  "849120",   # John Curtin, MD
+  "930075",   # Pedro Miranda, MD
+  "9029730",   # Aaron Lazorwitz, MD
+  "9040372",   # Erin W. Franks, MD
+  "9038445",   # CATHERINE Callinan, MD
+  "9026632",   # Kristin Powell, MD
+  "9024942",   # Nathan Kow, MD
+  "9020382",   # Elena Tunitsky, MD
+  "9040368",   # PK
+  "9021650"    # Peter Jeppson
+)
+# List of physician names (optional, for better logging and output) ----
+names_list <- c(
+  "Tyler Muffly, MD",
+  "John Curtin, MD",
+  "Pedro Miranda, MD",
+  "Aaron Lazorwitz, MD",
+  "Erin W. Franks, MD", 
+  "Catherine Callinan, MD",
+  "Kristin Powell, MD",
+  "Nathan Kow, MD", 
+  "Elena Tunitsky, MD",
+  "Parisa Khalighi, MD",
+  "Peter Jeppson, MD"
+)
+
+Lund_curtin <- search_physicians_by_sequential_ids(
+  start_physician_id = 800000,
+  target_physician_count = 1000,
+  batch_save_size = 100,
+  request_delay_seconds = 3,
+  # Faster since likely productive
+  verbose_logging = TRUE,
+  output_directory = "physician_data/discovery_results"
+)
+
+# Funciton at 2011 ----
+# COMPLETE Enhanced Helper Functions with All Dependencies
+# Enhanced extract_safe_value function
+extract_safe_value <- function(value, default_value = "") {
+  if (is.null(value) || length(value) == 0) {
+    return(default_value)
+  }
+  # Handle vectors by taking the first element
+  if (length(value) > 1) {
+    value <- value[1]
+  }
+  if (is.na(value) || value == "null" || value == "") {
+    return(default_value)
+  }
+  return(as.character(value))
+}
+
+# Helper function: Construct location string
+construct_location_string <- function(physician_city, physician_state) {
+  if (nchar(physician_city) > 0 && nchar(physician_state) > 0) {
+    return(paste0(physician_city, ", ", physician_state))
+  } else if (nchar(physician_city) > 0) {
+    return(physician_city)
+  } else if (nchar(physician_state) > 0) {
+    return(physician_state)
+  } else {
+    return("Location Not Available")
+  }
+}
+
+# Enhanced Helper function: Enrich physician data with ALL API fields
+enrich_sequential_physician_data_enhanced <- function(physician_data, physician_id) {
+  
+  # Enhanced extract_safe_value function
+  extract_safe_value <- function(value, default_value = "") {
+    if (is.null(value) || length(value) == 0) {
+      return(default_value)
+    }
+    # Handle vectors by taking the first element
+    if (length(value) > 1) {
+      value <- value[1]
+    }
+    if (is.na(value) || value == "null" || value == "") {
+      return(default_value)
+    }
+    return(as.character(value))
+  }
+  
+  # Extract core physician information
+  physician_name <- extract_safe_value(physician_data$name, "Unknown Name")
+  physician_city <- extract_safe_value(physician_data$city, "")
+  physician_state <- extract_safe_value(physician_data$state, "")
+  physician_location <- construct_location_string(physician_city, physician_state)
+  
+  # Create base enriched data frame
+  enriched_data <- data.frame(
+    physician_id = physician_id,
+    physician_name = physician_name,
+    physician_city = physician_city,
+    physician_state = physician_state,
+    physician_location = physician_location,
+    discovery_timestamp = Sys.time(),
+    discovery_method = "sequential_id_search",
+    stringsAsFactors = FALSE
+  )
+  
+  # =================================================================
+  # COMPREHENSIVE API FIELD EXTRACTION
+  # =================================================================
+  
+  # Core certification fields
+  api_fields_to_extract <- c(
+    "userid", "startDate", "certStatus", "mocStatus", "clinicallyActive",
+    "certificationDate", "originalCertDate", "expirationDate",
+    "participatingMOC", "mocCompliant", "status"
+  )
+  
+  # Extract all standard API fields
+  for (field_name in api_fields_to_extract) {
+    if (!is.null(physician_data[[field_name]])) {
+      enriched_data[[paste0("api_", field_name)]] <- extract_safe_value(physician_data[[field_name]], "")
+    }
+  }
+  
+  # =================================================================
+  # SUBSPECIALTY EXTRACTION (CRITICAL FOR GEOGRAPHIC ANALYSIS)
+  # =================================================================
+  
+  # Method 1: Check for "sub1" field (historical)
+  if (!is.null(physician_data$sub1)) {
+    enriched_data$api_subspecialty_1 <- extract_safe_value(physician_data$sub1, "")
+  }
+  
+  # Method 2: Check for "subspecialty" field
+  if (!is.null(physician_data$subspecialty)) {
+    enriched_data$api_subspecialty <- extract_safe_value(physician_data$subspecialty, "")
+  }
+  
+  # Method 3: Check for "subspecialties" array
+  if (!is.null(physician_data$subspecialties)) {
+    if (is.list(physician_data$subspecialties) || is.vector(physician_data$subspecialties)) {
+      subspecialties_list <- as.character(physician_data$subspecialties)
+      enriched_data$api_subspecialties_list <- paste(subspecialties_list, collapse = "; ")
+      # Also extract first subspecialty for easy analysis
+      enriched_data$api_primary_subspecialty <- extract_safe_value(subspecialties_list[1], "")
+    }
+  }
+  
+  # Method 4: Check for nested certification objects with subspecialties
+  if (!is.null(physician_data$certifications)) {
+    cert_data <- physician_data$certifications
+    if (is.list(cert_data)) {
+      subspecialty_certs <- c()
+      for (i in seq_along(cert_data)) {
+        cert <- cert_data[[i]]
+        if (!is.null(cert$subspecialty)) {
+          subspecialty_certs <- c(subspecialty_certs, as.character(cert$subspecialty))
+        }
+        if (!is.null(cert$specialty) && cert$specialty != "Obstetrics and Gynecology") {
+          subspecialty_certs <- c(subspecialty_certs, as.character(cert$specialty))
+        }
+      }
+      if (length(subspecialty_certs) > 0) {
+        enriched_data$api_certification_subspecialties <- paste(unique(subspecialty_certs), collapse = "; ")
+      }
+    }
+  }
+  
+  # =================================================================
+  # EXTRACT ALL REMAINING FIELDS (COMPREHENSIVE CAPTURE)
+  # =================================================================
+  
+  # Get all field names we haven't processed yet
+  processed_fields <- c("name", "city", "state", api_fields_to_extract, 
+                        "sub1", "subspecialty", "subspecialties", "certifications")
+  
+  remaining_fields <- setdiff(names(physician_data), processed_fields)
+  
+  # Extract all remaining fields
+  for (field_name in remaining_fields) {
+    field_value <- physician_data[[field_name]]
+    
+    # Handle different data types
+    if (is.list(field_value) || is.vector(field_value)) {
+      if (length(field_value) == 1) {
+        enriched_data[[paste0("api_", field_name)]] <- extract_safe_value(field_value, "")
+      } else if (length(field_value) > 1) {
+        # Convert complex fields to JSON-like strings for analysis
+        enriched_data[[paste0("api_", field_name)]] <- paste(as.character(field_value), collapse = "; ")
+      }
+    } else {
+      enriched_data[[paste0("api_", field_name)]] <- extract_safe_value(field_value, "")
+    }
+  }
+  
+  # =================================================================
+  # DERIVED FIELDS FOR ANALYSIS
+  # =================================================================
+  
+  # Create a comprehensive subspecialty field for analysis
+  subspecialty_sources <- c(
+    enriched_data$api_subspecialty_1,
+    enriched_data$api_subspecialty,
+    enriched_data$api_primary_subspecialty,
+    enriched_data$api_certification_subspecialties
+  )
+  
+  # Take the first non-empty subspecialty
+  final_subspecialty <- ""
+  for (sub in subspecialty_sources) {
+    if (!is.null(sub) && !is.na(sub) && sub != "" && sub != "NA") {
+      final_subspecialty <- sub
+      break
+    }
+  }
+  
+  enriched_data$subspecialty_final <- final_subspecialty
+  
+  # Flag if physician has subspecialty training (important for geographic analysis)
+  enriched_data$has_subspecialty <- final_subspecialty != ""
+  
+  # Extract certification year for cohort analysis
+  if (!is.null(enriched_data$api_originalCertDate) && enriched_data$api_originalCertDate != "") {
+    cert_date <- enriched_data$api_originalCertDate
+    if (grepl("\\d{4}", cert_date)) {
+      cert_year <- regmatches(cert_date, regexpr("\\d{4}", cert_date))
+      enriched_data$certification_year <- as.numeric(cert_year)
+    }
+  }
+  
+  return(enriched_data)
+}
+
+# Test the enhanced function on Elena Tunitsky-Bitton's ID
+test_elena_id <- 9020382
+
+# Make direct API call to test data extraction
+abog_base_url <- "https://api.abog.org/"
+api_endpoint <- "diplomate/"
+verification_action <- "/verify"
+full_request_url <- paste0(abog_base_url, api_endpoint, test_elena_id, verification_action)
+
+# Get her data
+api_response <- httr::GET(full_request_url, httr::use_proxy("socks5://localhost:9150"))
+response_content <- httr::content(api_response, as = "text", encoding = "UTF-8")
+elena_data <- jsonlite::fromJSON(response_content)
+
+# Test the enhanced enrichment function
+#source("path/to/your/enhanced_function.R")  # Load the enhanced function first
+elena_enriched <- enrich_sequential_physician_data_enhanced(elena_data, test_elena_id)
+
+# View the results
+View(elena_enriched)
+print(elena_enriched$subspecialty_final)
+print(elena_enriched$has_subspecialty)
+
+# Function at 2026 ----
+# Load your existing physician dataset
+existing_physician_data <- readr::read_csv("physician_data/discovery_results/physician_data.csv")
+
+# Process in batches to avoid overwhelming the servers
+batch_size <- 100
+total_physicians <- nrow(existing_physician_data)
+all_enhanced_data <- data.frame()
+
+for (batch_start in seq(1, total_physicians, batch_size)) {
+  batch_end <- min(batch_start + batch_size - 1, total_physicians)
+  
+  cat("Processing batch", batch_start, "to", batch_end, "\n")
+  
+  batch_data <- existing_physician_data[batch_start:batch_end, ]
+  
+  # Extract enhanced data for this batch
+  enhanced_batch <- extract_enhanced_physician_data(
+    physician_location_data = batch_data,
+    use_proxy_for_subspecialty = TRUE,
+    subspecialty_extraction_method = "comprehensive",
+    request_delay_seconds = 3.0,  # Longer delay for batch processing
+    output_directory_path = paste0("enhanced_batch_", batch_start),
+    verbose_logging = TRUE
+  )
+  
+  # Combine with previous batches
+  all_enhanced_data <- dplyr::bind_rows(all_enhanced_data, enhanced_batch)
+  
+  # Save progress
+  readr::write_csv(all_enhanced_data, 
+                   paste0("enhanced_physicians_progress_", batch_end, ".csv"))
+  
+  cat("Completed batch", batch_start, "to", batch_end, 
+      "- Total enhanced:", nrow(all_enhanced_data), "\n\n")
+  
+  # Rest between batches
+  Sys.sleep(10)
+}
+
+# Final save
+readr::write_csv(all_enhanced_data, 
+                 paste0("enhanced_physicians_complete_", 
+                        format(Sys.time(), "%Y%m%d_%H%M%S"), ".csv"))
+
+# Function on Aug 2, 2025 at 1631 ----
+#' Reverse Engineer ABOG API Authentication and Headers
+#'
+#' This function systematically tests different authentication methods,
+#' headers, and request formats to crack the ABOG subspecialty API.
+#'
+#' @param physician_id numeric. Physician ID to test with. Default: 9020382 (Elena)
+#' @param verbose_debug logical. Enable extensive debugging output. Default: TRUE
+#' @param use_proxy_reverse logical. Whether to use SOCKS5 proxy. Default: TRUE
+#' @param proxy_url_reverse character. SOCKS5 proxy URL. Default: "socks5://localhost:9150"
+#' @param request_timeout_seconds numeric. Request timeout in seconds. Default: 10
+#'
+#' @return list with successful API responses and authentication details
+#'
+#' @examples
+#' # Test Elena's physician ID with full debugging
+#' api_results <- reverse_engineer_abog_api(
+#'   physician_id = 9020382,
+#'   verbose_debug = TRUE,
+#'   use_proxy_reverse = TRUE
+#' )
+#' 
+#' # Test multiple physicians quickly
+#' test_ids <- c(9020382, 3, 4, 5)
+#' for (id in test_ids) {
+#'   cat("Testing physician ID:", id, "\n")
+#'   results <- reverse_engineer_abog_api(id, verbose_debug = FALSE)
+#'   if (length(results) > 0) {
+#'     cat("SUCCESS found for ID:", id, "\n")
+#'     break
+#'   }
+#' }
+#'
+#' @importFrom httr GET POST PUT use_proxy add_headers set_cookies cookies content timeout
+#' @importFrom logger log_info log_warn log_error
+#'
+#' @export
+reverse_engineer_abog_api <- function(
+    physician_id = 9020382, 
+    verbose_debug = TRUE,
+    use_proxy_reverse = TRUE,
+    proxy_url_reverse = "socks5://localhost:9150",
+    request_timeout_seconds = 10) {
+  
+  if (verbose_debug) {
+    cat("🔍 REVERSE ENGINEERING ABOG API FOR PHYSICIAN:", physician_id, "\n")
+    cat("Testing different authentication and header combinations...\n")
+    cat("Proxy enabled:", use_proxy_reverse, "\n")
+    cat("Timeout:", request_timeout_seconds, "seconds\n\n")
+  }
+  
+  # Set up proxy configuration
+  proxy_config <- if (use_proxy_reverse) httr::use_proxy(proxy_url_reverse) else NULL
+  
+  # Base URLs that returned 200 status with 400 errors (meaning endpoints exist)
+  working_base_urls <- c(
+    "https://www.abog.org/api/",
+    "https://abog.org/api/"
+  )
+  
+  subspecialty_endpoints <- c(
+    "diplomate/{id}/subspecialty",
+    "diplomate/{id}/details",
+    "diplomate/{id}/certification-details",
+    "diplomate/{id}/full-profile"
+  )
+  
+  successful_responses <- list()
+  
+  # === METHOD 1: Test Different HTTP Methods ===
+  if (verbose_debug) cat("=== TESTING HTTP METHODS ===\n")
+  
+  for (base_url in working_base_urls[1]) {  # Test first URL
+    for (endpoint in subspecialty_endpoints[1]) {  # Test first endpoint
+      test_url <- paste0(base_url, gsub("\\{id\\}", physician_id, endpoint))
+      
+      # Test GET with different headers
+      response_get <- test_api_method("GET", test_url, proxy_config, request_timeout_seconds, verbose_debug)
+      if (!is.null(response_get)) successful_responses[["GET"]] <- response_get
+      
+      # Test POST
+      response_post <- test_api_method("POST", test_url, proxy_config, request_timeout_seconds, verbose_debug)
+      if (!is.null(response_post)) successful_responses[["POST"]] <- response_post
+      
+      # Test PUT  
+      response_put <- test_api_method("PUT", test_url, proxy_config, request_timeout_seconds, verbose_debug)
+      if (!is.null(response_put)) successful_responses[["PUT"]] <- response_put
+      
+      break  # Only test first endpoint for methods
+    }
+    break  # Only test first URL for methods
+  }
+  
+  # === METHOD 2: Test Authentication Headers ===
+  if (verbose_debug) cat("\n=== TESTING AUTHENTICATION HEADERS ===\n")
+  
+  auth_headers_to_test <- list(
+    # API Key patterns
+    list("X-API-Key" = "abog-api-key", "Content-Type" = "application/json"),
+    list("Authorization" = "Bearer abog-token", "Content-Type" = "application/json"),
+    list("Authorization" = "API-Key abog-key", "Content-Type" = "application/json"),
+    
+    # ABOG-specific headers  
+    list("X-ABOG-Auth" = "physician-lookup", "Content-Type" = "application/json"),
+    list("X-ABOG-Token" = "verification-token", "Content-Type" = "application/json"),
+    list("X-Requested-With" = "XMLHttpRequest", "Content-Type" = "application/json"),
+    
+    # Browser simulation headers
+    list(
+      "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+      "Accept" = "application/json, text/plain, */*",
+      "Accept-Language" = "en-US,en;q=0.9",
+      "Accept-Encoding" = "gzip, deflate, br",
+      "Content-Type" = "application/json",
+      "X-Requested-With" = "XMLHttpRequest",
+      "Referer" = "https://www.abog.org/verify-physician",
+      "Origin" = "https://www.abog.org"
+    ),
+    
+    # Form submission headers
+    list(
+      "Content-Type" = "application/x-www-form-urlencoded",
+      "X-Requested-With" = "XMLHttpRequest",
+      "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    ),
+    
+    # JSON API headers
+    list(
+      "Accept" = "application/json",
+      "Content-Type" = "application/json",
+      "Cache-Control" = "no-cache"
+    )
+  )
+  
+  test_url <- paste0(working_base_urls[1], "diplomate/", physician_id, "/subspecialty")
+  
+  for (i in seq_along(auth_headers_to_test)) {
+    headers <- auth_headers_to_test[[i]]
+    
+    if (verbose_debug) {
+      cat("Testing header set", i, ":", names(headers)[1], "=", headers[[1]], "\n")
+    }
+    
+    response <- tryCatch({
+      httr::GET(test_url, proxy_config, 
+                httr::add_headers(.headers = headers), 
+                httr::timeout(request_timeout_seconds))
+    }, error = function(e) {
+      if (verbose_debug) cat("  Error:", e$message, "\n")
+      NULL
+    })
+    
+    if (!is.null(response)) {
+      content <- httr::content(response, as = "text", encoding = "UTF-8")
+      
+      # Check if response is different from 400 error
+      if (!grepl("400", content) && !grepl("<!DOCTYPE html>", content) && nchar(content) > 50) {
+        if (verbose_debug) {
+          cat("🎉 POTENTIALLY SUCCESSFUL RESPONSE WITH HEADERS:\n")
+          print(headers)
+          cat("Response preview:", substr(content, 1, 500), "\n\n")
+        }
+        successful_responses[[paste0("headers_", i)]] <- list(
+          url = test_url,
+          headers = headers,
+          response = content,
+          status_code = response$status_code
+        )
+      } else if (verbose_debug) {
+        cat("  Still getting 400 error\n")
+      }
+    }
+    
+    Sys.sleep(0.5)
+  }
+  
+  # === METHOD 3: Test Session/Cookie Based Authentication ===
+  if (verbose_debug) cat("\n=== TESTING SESSION-BASED AUTHENTICATION ===\n")
+  
+  session_response <- test_session_based_auth(physician_id, proxy_config, request_timeout_seconds, verbose_debug)
+  if (!is.null(session_response)) {
+    successful_responses[["session_auth"]] <- session_response
+  }
+  
+  # === METHOD 4: Test Form Data Submission ===
+  if (verbose_debug) cat("\n=== TESTING FORM DATA SUBMISSION ===\n")
+  
+  form_response <- test_form_data_submission(physician_id, proxy_config, request_timeout_seconds, verbose_debug)
+  if (!is.null(form_response)) {
+    successful_responses[["form_data"]] <- form_response
+  }
+  
+  # === METHOD 5: Test Query Parameters ===
+  if (verbose_debug) cat("\n=== TESTING QUERY PARAMETERS ===\n")
+  
+  query_response <- test_query_parameters(physician_id, proxy_config, request_timeout_seconds, verbose_debug)
+  if (!is.null(query_response)) {
+    successful_responses[["query_params"]] <- query_response
+  }
+  
+  # === METHOD 6: Test Different Endpoints with Best Headers ===
+  if (verbose_debug) cat("\n=== TESTING ALL ENDPOINTS WITH BEST HEADERS ===\n")
+  
+  endpoint_response <- test_all_endpoints_with_best_headers(physician_id, proxy_config, request_timeout_seconds, verbose_debug)
+  if (!is.null(endpoint_response)) {
+    successful_responses[["endpoint_sweep"]] <- endpoint_response
+  }
+  
+  if (verbose_debug) {
+    cat("\n🏁 REVERSE ENGINEERING COMPLETE\n")
+    cat("Successful responses found:", length(successful_responses), "\n")
+    
+    if (length(successful_responses) > 0) {
+      cat("\n🎯 BREAKTHROUGH METHODS:\n")
+      for (method_name in names(successful_responses)) {
+        cat("-", method_name, "\n")
+      }
+    } else {
+      cat("\n❌ No authentication breakthrough yet\n")
+      cat("Try manual browser monitoring next\n")
+    }
+  }
+  
+  return(successful_responses)
+}
+
+#' @noRd
+test_api_method <- function(method, test_url, proxy_config, request_timeout_seconds, verbose_debug) {
+  
+  if (verbose_debug) cat("  Testing", method, "method on", basename(test_url), "...\n")
+  
+  response <- tryCatch({
+    if (method == "GET") {
+      httr::GET(test_url, proxy_config, httr::timeout(request_timeout_seconds))
+    } else if (method == "POST") {
+      httr::POST(test_url, proxy_config, httr::timeout(request_timeout_seconds))
+    } else if (method == "PUT") {
+      httr::PUT(test_url, proxy_config, httr::timeout(request_timeout_seconds))
+    }
+  }, error = function(e) {
+    if (verbose_debug) cat("    Error with", method, ":", e$message, "\n")
+    NULL
+  })
+  
+  if (!is.null(response)) {
+    content <- httr::content(response, as = "text", encoding = "UTF-8")
+    
+    # Check for success indicators
+    if (!grepl("400", content) && !grepl("<!DOCTYPE html>", content) && nchar(content) > 50) {
+      if (verbose_debug) {
+        cat("🎉 SUCCESS with", method, "method!\n")
+        cat("    Response preview:", substr(content, 1, 200), "\n")
+      }
+      return(list(method = method, url = test_url, response = content, status_code = response$status_code))
+    } else if (verbose_debug) {
+      cat("    Still 400 error with", method, "\n")
+    }
+  }
+  
+  return(NULL)
+}
+
+#' @noRd
+test_session_based_auth <- function(physician_id, proxy_config, request_timeout_seconds, verbose_debug) {
+  
+  if (verbose_debug) cat("  Testing session-based authentication...\n")
+  
+  # Step 1: Get the main ABOG verification page to establish session
+  main_page_url <- "https://www.abog.org/verify-physician"
+  
+  main_response <- tryCatch({
+    httr::GET(main_page_url, proxy_config, httr::timeout(request_timeout_seconds + 5))
+  }, error = function(e) {
+    if (verbose_debug) cat("    Error getting main page:", e$message, "\n")
+    NULL
+  })
+  
+  if (is.null(main_response)) return(NULL)
+  
+  # Extract cookies/session tokens
+  cookies <- httr::cookies(main_response)
+  
+  if (nrow(cookies) > 0) {
+    if (verbose_debug) {
+      cat("    Found", nrow(cookies), "cookies from main page\n")
+      cat("    Cookie names:", paste(cookies$name, collapse = ", "), "\n")
+    }
+    
+    # Step 2: Use session cookies for API call
+    test_url <- paste0("https://www.abog.org/api/diplomate/", physician_id, "/subspecialty")
+    
+    session_response <- tryCatch({
+      httr::GET(test_url, proxy_config, 
+                httr::set_cookies(.cookies = setNames(cookies$value, cookies$name)),
+                httr::add_headers(
+                  "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                  "Referer" = main_page_url,
+                  "X-Requested-With" = "XMLHttpRequest"
+                ),
+                httr::timeout(request_timeout_seconds))
+    }, error = function(e) {
+      if (verbose_debug) cat("    Error with session request:", e$message, "\n")
+      NULL
+    })
+    
+    if (!is.null(session_response)) {
+      content <- httr::content(session_response, as = "text", encoding = "UTF-8")
+      if (!grepl("400", content) && !grepl("<!DOCTYPE html>", content) && nchar(content) > 50) {
+        if (verbose_debug) {
+          cat("🎉 SUCCESS with session cookies!\n")
+          cat("    Response preview:", substr(content, 1, 200), "\n")
+        }
+        return(list(
+          method = "session_cookies", 
+          cookies = cookies, 
+          response = content,
+          status_code = session_response$status_code
+        ))
+      } else if (verbose_debug) {
+        cat("    Session cookies still gave 400 error\n")
+      }
+    }
+  } else if (verbose_debug) {
+    cat("    No cookies found on main page\n")
+  }
+  
+  return(NULL)
+}
+
+#' @noRd
+test_form_data_submission <- function(physician_id, proxy_config, request_timeout_seconds, verbose_debug) {
+  
+  if (verbose_debug) cat("  Testing form data submission...\n")
+  
+  test_url <- paste0("https://www.abog.org/api/diplomate/", physician_id, "/subspecialty")
+  
+  form_data_sets <- list(
+    list(physicianId = physician_id),
+    list(id = physician_id),
+    list(physid = physician_id),
+    list(userId = physician_id),
+    list(diplomateId = physician_id),
+    list(abogId = physician_id),
+    list(physId = as.character(physician_id))
+  )
+  
+  for (i in seq_along(form_data_sets)) {
+    form_data <- form_data_sets[[i]]
+    
+    if (verbose_debug) {
+      cat("    Testing form data:", names(form_data)[1], "=", form_data[[1]], "\n")
+    }
+    
+    # Test both form encoding and JSON encoding
+    for (encoding_type in c("form", "json")) {
+      response <- tryCatch({
+        if (encoding_type == "form") {
+          httr::POST(test_url, proxy_config, 
+                     body = form_data, 
+                     encode = "form",
+                     httr::add_headers("X-Requested-With" = "XMLHttpRequest"),
+                     httr::timeout(request_timeout_seconds))
+        } else {
+          httr::POST(test_url, proxy_config, 
+                     body = form_data, 
+                     encode = "json",
+                     httr::add_headers(
+                       "Content-Type" = "application/json",
+                       "X-Requested-With" = "XMLHttpRequest"
+                     ),
+                     httr::timeout(request_timeout_seconds))
+        }
+      }, error = function(e) {
+        if (verbose_debug) cat("      Error with", encoding_type, ":", e$message, "\n")
+        NULL
+      })
+      
+      if (!is.null(response)) {
+        content <- httr::content(response, as = "text", encoding = "UTF-8")
+        if (!grepl("400", content) && !grepl("<!DOCTYPE html>", content) && nchar(content) > 50) {
+          if (verbose_debug) {
+            cat("🎉 SUCCESS with form data (", encoding_type, ")!\n")
+            cat("      Response preview:", substr(content, 1, 200), "\n")
+          }
+          return(list(
+            method = paste0("form_data_", encoding_type), 
+            form_data = form_data, 
+            response = content,
+            status_code = response$status_code
+          ))
+        }
+      }
+    }
+    
+    Sys.sleep(0.3)
+  }
+  
+  if (verbose_debug) cat("    No success with form data\n")
+  return(NULL)
+}
+
+#' @noRd
+test_query_parameters <- function(physician_id, proxy_config, request_timeout_seconds, verbose_debug) {
+  
+  if (verbose_debug) cat("  Testing query parameters...\n")
+  
+  base_url <- paste0("https://www.abog.org/api/diplomate/", physician_id, "/subspecialty")
+  
+  query_param_sets <- list(
+    list(format = "json"),
+    list(details = "true"),
+    list(include = "subspecialty"),
+    list(expand = "certifications"),
+    list(full = "true"),
+    list(type = "subspecialty"),
+    list(output = "json"),
+    list(complete = "1"),
+    list(detailed = "yes")
+  )
+  
+  for (i in seq_along(query_param_sets)) {
+    query_params <- query_param_sets[[i]]
+    
+    if (verbose_debug) {
+      cat("    Testing query params:", names(query_params)[1], "=", query_params[[1]], "\n")
+    }
+    
+    response <- tryCatch({
+      httr::GET(base_url, proxy_config, 
+                query = query_params, 
+                httr::add_headers(
+                  "Accept" = "application/json",
+                  "X-Requested-With" = "XMLHttpRequest"
+                ),
+                httr::timeout(request_timeout_seconds))
+    }, error = function(e) {
+      if (verbose_debug) cat("      Error:", e$message, "\n")
+      NULL
+    })
+    
+    if (!is.null(response)) {
+      content <- httr::content(response, as = "text", encoding = "UTF-8")
+      if (!grepl("400", content) && !grepl("<!DOCTYPE html>", content) && nchar(content) > 50) {
+        if (verbose_debug) {
+          cat("🎉 SUCCESS with query parameters!\n")
+          cat("      Response preview:", substr(content, 1, 200), "\n")
+        }
+        return(list(
+          method = "query_params", 
+          params = query_params, 
+          response = content,
+          status_code = response$status_code
+        ))
+      }
+    }
+    
+    Sys.sleep(0.3)
+  }
+  
+  if (verbose_debug) cat("    No success with query parameters\n")
+  return(NULL)
+}
+
+#' @noRd
+test_all_endpoints_with_best_headers <- function(physician_id, proxy_config, request_timeout_seconds, verbose_debug) {
+  
+  if (verbose_debug) cat("  Testing all endpoints with best headers...\n")
+  
+  # Best headers combination based on modern web standards
+  best_headers <- list(
+    "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+    "Accept" = "application/json, text/plain, */*",
+    "Accept-Language" = "en-US,en;q=0.9",
+    "Accept-Encoding" = "gzip, deflate, br",
+    "Content-Type" = "application/json",
+    "X-Requested-With" = "XMLHttpRequest",
+    "Referer" = "https://www.abog.org/verify-physician",
+    "Origin" = "https://www.abog.org",
+    "Cache-Control" = "no-cache",
+    "Pragma" = "no-cache"
+  )
+  
+  all_endpoints <- c(
+    "diplomate/{id}/subspecialty",
+    "diplomate/{id}/details", 
+    "diplomate/{id}/certification-details",
+    "diplomate/{id}/full-profile",
+    "diplomate/{id}/certifications",
+    "physician/{id}/subspecialty",
+    "physician/{id}/details"
+  )
+  
+  base_urls <- c("https://www.abog.org/api/", "https://abog.org/api/")
+  
+  for (base_url in base_urls) {
+    for (endpoint in all_endpoints) {
+      test_url <- paste0(base_url, gsub("\\{id\\}", physician_id, endpoint))
+      
+      if (verbose_debug) {
+        cat("    Testing:", gsub(".*api/", "", test_url), "\n")
+      }
+      
+      response <- tryCatch({
+        httr::GET(test_url, proxy_config,
+                  httr::add_headers(.headers = best_headers),
+                  httr::timeout(request_timeout_seconds))
+      }, error = function(e) {
+        if (verbose_debug) cat("      Error:", e$message, "\n")
+        NULL
+      })
+      
+      if (!is.null(response)) {
+        content <- httr::content(response, as = "text", encoding = "UTF-8")
+        if (!grepl("400", content) && !grepl("<!DOCTYPE html>", content) && nchar(content) > 50) {
+          if (verbose_debug) {
+            cat("🎉 SUCCESS with endpoint:", endpoint, "\n")
+            cat("      Response preview:", substr(content, 1, 200), "\n")
+          }
+          return(list(
+            method = "endpoint_sweep",
+            endpoint = endpoint,
+            url = test_url,
+            headers = best_headers,
+            response = content,
+            status_code = response$status_code
+          ))
+        }
+      }
+      
+      Sys.sleep(0.2)
+    }
+  }
+  
+  if (verbose_debug) cat("    No success with endpoint sweep\n")
+  return(NULL)
+}
+
+# Test function for immediate execution
+test_abog_api_breakthrough <- function() {
+  cat("🚀 Testing ABOG API reverse engineering...\n\n")
+  
+  api_results <- reverse_engineer_abog_api(
+    physician_id = 9020382,
+    verbose_debug = TRUE,
+    use_proxy_reverse = TRUE,
+    request_timeout_seconds = 10
+  )
+  
+  cat("\n=== FINAL RESULTS ===\n")
+  cat("Successful methods found:", length(api_results), "\n")
+  
+  if (length(api_results) > 0) {
+    for (method_name in names(api_results)) {
+      cat("\n🎯 BREAKTHROUGH:", method_name, "\n")
+      result <- api_results[[method_name]]
+      cat("URL:", result$url, "\n")
+      cat("Status:", result$status_code, "\n")
+      cat("Response:", substr(result$response, 1, 500), "\n")
+      cat("---\n")
+    }
+  } else {
+    cat("❌ No API breakthrough yet - need alternative approach\n")
+  }
+  
+  return(api_results)
+}
+
+# run ----
+# Run the comprehensive API reverse engineering
+api_breakthrough_results <- test_abog_api_breakthrough()
+
+# If successful, examine the results
+if (length(api_breakthrough_results) > 0) {
+  cat("\n🎉 WE FOUND A BREAKTHROUGH!\n")
+  cat("Let's extract subspecialty data using the successful method...\n")
+  
+  # Use the first successful method to test subspecialty extraction
+  successful_method <- api_breakthrough_results[[1]]
+  cat("Using method:", successful_method$method, "\n")
+  cat("Response contains subspecialty data:", 
+      grepl("subspecialty|urogynecology|oncology", successful_method$response, ignore.case = TRUE), "\n")
+} else {
+  cat("\n❌ API approach unsuccessful\n")
+  cat("Next: Try RSelenium browser automation\n")
+}
+
+
+# Terst userid ----
+# Test ABOG API using userid field instead of physician_id
+test_userid_approach <- function() {
+  cat("🔍 Testing ABOG API with userid field...\n\n")
+  
+  # First, get Elena's basic data to extract her userid
+  elena_id <- 9020382
+  proxy_config <- httr::use_proxy("socks5://localhost:9150")
+  
+  # Get Elena's basic verification data
+  basic_url <- paste0("https://api.abog.org/diplomate/", elena_id, "/verify")
+  cat("Getting basic data from:", basic_url, "\n")
+  
+  basic_response <- tryCatch({
+    httr::GET(basic_url, proxy_config, httr::timeout(15))
+  }, error = function(e) {
+    cat("Error getting basic data:", e$message, "\n")
+    NULL
+  })
+  
+  if (is.null(basic_response)) {
+    cat("❌ Failed to get basic physician data\n")
+    return(NULL)
+  }
+  
+  # Parse the response to get userid
+  basic_content <- httr::content(basic_response, as = "text", encoding = "UTF-8")
+  cat("Basic response status:", basic_response$status_code, "\n")
+  cat("Basic response content:", substr(basic_content, 1, 300), "\n\n")
+  
+  if (basic_response$status_code == 200) {
+    basic_data <- jsonlite::fromJSON(basic_content)
+    
+    if ("userid" %in% names(basic_data)) {
+      userid_value <- basic_data$userid
+      cat("✅ Found userid:", userid_value, "\n\n")
+      
+      # Now test subspecialty endpoints using userid
+      test_subspecialty_with_userid(userid_value, proxy_config)
+      
+    } else {
+      cat("❌ No userid field found in basic response\n")
+      cat("Available fields:", paste(names(basic_data), collapse = ", "), "\n")
+    }
+  } else {
+    cat("❌ Basic API call failed with status:", basic_response$status_code, "\n")
+  }
+}
+
+test_subspecialty_with_userid <- function(userid, proxy_config) {
+  cat("🧪 Testing subspecialty endpoints with userid:", userid, "\n")
+  
+  # Test different endpoint patterns using userid
+  userid_endpoints <- c(
+    paste0("https://www.abog.org/api/diplomate/", userid, "/subspecialty"),
+    paste0("https://www.abog.org/api/diplomate/", userid, "/details"),
+    paste0("https://www.abog.org/api/diplomate/", userid, "/certification-details"),
+    paste0("https://api.abog.org/diplomate/", userid, "/subspecialty"),
+    paste0("https://api.abog.org/diplomate/", userid, "/details"),
+    
+    # Try with userid as query parameter
+    paste0("https://www.abog.org/api/diplomate/subspecialty?userid=", userid),
+    paste0("https://www.abog.org/api/diplomate/details?userid=", userid),
+    paste0("https://api.abog.org/diplomate/subspecialty?userid=", userid),
+    
+    # Try different parameter names
+    paste0("https://www.abog.org/api/diplomate/subspecialty?id=", userid),
+    paste0("https://www.abog.org/api/diplomate/details?physid=", userid)
+  )
+  
+  # Test headers for userid requests
+  userid_headers <- c(
+    "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept" = "application/json, text/plain, */*",
+    "X-Requested-With" = "XMLHttpRequest",
+    "Referer" = "https://www.abog.org/verify-physician",
+    "Content-Type" = "application/json"
+  )
+  
+  for (i in seq_along(userid_endpoints)) {
+    endpoint_url <- userid_endpoints[i]
+    cat("Testing endpoint", i, ":", endpoint_url, "\n")
+    
+    response <- tryCatch({
+      httr::GET(endpoint_url, proxy_config,
+                httr::add_headers(.headers = userid_headers),
+                httr::timeout(15))
+    }, error = function(e) {
+      cat("  Error:", e$message, "\n")
+      NULL
+    })
+    
+    if (!is.null(response)) {
+      content <- httr::content(response, as = "text", encoding = "UTF-8")
+      cat("  Status:", response$status_code, "\n")
+      
+      # Check for success
+      if (response$status_code == 200 && 
+          !grepl("400|404", content) && 
+          !grepl("<!DOCTYPE html>", content) &&
+          nchar(content) > 50) {
+        
+        cat("🎉 SUCCESS WITH USERID APPROACH!\n")
+        cat("URL:", endpoint_url, "\n")
+        cat("Response:", substr(content, 1, 500), "\n")
+        
+        # Check if response contains subspecialty data
+        if (grepl("subspecialty|urogynecology|oncology|maternal|reproductive", content, ignore.case = TRUE)) {
+          cat("🎯 SUBSPECIALTY DATA FOUND!\n")
+          
+          # Try to parse as JSON
+          tryCatch({
+            json_data <- jsonlite::fromJSON(content)
+            if (is.list(json_data)) {
+              cat("Parsed JSON fields:", paste(names(json_data), collapse = ", "), "\n")
+            }
+          }, error = function(e) {
+            cat("Not JSON format, but contains subspecialty keywords\n")
+          })
+        }
+        
+        return(list(url = endpoint_url, response = content, userid = userid))
+      } else {
+        cat("  Still error response\n")
+      }
+    }
+    
+    Sys.sleep(0.5)
+  }
+  
+  cat("❌ No success with userid approach\n")
+  return(NULL)
+}
+
+# Run the userid test
+userid_result <- test_userid_approach()
+
+if (!is.null(userid_result)) {
+  cat("\n🎉 USERID APPROACH SUCCESSFUL!\n")
+  cat("We found the key to ABOG subspecialty data!\n")
+} else {
+  cat("\n❌ Userid approach also unsuccessful\n")
+  cat("The subspecialty data may require browser interaction\n")
+}
+
+# Closer ----
+# Debug the 200 responses to see what ABOG is actually returning
+debug_abog_responses <- function() {
+  cat("🔬 DEBUGGING ABOG 200 RESPONSES...\n\n")
+  
+  userid <- 9020382
+  proxy_config <- httr::use_proxy("socks5://localhost:9150")
+  
+  # Test the endpoints that returned 200 and examine their content
+  working_endpoints <- c(
+    "https://www.abog.org/api/diplomate/9020382/subspecialty",
+    "https://www.abog.org/api/diplomate/9020382/details", 
+    "https://www.abog.org/api/diplomate/9020382/certification-details",
+    "https://www.abog.org/api/diplomate/subspecialty?userid=9020382"
+  )
+  
+  headers <- c(
+    "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept" = "application/json, text/plain, */*",
+    "X-Requested-With" = "XMLHttpRequest",
+    "Referer" = "https://www.abog.org/verify-physician"
+  )
+  
+  for (i in seq_along(working_endpoints)) {
+    endpoint_url <- working_endpoints[i]
+    cat("=== DEBUGGING ENDPOINT", i, "===\n")
+    cat("URL:", endpoint_url, "\n")
+    
+    response <- tryCatch({
+      httr::GET(endpoint_url, proxy_config,
+                httr::add_headers(.headers = headers),
+                httr::timeout(15))
+    }, error = function(e) {
+      cat("Error:", e$message, "\n")
+      NULL
+    })
+    
+    if (!is.null(response)) {
+      cat("Status Code:", response$status_code, "\n")
+      
+      # Get raw content
+      content <- httr::content(response, as = "text", encoding = "UTF-8")
+      cat("Content Length:", nchar(content), "characters\n")
+      cat("Content Preview:", substr(content, 1, 1000), "\n")
+      
+      # Check response headers
+      cat("Response Headers:\n")
+      response_headers <- response$headers
+      for (header_name in names(response_headers)) {
+        cat("  ", header_name, ":", response_headers[[header_name]], "\n")
+      }
+      
+      # Try to parse as JSON
+      tryCatch({
+        json_data <- jsonlite::fromJSON(content)
+        cat("JSON Parsing: SUCCESS\n")
+        if (is.list(json_data)) {
+          cat("JSON Fields:", paste(names(json_data), collapse = ", "), "\n")
+          cat("JSON Content:", str(json_data), "\n")
+        }
+      }, error = function(e) {
+        cat("JSON Parsing: FAILED -", e$message, "\n")
+      })
+      
+      cat("\n" , rep("-", 50), "\n\n")
+    }
+    
+    Sys.sleep(1)
+  }
+}
+
+# Run the debugging
+debug_abog_responses()
+
+
+# Try POST requests with userid in body
+test_post_userid_approach <- function() {
+  cat("🧪 TESTING POST REQUESTS WITH USERID...\n\n")
+  
+  userid <- 9020382
+  proxy_config <- httr::use_proxy("socks5://localhost:9150")
+  
+  # Test POST to subspecialty endpoint
+  post_url <- "https://www.abog.org/api/diplomate/subspecialty"
+  
+  # Try different POST body formats
+  post_bodies <- list(
+    # JSON format
+    list(userid = userid),
+    list(id = userid),
+    list(physicianId = userid),
+    list(diplomateId = userid),
+    
+    # Form data format  
+    list(userid = as.character(userid)),
+    list(id = as.character(userid))
+  )
+  
+  for (i in seq_along(post_bodies)) {
+    body_data <- post_bodies[[i]]
+    cat("Testing POST body", i, ":", names(body_data)[1], "=", body_data[[1]], "\n")
+    
+    # Try JSON encoding
+    response_json <- tryCatch({
+      httr::POST(post_url, proxy_config,
+                 body = body_data,
+                 encode = "json",
+                 httr::add_headers(
+                   "Content-Type" = "application/json",
+                   "X-Requested-With" = "XMLHttpRequest",
+                   "User-Agent" = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                 ),
+                 httr::timeout(15))
+    }, error = function(e) NULL)
+    
+    if (!is.null(response_json)) {
+      content_json <- httr::content(response_json, as = "text")
+      cat("  JSON POST - Status:", response_json$status_code, "\n")
+      
+      if (response_json$status_code == 200 && 
+          !grepl("400|404", content_json) && 
+          nchar(content_json) > 50) {
+        cat("🎉 SUCCESS WITH JSON POST!\n")
+        cat("Response:", substr(content_json, 1, 500), "\n")
+        return(list(method = "POST_JSON", body = body_data, response = content_json))
+      }
+    }
+    
+    # Try form encoding
+    response_form <- tryCatch({
+      httr::POST(post_url, proxy_config,
+                 body = body_data,
+                 encode = "form",
+                 httr::add_headers(
+                   "Content-Type" = "application/x-www-form-urlencoded",
+                   "X-Requested-With" = "XMLHttpRequest"
+                 ),
+                 httr::timeout(15))
+    }, error = function(e) NULL)
+    
+    if (!is.null(response_form)) {
+      content_form <- httr::content(response_form, as = "text")
+      cat("  FORM POST - Status:", response_form$status_code, "\n")
+      
+      if (response_form$status_code == 200 && 
+          !grepl("400|404", content_form) && 
+          nchar(content_form) > 50) {
+        cat("🎉 SUCCESS WITH FORM POST!\n")
+        cat("Response:", substr(content_form, 1, 500), "\n")
+        return(list(method = "POST_FORM", body = body_data, response = content_form))
+      }
+    }
+    
+    Sys.sleep(0.5)
+  }
+  
+  cat("❌ No success with POST approaches\n")
+  return(NULL)
+}
+
+# Run both tests
+post_result <- test_post_userid_approach()
