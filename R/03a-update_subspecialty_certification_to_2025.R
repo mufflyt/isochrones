@@ -217,6 +217,7 @@ load_and_process_goba_data <- function(goba_file_path, verbose) {
   
   # Process GOBA data - create standardized identifier
   goba_processed_data <- goba_raw_data %>%
+    dplyr::rename(abog_id_number = userid) %>%  # This is the key fix
     dplyr::mutate(
       standardized_physician_name = stringr::str_trim(
         paste(stringr::str_to_title(first_name), 
@@ -224,6 +225,7 @@ load_and_process_goba_data <- function(goba_file_path, verbose) {
       ),
       data_source = "GOBA"
     )
+  
   
   if (verbose) {
     logger::log_info("GOBA data processing completed")
@@ -303,13 +305,15 @@ identify_missing_subspecialists <- function(goba_processed_data,
     logger::log_info("Identifying missing subspecialists")
   }
   
-  # Find subspecialists in combined extractions not in GOBA
+# Find subspecialists in combined extractions not in GOBA
   missing_subspecialists_data <- combined_processed_data %>%
+    dplyr::filter(!is.na(abog_id_number)) %>%
     dplyr::anti_join(
-      goba_processed_data,
-      by = "standardized_physician_name"
+      goba_processed_data %>% dplyr::filter(!is.na(abog_id_number)),
+      by = "abog_id_number"
     ) %>%
-    dplyr::distinct(standardized_physician_name, .keep_all = TRUE)
+    dplyr::distinct(abog_id_number, .keep_all = TRUE)
+  
   
   if (verbose) {
     logger::log_info("Missing subspecialists identification completed")
@@ -499,12 +503,14 @@ log_final_summary <- function(updated_goba_dataset, missing_subspecialists_data,
 }
 
 # run ----
+
 updated_goba_basic <- update_goba_with_missing_subspecialists(
-  goba_file_path = "data/03-search_and_process_npi/GOBA_Scrape_subspecialists_only.csv",  # This is the original 2024 GOBA data.  
-  combined_extractions_file_path = "data/03-search_and_process_npi/combined_subspecialty_extractions.csv", # This comes from 0-Download and extract PDF.R so that we can get people who were recently board-certified like Marisa Moroney
+  goba_file_path = "data/03-search_and_process_npi/GOBA_Scrape_subspecialists_only.csv",
+  combined_extractions_file_path = "data/03-search_and_process_npi/combined_subspecialty_extractions.csv",
   output_file_path = "data/03-search_and_process_npi/updated_GOBA_subspecialists.csv",
-  #subspecialty_filter = c("Gynecologic Oncology", "Maternal-Fetal Medicine"),
   verbose = TRUE
 )
 
-#read_csv("data/03-search_and_process_npi/updated_GOBA_subspecialists.csv")
+readr::read_csv("data/03-search_and_process_npi/updated_GOBA_subspecialists.csv") %>%
+  dplyr::filter(stringr::str_detect(first_name, "Marisa"), 
+                stringr::str_detect(last_name, "Moroney"))

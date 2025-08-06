@@ -1,14 +1,12 @@
 
-#######################
 source("R/01-setup.R")
-source("R/standardize_addresses.R")
-#######################
+
 
 #The purpose of this code is to geocode the addresses of clinician data using the HERE geocoding service. It starts by reading a CSV file containing clinician data, combines address components into a single address field, and then writes this data to a new CSV file for geocoding. After geocoding, the resulting geocoded data is saved as a separate CSV file, providing geographic coordinates for each clinician's address.
 
 readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds") %>%
   tidyr::unite(address, city, state, zip, sep = ", ", remove = FALSE, na.rm = FALSE) %>%
-  #head(10) %>% #for testing.
+  #head(10) %>% #for testing
   readr::write_csv(., "data/04-geocode/for_street_matching_with_HERE_results_clinician_data.csv")
 
 
@@ -50,6 +48,17 @@ readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspeciali
 #' @param verbose Logical. Whether to enable verbose logging. Default is TRUE
 #'
 #' @return A tibble with the processed data including the new unified "address" column
+#'  
+#' @section Output Columns:
+#' The returned data frame contains the following columns:
+#' \itemize{
+#'   \item \strong{address}: Unified address string created by combining address components
+#'   \item \strong{npi}: National Provider Identifier (numeric)
+#'   \item \strong{plocline1}: Street address (retained if remove_original_columns=FALSE)
+#'   \item \strong{ploccityname}: City name (retained if remove_original_columns=FALSE)
+#'   \item \strong{plocstatename}: State name (retained if remove_original_columns=FALSE)
+#'   \item \strong{ploczip}: ZIP code (retained if remove_original_columns=FALSE)
+#' }
 #'
 #' @examples
 #' # Example 1: Most cost-effective - geocode each unique address only once
@@ -817,18 +826,8 @@ full_results <- geocoding_using_HERE_API(
 # SANITY CHECK ----
 #**********************************************
 
-
 # Found in the isochrones/ path.  
 state_data <- readr::read_csv(here::here("state_data.csv"))
-
-# Load required packages
-library(dplyr)
-library(readr)
-library(sf)
-library(rnaturalearth)
-library(leaflet)
-library(tidyr)  # For replace_na function
-library(htmltools)  # For HTML labels in leaflet
 
 full_results <- read_csv("data/geocoded/obgyn_geocoded.csv") %>% 
   sf::st_as_sf()
@@ -876,7 +875,7 @@ cat("Available state column:", "plocstatename", "\n")
 cat("Sample state values:", paste(head(unique(geocoded_data$plocstatename), 5), collapse = ", "), "\n")
 
 #**********************************************
-# STEP 1: Aggregate data by state (FIXED)
+# STEP 1: Aggregate data by state (FIXED) ----
 #**********************************************
 
 # Use the correct column name: plocstatename (not state_code)
@@ -896,7 +895,7 @@ cat("State-level summary:\n")
 print(state_counts)
 
 #**********************************************
-# STEP 2: Get US states geographic data
+# STEP 2: Get US states geographic data ----
 #**********************************************
 
 # Get US states data from rnaturalearth
@@ -911,7 +910,7 @@ cat("Class of us_states$postal:", class(us_states$postal), "\n")
 cat("Class of state_counts$plocstatename:", class(state_counts$plocstatename), "\n")
 
 #**********************************************
-# STEP 3: Join data properly (FIXED)
+# STEP 3: Join data properly (FIXED) ----
 #**********************************************
 
 # Verify state_counts is now a regular data frame
@@ -948,7 +947,7 @@ if(nrow(co_data) > 0) {
 }
 
 #**********************************************
-# STEP 4: Create choropleth map (FIXED)
+# STEP 4: Create choropleth map (FIXED) ----
 #**********************************************
 
 # Create color palette with better handling for limited data
@@ -1024,7 +1023,7 @@ if (max(merged_sf$provider_count, na.rm = TRUE) > 0) {
 }
 
 #**********************************************
-# STEP 5: Additional analysis
+# STEP 5: Additional analysis ----
 #**********************************************
 
 # Summary statistics
@@ -2517,8 +2516,6 @@ create_physician_map(
 # Install required packages
 source("R/01-setup.R")
 #install.packages(c("tigris", "tidycensus"))
-library(tigris)
-library(tidycensus)
 Sys.getenv("CENSUS_API_KEY")  # Should show your key
 
 #' Simple Physician Map with Female Demographics in County Popups
@@ -3053,7 +3050,6 @@ full_results <- readr::read_csv("data/geocoded/obgyn_geocoded.csv")
 Sys.setenv(CENSUS_API_KEY = "485c6da8987af0b9829c25f899f2393b4bb1a4fb")
 
 # Test it works
-library(tidycensus)
 Sys.getenv("CENSUS_API_KEY")
 
 # Now run your map - it should work

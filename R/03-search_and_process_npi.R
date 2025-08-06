@@ -1,4 +1,51 @@
-##########################################################################
+##' PROCESSING PIPELINE FLOWCHART
+#' ================================================================================================
+#'
+#'  ┌─────────────────────────────────┐
+#'  │ GOBA_Scrape_subspecialists.csv  │  ← Board-certified subspecialists
+#'  └────────────┬────────────────────┘
+#'               ▼
+#'  ┌─────────────────────────────────┐
+#'  │ STEP 1: Filter Missing NPIs     │  → filtered_subspecialists_only.csv
+#'  └────────────┬────────────────────┘
+#'               ▼
+#'  ┌─────────────────────────────────┐
+#'  │ STEP 2: NPPES API Search        │  ← search_and_process_npi()
+#'  │  • Remove duplicates            │
+#'  │  • Clean names/credentials      │
+#'  │  • Filter MD/DO only            │
+#'  │  • Filter Gyn taxonomy          │
+#'  └────────────┬────────────────────┘
+#'               ▼
+#'               → searched_npi_numbers.csv
+#'               ▼
+#'  ┌─────────────────────────────────┐
+#'  │ STEP 3: Merge NPI Data          │  ← Left join on names
+#'  │  • Coalesce NPIs                │
+#'  │  • Remove API columns           │
+#'  └────────────┬────────────────────┘
+#'               ▼
+#'  ┌─────────────────────────────────┐     ┌──────────────────────────┐
+#'  │ STEP 4: Combine Sources         │ ← ← │ all_taxonomy_search_data │ (optional)
+#'  │  • bind_rows()                  │     └──────────────────────────┘
+#'  │  • distinct(NPI)                │
+#'  └────────────┬────────────────────┘
+#'               ▼
+#'  ┌─────────────────────────────────┐
+#'  │ STEP 5: Final Cleaning          │
+#'  │  • Remove unnecessary columns   │
+#'  │  • Standardize ZIP codes        │
+#'  │  • Filter complete locations    │
+#'  │  • Create address field         │
+#'  │  • Remove duplicate addresses   │
+#'  └────────────┬────────────────────┘
+#'               ▼
+#'  ┌─────────────────────────────────┐
+#'  │ end_complete_npi_for_           │  ← FINAL OUTPUT (RDS)
+#'  │ subspecialists.rds              │
+#'  └─────────────────────────────────┘
+#'
+#' ================================================================================================
 # File: 03-search_and_process_npi.R
 # Title: Search and Process Missing NPI Numbers for Subspecialists
 #
@@ -58,16 +105,16 @@
 #
 # Author: Tyler Muffly
 # Date: 2025-07-27
-##########################################################################
+#
 
 
-##########################################################################
+#
 # tyler::search_and_process_npi
 # Filter the subspecialists_only.csv file/goba file to those without NPI numbers.  Then send those names into the search_and_process_npi to get NPI numbers.  
 
-#######################
+# Setup ----
 source("R/01-setup.R")
-#######################
+#
 
 
 #' Process National Provider Identifier (NPI) Database for Gynecologic Oncologists
@@ -94,19 +141,20 @@ if (verbose) {
   logger::log_info("Starting NPI database processing for gynecologic oncologists")
 }
 
-# Define file paths as constants for easier maintenance
-GOBA <- "data/03-search_and_process_npi/GOBA_Scrape_subspecialists_only.csv"
+# Define file paths as constants for easier maintenance ----
+GOBA <- "data/03-search_and_process_npi/updated_GOBA_subspecialists.csv"
 FILTERED_SUBSPECIALISTS_OUTPUT <- "data/03-search_and_process_npi/GOBA_Scraoe_filtered_subspecialists_only.csv"
 SEARCHED_NPI_OUTPUT <- "data/03-search_and_process_npi/searched_npi_numbers.csv"
 FINAL_OUTPUT_FILE <- "data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds"
 
-# Define credential patterns for validation
+# Define credential patterns for validation ----
 VALID_CREDENTIALS <- c("MD", "DO")
 GYNECOLOGY_TAXONOMY_PATTERN <- "Gyn"
 
-# =============================================================================
-# STEP 1: IDENTIFY SUBSPECIALISTS WITH MISSING NPI NUMBERS
-# =============================================================================
+
+# 
+# STEP 1: IDENTIFY SUBSPECIALISTS WITH MISSING NPI NUMBERS ----
+#
 
 if (verbose) {
   logger::log_info("Step 1: Reading subspecialists database and identifying missing NPI numbers")
@@ -148,9 +196,9 @@ if (verbose) {
   logger::log_info("Saved filtered subspecialists to: {FILTERED_SUBSPECIALISTS_OUTPUT}")
 }
 
-# =============================================================================
-# STEP 2: SEARCH NPPES API FOR MISSING NPI NUMBERS OF GOBA DATA
-# =============================================================================
+#
+# STEP 2: SEARCH NPPES API FOR MISSING NPI NUMBERS OF GOBA DATA ----
+#
 
 if (verbose) {
   logger::log_info("Step 2: Searching NPPES API for missing NPI numbers")
@@ -252,9 +300,9 @@ if (verbose) {
   logger::log_info("Saved validated NPI search results to: {SEARCHED_NPI_OUTPUT}")
 }
 
-# =============================================================================
-# STEP 3: MERGE NPI NUMBERS WITH ORIGINAL DATABASE
-# =============================================================================
+#
+# STEP 3: MERGE NPI NUMBERS WITH ORIGINAL DATABASE ----
+#
 
 if (verbose) {
   logger::log_info("Step 3: Merging new NPI numbers with original subspecialists database")
@@ -339,9 +387,9 @@ if (verbose) {
   logger::log_info("Remaining missing NPIs: {final_missing}")
 }
 
-# =============================================================================
-# STEP 4: COMBINE WITH TAXONOMY SEARCH DATA (IF AVAILABLE)
-# =============================================================================
+#
+# STEP 4: COMBINE WITH TAXONOMY SEARCH DATA (IF AVAILABLE) ----
+#
 
 if (verbose) {
   logger::log_info("Step 4: Checking for taxonomy search data to combine")
@@ -388,9 +436,9 @@ if (exists("all_taxonomy_search_data") && is.data.frame(all_taxonomy_search_data
   }
 }
 
-# =============================================================================
-# STEP 5: FINAL DATA CLEANING AND STANDARDIZATION
-# =============================================================================
+#
+# STEP 5: FINAL DATA CLEANING AND STANDARDIZATION ----
+#
 
 if (verbose) {
   logger::log_info("Step 5: Final data cleaning and address standardization")
@@ -501,7 +549,7 @@ if (verbose) {
 # Save Results: The final merged dataset is saved in RDS (R Data Store) format for further analysis or use in other R scripts.
 
 #**************************
-# GETS CURRENT DATA DATA 
+# GETS CURRENT DATA DATA  ----
 #**************************
 ### Read in file and clean it up
 # File Provenance: "/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/goba/subspecialists_only.csv"
@@ -512,8 +560,8 @@ filtered_subspecialists <- readr::read_csv("data/03-search_and_process_npi/subsp
   readr::write_csv("data/03-search_and_process_npi/filtered_subspecialists_only.csv")
 
 #**************************
-#*. RUN THE API FOR MORE DOCTOR DEMOGRAPHICS
-#* GET NPI NUMBERS for those that do not have any in subspecialists.csv, using search_and_process_npi
+# RUN THE API FOR MORE DOCTOR DEMOGRAPHICS ----
+# GET NPI NUMBERS for those that do not have any in subspecialists.csv, using search_and_process_npi
 #**************************
 input_file <- "data/03-search_and_process_npi/filtered_subspecialists_only.csv"
 output_result <- search_and_process_npi(input_file) #Runs the function to get data from the NPPES website
@@ -533,7 +581,154 @@ searched_npi_numbers <- output_result %>%
   dplyr::mutate(npi = as.numeric(npi)) %>%
   readr::write_csv("data/03-search_and_process_npi/searched_npi_numbers.csv") ### File with NPI numbers to complete subspecialty.csv file.    We need to merge the results of new NPI numbers in `searched_npi_numbers` with subspecialty.csv
 
-### Read in the original subspecialty.csv file.  This file is given and is not calculated earlier in the workflow.  
+#
+# DATA DICTIONARY: Searched NPI Numbers Dataset (searched_npi_numbers.csv)
+# 
+# This dataset contains validated NPI numbers retrieved from the NPPES API
+# for gynecologic subspecialists who were missing NPI identification in the
+# original GOBA dataset. Used as intermediate processing file before final
+# merge with comprehensive subspecialists database.
+#
+
+#
+# CORE PHYSICIAN IDENTIFICATION
+#
+# npi                         - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              National Provider Identifier number (numeric) 
+#                              retrieved from NPPES National Provider database
+#
+# basic_first_name            - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              First name as registered in NPPES database,
+#                              cleaned of punctuation and special characters
+#
+# basic_last_name             - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Last name as registered in NPPES database,
+#                              cleaned of punctuation and special characters
+#
+# basic_credential            - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Medical credential (MD or DO only), standardized
+#                              to uppercase and truncated to first 2 characters
+
+#
+# NPPES REGISTRATION DATA
+#
+# basic_sole_proprietor       - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Whether provider is registered as sole proprietor
+#                              in NPPES database
+#
+# basic_gender                - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Gender as registered in NPPES database
+#
+# basic_enumeration_date      - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Date when NPI was first assigned to this provider
+#
+# basic_last_updated          - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Date when NPPES record was last updated
+#
+# basic_status                - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Current status of NPI registration (Active/Inactive)
+#
+# basic_name_prefix           - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Name prefix (Dr., Mr., Ms., etc.) from NPPES
+#
+# basic_middle_name           - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Middle name or initial from NPPES registration
+#
+# basic_name_suffix           - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Name suffix (Jr., Sr., III, etc.) from NPPES
+#
+# basic_certification_date    - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Date of medical certification/graduation
+
+#
+# SPECIALTY/TAXONOMY CLASSIFICATION
+#
+# taxonomies_code             - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Healthcare provider taxonomy code from NPPES
+#                              (used to identify gynecology specialists)
+#
+# taxonomies_taxonomy_group   - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Taxonomy group classification from NPPES
+#
+# taxonomies_desc             - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Taxonomy description (filtered to contain "Gyn" 
+#                              pattern to identify gynecology-related specialties)
+#
+# taxonomies_state            - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              State where taxonomy/license is valid
+#
+# taxonomies_license          - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Medical license number associated with taxonomy
+#
+# taxonomies_primary          - Source: NPPES API search results
+#                              File: R/03-search_and_process_npi.R
+#                              Whether this is the provider's primary taxonomy
+
+#
+# DATA PROCESSING PIPELINE FOR THIS FILE
+#
+# 1. R/03-search_and_process_npi.R identifies subspecialists with missing NPIs
+#    from GOBA_Scrape_subspecialists_only.csv
+# 2. Filtered subspecialists sent to search_and_process_npi() function
+# 3. NPPES API returns potential matches with full provider details
+# 4. Results filtered through validation pipeline:
+#    - Deduplicated by NPI number
+#    - Cleaned of punctuation in names/credentials
+#    - Filtered to MD/DO credentials only
+#    - Filtered to gynecology-related taxonomy codes (contains "Gyn")
+#    - Final deduplication and numeric conversion of NPI
+# 5. Validated results saved as searched_npi_numbers.csv
+
+#
+# DATASET CHARACTERISTICS
+#
+# Purpose: Intermediate file containing validated NPI numbers for subspecialists
+#          missing identification in original GOBA dataset
+# Record Count: Variable (depends on how many NPIs were missing in GOBA)
+# Data Quality: High - multiple validation filters applied to ensure accuracy
+# Coverage: Only subspecialists with missing NPIs in original dataset
+# Validation Criteria: MD/DO credentials + gynecology taxonomy + active status
+
+#
+# FILTERING CRITERIA APPLIED
+#
+# 1. Credential Validation: Only MD or DO physicians included
+# 2. Specialty Validation: Only providers with "Gyn" in taxonomy description
+# 3. Deduplication: Unique by NPI number to prevent duplicates
+# 4. Data Quality: Punctuation removed, credentials standardized
+# 5. Completeness: Only records with valid NPI numbers included
+
+#
+# USAGE NOTES
+#
+# - This file serves as input for merging with original GOBA dataset
+# - Use npi field to join with NPI column in main subspecialists database
+# - Join on basic_first_name/basic_last_name to first_name/last_name in GOBA
+# - Taxonomy fields can be used for specialty validation and filtering
+# - File is temporary - final analysis should use end_complete_npi_for_subspecialists.rds
+# - Contains only providers that were missing from original GOBA dataset
+
+
+
+# Read in the original subspecialty.csv file.  This file is given and is not calculated earlier in the workflow.   ----
 # File Provenance: "/Users/tylermuffly/Dropbox (Personal)/workforce/Master_References/goba/subspecialists_only.csv"
 subspecialists_only <- read_csv("data/03-search_and_process_npi/subspecialists_only.csv") %>%
   mutate(NPI = as.numeric(NPI))
@@ -552,7 +747,7 @@ taxonomy_plus_NPI <- all_NPI_numbers_we_will_ever_find %>%
   exploratory::bind_rows(all_taxonomy_search_data, id_column_name = "ID", current_df_name = "subspecialists_only",         force_data_type = TRUE) %>%
   dplyr::distinct(NPI, .keep_all = TRUE)
 
-### Merge rows of `all_taxonomy_search_data` from 02-search_taxonomy and `searched_npi_numbers` from 03-search_and_process_npi 
+### Merge rows of `all_taxonomy_search_data` from 02-search_taxonomy and `searched_npi_numbers` from 03-search_and_process_npi  ----
 # Brings in the younger subspecialists who have a taxonomy code but not board-certification yet.  Board certification for OBGYN usually takes 2 years after graduating from fellowship.  
 complete_npi_for_subspecialists <- all_NPI_numbers_we_will_ever_find %>%
   exploratory::bind_rows(all_taxonomy_search_data, id_column_name = "ID", current_df_name = "subspecialists_only", force_data_type = TRUE) %>%
@@ -568,4 +763,412 @@ complete_npi_for_subspecialists <- all_NPI_numbers_we_will_ever_find %>%
   dplyr::distinct(address, .keep_all = TRUE) %>%
   readr::write_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds")
 
+#
+# DATA DICTIONARY: Final Subspecialists Database (end_complete_npi_for_subspecialists.rds)
+# 
+# This comprehensive database combines gynecologic subspecialists from multiple
+# authoritative sources to support geographic accessibility analysis following
+# Desjardins et al. (2023) methodology.
+#
+
+#
+# CORE PHYSICIAN IDENTIFICATION
+#
+# sub1                        - Source: GOBA board certification scraping
+#                              File: R/0-Download and extract PDF.R
+#                              Subspecialty abbreviation extracted from ABOG 
+#                              verification tool PDFs (MFM=Maternal-Fetal Medicine, 
+#                              ONC=Gynecologic Oncology, REI=Reproductive Endocrinology, 
+#                              FPM=Female Pelvic Medicine, MIG=Minimally Invasive Gynecology)
+#
+# first_name                  - Source: GOBA board certification scraping
+#                              File: R/0-Download and extract PDF.R
+#                              Physician's first name from ABOG board certification 
+#                              verification tool PDFs
+#
+# last_name                   - Source: GOBA board certification scraping
+#                              File: R/0-Download and extract PDF.R
+#                              Physician's last name from ABOG board certification 
+#                              verification tool PDFs
+#
+# NPI                         - Source: NPPES API search + original GOBA data
+#                              File: R/03-search_and_process_npi.R
+#                              National Provider Identifier retrieved via 
+#                              search_and_process_npi() function for missing NPIs, 
+#                              coalesced with existing NPI numbers from GOBA
+#
+# standardized_physician_name - Source: Computed field
+#                              File: Current update function
+#                              Created by combining and cleaning first_name + 
+#                              last_name for cross-dataset matching
+
+#
+# GEOGRAPHIC/LOCATION DATA
+#
+# address                     - Source: Computed field
+#                              File: R/03-search_and_process_npi.R
+#                              Created by combining city, state, and ZIP using 
+#                              tidyr::unite() for geocoding purposes
+#
+# state                       - Source: GOBA board certification scraping
+#                              File: R/0-Download and extract PDF.R
+#                              State from original ABOG verification tool PDFs
+#
+# city                        - Source: GOBA board certification scraping
+#                              File: R/0-Download and extract PDF.R
+#                              City from original ABOG verification tool PDFs
+#
+# zip                         - Source: Computed from PhysicianCompare
+#                              File: R/03-search_and_process_npi.R
+#                              5-digit ZIP extracted from Zip CodePhysicianCompare 
+#                              using stringr::str_sub()
+#
+# Zip CodePhysicianCompare    - Source: CMS PhysicianCompare database
+#                              File: R/0-goba_search_update_goba.R
+#                              Full ZIP+4 code from Medicare PhysicianCompare lookup
+
+#
+# CERTIFICATION AND STATUS
+#
+# mocStatus                   - Source: GOBA board certification scraping
+#                              File: R/0-Download and extract PDF.R
+#                              Maintenance of Certification status from ABOG 
+#                              verification tool PDFs
+#
+# sub1mocStatus               - Source: GOBA board certification scraping
+#                              File: R/0-Download and extract PDF.R
+#                              Subspecialty Maintenance of Certification status 
+#                              from ABOG verification tool PDFs
+#
+# clinicallyActive            - Source: GOBA board certification scraping
+#                              File: R/0-Download and extract PDF.R
+#                              Clinical activity status from ABOG verification 
+#                              tool PDFs
+
+#
+# DATA PROVENANCE AND TIMESTAMPS
+#
+# DateTime                    - Source: GOBA scraping process
+#                              File: R/0-Download and extract PDF.R
+#                              Timestamp when record was extracted from ABOG 
+#                              verification tool PDFs
+#
+# ID.new                      - Source: GOBA scraping batch process
+#                              File: R/0-Download and extract PDF.R
+#                              Batch identifier showing which PDF extraction run 
+#                              produced this record (e.g., "~Recent_Grads_GOBA_NPI_2022")
+#
+# id                          - Source: GOBA scraping file management
+#                              File: R/0-Download and extract PDF.R
+#                              Original CSV filename from ABOG batch PDF processing
+#
+# data_source                 - Source: Script processing logic
+#                              File: Current update function
+#                              Added during merge process to track whether record 
+#                              came from "GOBA", "Combined_Extractions", or taxonomy search
+
+#
+# HISTORICAL CERTIFICATION DATES
+#
+# orig_sub                    - Source: GOBA board certification scraping
+#                              File: R/0-Download and extract PDF.R
+#                              Original subspecialty certification date from ABOG 
+#                              verification tool PDFs
+#
+# x_sub_orig                  - Source: GOBA board certification scraping
+#                              File: R/0-Download and extract PDF.R
+#                              Additional/secondary subspecialty certification date 
+#                              from ABOG verification tool PDFs
+#
+# orig_bas                    - Source: GOBA board certification scraping
+#                              File: R/0-Download and extract PDF.R
+#                              Original basic OBGYN board certification date from 
+#                              ABOG verification tool PDFs
+
+#
+# ADMINISTRATIVE FIELDS
+#
+# app_no                      - Source: GOBA board certification scraping
+#                              File: R/0-Download and extract PDF.R
+#                              Application number from ABOG PDFs (mostly NA/unused 
+#                              legacy field)
+#
+# Input.name                  - Source: GOBA processing
+#                              File: R/0-Download and extract PDF.R
+#                              Original input name format during GOBA PDF processing 
+#                              (mostly NA)
+#
+# row_number                  - Source: Final processing script
+#                              File: R/03-search_and_process_npi.R
+#                              Sequential identifier added during final dataset assembly
+
+#
+# DEMOGRAPHICS
+#
+# name.y                      - Source: CMS PhysicianCompare database
+#                              File: R/0-goba_search_update_goba.R
+#                              Full formal name with credentials from Medicare 
+#                              PhysicianCompare lookup
+#
+# GenderPhysicianCompare      - Source: CMS PhysicianCompare database
+#                              File: R/0-goba_search_update_goba.R
+#                              Gender from Medicare PhysicianCompare database
+#
+# basic_sex                   - Source: NPPES API search
+#                              File: R/03-search_and_process_npi.R
+#                              Gender from NPPES National Provider database 
+#                              (mostly NA due to limited availability)
+
+#
+# DATA SOURCE SUMMARY
+#
+# 1. GOBA (Primary Source): Board certification scraping from ABOG verification 
+#    tool - provides subspecialty, names, certification status, dates
+#    Primary File: R/0-Download and extract PDF.R
+#
+# 2. NPPES API: National Provider database searches - provides missing NPI 
+#    numbers and some demographic data
+#    Primary File: R/03-search_and_process_npi.R
+#
+# 3. CMS PhysicianCompare: Medicare provider database - provides formal names, 
+#    gender, ZIP codes
+#    Primary File: R/0-goba_search_update_goba.R
+#
+# 4. Computed Fields: Created during processing for standardization and geocoding
+#    Various Files: Throughout processing pipeline
+#
+# 5. Combined Extractions: Additional subspecialists from 
+#    combined_subspecialty_extractions.csv added via the update function
+#    Primary File: Current update function
+#
+# 6. Taxonomy Search (if available): Additional providers identified through 
+#    NPPES taxonomy codes rather than board certification
+#    Primary File: R/02-search_taxonomy.R
+
+#
+# FILE PROCESSING PIPELINE
+#
+# 1. R/0-Download and extract PDF.R    → Creates GOBA_Scrape_subspecialists_only.csv 
+#                                        with core physician data from ABOG PDFs
+# 2. R/0-goba_search_update_goba.R     → Enhances records with PhysicianCompare 
+#                                        demographic and location data
+# 3. R/0-goba_search_this one works_adaptive_binary_search.R → Optimizes 
+#                                        searching/matching across datasets
+# 4. Current update function           → Merges additional subspecialists from 
+#                                        combined_subspecialty_extractions.csv
+# 5. R/02-search_taxonomy.R            → Adds taxonomy-based subspecialists 
+#                                        (creates all_taxonomy_search_data)
+# 6. R/03-search_and_process_npi.R     → Fills missing NPIs, merges all sources, 
+#                                        creates final RDS file
+
+#
+# DATASET CHARACTERISTICS
+#
+# Total Records: ~4,014 subspecialists
+# Data Sources: Board certification records (GOBA), NPPES API searches, 
+#               and taxonomy-based identification
+# Geographic Coverage: All U.S. states with practicing gynecologic subspecialists
+# Time Period: 2019-2023 (based on extraction timestamps)
+
+#
+# DATA QUALITY NOTES
+#
+# Primary Source: ABOG board certification verification tool (most authoritative 
+#                 for subspecialty status)
+# NPI Completion: NPPES API used to fill ~721 missing NPI numbers through 
+#                 name-based fuzzy matching
+# Geographic Standardization: ZIP codes standardized to 5 digits, addresses 
+#                             formatted for geocoding
+# Deduplication: Final dataset deduplicated by NPI to prevent double-counting 
+#                across data sources
+# Coverage: Captures both board-certified specialists and early-career physicians 
+#           with taxonomy codes but pending certification
+
+#
+# KEY USAGE NOTES FOR ACCESSIBILITY ANALYSIS
+#
+# - Use NPI as the primary unique identifier for physicians
+# - Use address field for geocoding and geographic accessibility analysis
+# - Filter by clinicallyActive == "Yes" for active practitioners only
+# - sub1 field categorizes subspecialty types for workforce distribution analysis
+# - Combine with county-level demographic data for accessibility studies 
+#   following Desjardins et al. (2023) methodology
+#
+
 # complete_npi_for_subspecialists <- readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds") # for testing
+
+
+# Trace Marisa Moroney ----
+#
+# TRACING MARISA MORONEY THROUGH THE NPI PIPELINE
+# ABOG ID: 9033995
+#
+
+# Let's load the necessary libraries and functions first
+source("R/01-setup.R")
+library(tidyverse)
+library(logger)
+
+# Set up tracking
+physician_to_track <- "Moroney"
+abog_id <- "9033995"
+
+logger::log_info("Starting trace for Marisa Moroney (ABOG ID: {abog_id})")
+
+#
+# CHECKPOINT 1: Initial GOBA Database
+#
+logger::log_info("CHECKPOINT 1: Checking initial GOBA database")
+
+# Load the original GOBA scraped data
+goba_data <- readr::read_csv("data/03-search_and_process_npi/GOBA_Scrape_subspecialists_only.csv")
+
+# Check if Marisa is in the initial dataset
+marisa_initial <- goba_data %>%
+  filter(str_detect(last_name, "Moroney") | 
+           str_detect(first_name, "Marisa") |
+           userid == "9033995")
+
+if(nrow(marisa_initial) > 0) {
+  logger::log_info("✓ Found in initial GOBA database")
+  print(marisa_initial %>% 
+          select(first_name, last_name, NPI, state, city, sub1, 
+                 mocStatus, clinicallyActive))
+  
+  # Check if she has an NPI
+  has_npi <- !is.na(marisa_initial$NPI)
+  logger::log_info("NPI Status: {ifelse(has_npi, paste('Has NPI:', marisa_initial$NPI), 'Missing NPI')}")
+} else {
+  logger::log_warn("✗ Not found in initial GOBA database")
+}
+
+#
+# CHECKPOINT 2: Missing NPI Filter
+#
+logger::log_info("CHECKPOINT 2: Checking filtered missing NPI list")
+
+# Check if she's in the missing NPI file
+missing_npi_list <- readr::read_csv("data/03-search_and_process_npi/filtered_subspecialists_only.csv")
+
+marisa_missing <- missing_npi_list %>%
+  filter(str_detect(last, "Moroney") | str_detect(first, "Marisa"))
+
+if(nrow(marisa_missing) > 0) {
+  logger::log_info("✓ Found in missing NPI list - will search NPPES")
+  print(marisa_missing %>% select(first, last, state, city, sub1))
+} else {
+  logger::log_info("✗ Not in missing NPI list (already has NPI or not in database)")
+}
+
+#
+# CHECKPOINT 3: NPPES API Search Results
+#
+logger::log_info("CHECKPOINT 3: Checking NPPES API search results")
+
+# If she needed NPI search, check the results
+if(nrow(marisa_missing) > 0) {
+  # Check searched NPI results
+  api_results <- readr::read_csv("data/03-search_and_process_npi/searched_npi_numbers.csv")
+  
+  marisa_api <- api_results %>%
+    filter(str_detect(basic_last_name, "Moroney") | 
+             str_detect(basic_first_name, "Marisa"))
+  
+  if(nrow(marisa_api) > 0) {
+    logger::log_info("✓ Found in NPPES API results")
+    print(marisa_api %>% 
+            select(npi, basic_first_name, basic_last_name, basic_credential,
+                   taxonomies_desc, basic_gender))
+    
+    # Check validation criteria
+    logger::log_info("Validation checks:")
+    logger::log_info("  - Credential: {marisa_api$basic_credential} (MD/DO required)")
+    logger::log_info("  - Taxonomy: {marisa_api$taxonomies_desc}")
+    logger::log_info("  - Has 'Gyn' in taxonomy: {str_detect(marisa_api$taxonomies_desc, 'Gyn')}")
+  } else {
+    logger::log_warn("✗ Not found in NPPES API results")
+    logger::log_info("Possible reasons:")
+    logger::log_info("  - Name mismatch in NPPES")
+    logger::log_info("  - Not MD/DO credential")
+    logger::log_info("  - No gynecology taxonomy")
+  }
+}
+
+#
+# CHECKPOINT 4: After NPI Merge
+#
+logger::log_info("CHECKPOINT 4: Checking after NPI merge")
+
+# This would be in your intermediate data after the left join
+# Since we don't save this intermediate step, we'll simulate it
+goba_with_npi <- goba_data %>%
+  mutate(NPI = as.numeric(NPI))
+
+if(exists("marisa_api") && nrow(marisa_api) > 0) {
+  # Simulate the merge
+  logger::log_info("Simulating NPI merge:")
+  logger::log_info("  - Original NPI: {ifelse(is.na(marisa_initial$NPI), 'NA', marisa_initial$NPI)}")
+  logger::log_info("  - API found NPI: {marisa_api$npi}")
+  logger::log_info("  - After coalesce: {coalesce(marisa_initial$NPI, marisa_api$npi)}")
+}
+
+#
+# CHECKPOINT 5: Taxonomy Search Data (if exists)
+#
+logger::log_info("CHECKPOINT 5: Checking taxonomy search data")
+
+taxonomy_file <- "data/03-search_and_process_npi/all_taxonomy_search_data.csv"
+if(file.exists(taxonomy_file)) {
+  taxonomy_data <- readr::read_csv(taxonomy_file)
+  
+  marisa_taxonomy <- taxonomy_data %>%
+    filter(str_detect(last_name, "Moroney") | 
+             str_detect(first_name, "Marisa") |
+             NPI == marisa_initial$NPI)
+  
+  if(nrow(marisa_taxonomy) > 0) {
+    logger::log_info("✓ Also found in taxonomy search data")
+    print(marisa_taxonomy %>% 
+            select(first_name, last_name, NPI, taxonomies_desc))
+  } else {
+    logger::log_info("✗ Not in taxonomy search data")
+  }
+}
+
+#
+# CHECKPOINT 6: Final Combined Database
+#
+logger::log_info("CHECKPOINT 6: Checking final database")
+
+final_data <- readr::read_rds("data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds")
+
+marisa_final <- final_data %>%
+  filter(str_detect(last_name, "Moroney") | 
+           str_detect(first_name, "Marisa") |
+           NPI == marisa_initial$NPI)
+
+if(nrow(marisa_final) > 0) {
+  logger::log_info("✓ Found in final database")
+  
+  # Show her final record
+  logger::log_info("Final record for Marisa Moroney:")
+  print(marisa_final %>% 
+          select(first_name, last_name, NPI, address, state, city, zip,
+                 sub1, mocStatus, clinicallyActive))
+  
+  # Check data completeness
+  logger::log_info("Data completeness:")
+  logger::log_info("  - Has NPI: {!is.na(marisa_final$NPI)}")
+  logger::log_info("  - Has address: {!is.na(marisa_final$address)}")
+  logger::log_info("  - Has state: {!is.na(marisa_final$state)}")
+  logger::log_info("  - Has city: {!is.na(marisa_final$city)}")
+  logger::log_info("  - Subspecialty: {marisa_final$sub1}")
+  
+  # Check if duplicate addresses were removed
+  n_addresses <- marisa_final %>% 
+    distinct(address) %>% 
+    nrow()
+  logger::log_info("  - Number of unique addresses: {n_addresses}")
+  
+} else {
+  logger::log_error("✗ NOT FOUND in final d
