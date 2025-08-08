@@ -64,6 +64,13 @@
 #   6. Optionally combine with results from `02-search_taxonomy.R`
 #   7. Clean addresses, filter incomplete entries, and export as a clean RDS
 #
+# data/
+#   └── 03-search_and_process_npi/
+#   ├── input/
+#   ├── intermediate/
+#   ├── output/
+#   └── logs/ (optional)
+#
 # Input Files:
 #   - "data/03-search_and_process_npi/GOBA_Scrape_subspecialists_only.csv"
 #       ▸ File created from manual or semi-automated scraping of subspecialists
@@ -142,10 +149,10 @@ if (verbose) {
 }
 
 # Define file paths as constants for easier maintenance ----
-GOBA <- "data/03-search_and_process_npi/updated_GOBA_subspecialists.csv"
-FILTERED_SUBSPECIALISTS_OUTPUT <- "data/03-search_and_process_npi/GOBA_Scraoe_filtered_subspecialists_only.csv"
-SEARCHED_NPI_OUTPUT <- "data/03-search_and_process_npi/searched_npi_numbers.csv"
-FINAL_OUTPUT_FILE <- "data/03-search_and_process_npi/end_complete_npi_for_subspecialists.rds"
+GOBA <- "data/03-search_and_process_npi/input/GOBA_Scrape_subspecialists.csv"
+FILTERED_SUBSPECIALISTS_OUTPUT <- "data/03-search_and_process_npi/step01_intermediate/filtered_subspecialists_only.csv"
+SEARCHED_NPI_OUTPUT <- "data/03-search_and_process_npi/intermediate/step02_searched_npi_numbers.csv"
+FINAL_OUTPUT_FILE <- "data/03-search_and_process_npi/output/end_complete_npi_for_subspecialists.rds"
 
 # Define credential patterns for validation ----
 VALID_CREDENTIALS <- c("MD", "DO")
