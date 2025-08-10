@@ -2,7 +2,7 @@
 
 source("R/0-Download and extract PDF.R") # Downloads PDF documents and extracts text content, probably containing physician certification and subspecialty information that feeds into your GOBA dataset.
 source("R/0-goba_search_this one works_adaptive_binary_search.R") # Implements an adaptive binary search algorithm to efficiently search through the database, likely optimizing the process of finding and matching physician records across different data sources.
-source("R/0-goba_search_update_goba.R") # Updates and maintains the GOBA dataset by adding new physicians, updating existing records, or reconciling data from multiple sources - similar to the function we just created but possibly with different update logic or data sources.
+source("R/0-goba_search_update_goba.R") # 
 
 source("R/01-setup.R")
 source("R/02-nber_nppes.R")

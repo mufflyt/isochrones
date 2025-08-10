@@ -1,371 +1,418 @@
-
-
+#' 
+#' 
 source("R/01-setup.R")
 
-# Define File Paths as Constants for Easier Maintenance ----
+# Moved to 03.5-address-cleaning.R 
 #' 
-#' This section defines all file paths used in the geocoding pipeline as constants.
-#' This makes the code more maintainable and allows for easy updates when 
-#' directory structures change.
-
-## Input Data Paths ----
-INPUT_NPI_SUBSPECIALISTS_FILE <- "data/03-search_and_process_npi/output/end_complete_npi_for_subspecialists.rds"
-INPUT_OBGYN_PROVIDER_DATASET <- "data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv"
-
-## Intermediate Data Paths ----
-INTERMEDIATE_DIR <- "data/04-geocode/intermediate"
-INTERMEDIATE_GEOCODING_READY_FILE <- "data/04-geocode/intermediate/for_street_matching_with_HERE_results_clinician_data.csv"
-INTERMEDIATE_OBGYN_ADDRESSES_FILE <- "data/04-geocode/intermediate/obgyn_practice_addresses_for_geocoding.csv"
-
-## Output Data Paths ----
-OUTPUT_DIR <- "data/04-geocode/output"
-OUTPUT_GEOCODED_CLINICIAN_FILE <- "data/04-geocode/output/end_completed_clinician_data_geocoded_addresses.csv"
-OUTPUT_OBGYN_GEOCODED_FILE <-  "data/04-geocode/output/obgyn_geocoded_results.csv"
-
-## Create directories if they don't exist ----
-if (!dir.exists(INTERMEDIATE_DIR)) {
-  dir.create(INTERMEDIATE_DIR, recursive = TRUE)
-  logger::log_info("Created intermediate directory: {INTERMEDIATE_DIR}")
-}
-
-if (!dir.exists(OUTPUT_DIR)) {
-  dir.create(OUTPUT_DIR, recursive = TRUE)
-  logger::log_info("Created output directory: {OUTPUT_DIR}")
-}
-
-#********************
-# HELPER FUNCTIONS
-#********************
-
-#' Format numbers with commas for better readability
+#' # Define File Paths as Constants for Easier Maintenance ----
+#' #' 
+#' #' This section defines all file paths used in the geocoding pipeline as constants.
+#' #' This makes the code more maintainable and allows for easy updates when 
+#' #' directory structures change.
 #' 
-#' @noRd
-format_with_commas <- function(x) {
-  format(x, big.mark = ",", scientific = FALSE)
-}
-
-#********************
-# MAIN GEOCODING FUNCTIONS -----
-#********************
-
-# Prepare Address Data for Geocoding (Updated for Combined Addresses) ----
-#'
-#' This function reads a dataset (CSV or RDS) with pre-combined address fields
-#' and prepares it for geocoding. It handles datasets where address components
-#' are already combined into single fields (like "123 Main St, City, ST, 12345").
-#' For maximum cost efficiency, use deduplicate_by_address_only=TRUE to geocode 
-#' each unique address only once.
-#'
-#' @param input_file_path Character string. Path to input file (CSV or RDS format).
-#'   Default: INPUT_OBGYN_PROVIDER_DATASET constant
-#' @param address_column_name Character string. Name of the combined address column.
-#'   Default: "practice_address"
-#' @param output_csv_path Character string. Path for output CSV file.
-#'   Default: INTERMEDIATE_OBGYN_ADDRESSES_FILE constant
-#' @param deduplicate_by_npi Logical. Whether to keep only one record per unique
-#'   NPI-address combination. Default is TRUE
-#' @param deduplicate_by_address_only Logical. Whether to keep only one record 
-#'   per unique address (ignoring NPI). Default is FALSE. When TRUE, this 
-#'   minimizes geocoding costs by geocoding each address only once
-#' @param state_filter Character string. Optional state filter for testing
-#'   (e.g., "CO" for Colorado). Default is NULL to include all states
-#' @param verbose Logical. Whether to enable verbose logging. Default is TRUE
-#'
-#' @return A tibble with the processed data ready for geocoding
-#'  
-#' @section Output Columns:
-#' The returned data frame contains the following columns:
-#' \itemize{
-#'   \item \strong{address}: The address column ready for geocoding
-#'   \item \strong{npi}: National Provider Identifier (if available)
-#'   \item All other original columns from the input dataset
+#' ## Input Data Paths ----
+#' INPUT_NPI_SUBSPECIALISTS_FILE <- "data/03-search_and_process_npi/output/end_complete_npi_for_subspecialists.rds"
+#' INPUT_OBGYN_PROVIDER_DATASET <- "data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv"
+#' 
+#' ## Intermediate Data Paths ----
+#' INTERMEDIATE_DIR <- "data/04-geocode/intermediate"
+#' INTERMEDIATE_GEOCODING_READY_FILE <- "data/04-geocode/intermediate/for_street_matching_with_HERE_results_clinician_data.csv"
+#' INTERMEDIATE_OBGYN_ADDRESSES_FILE <- "data/04-geocode/intermediate/obgyn_practice_addresses_for_geocoding.csv"
+#' 
+#' ## Output Data Paths ----
+#' OUTPUT_DIR <- "data/04-geocode/output"
+#' OUTPUT_GEOCODED_CLINICIAN_FILE <- "data/04-geocode/output/end_completed_clinician_data_geocoded_addresses.csv"
+#' OUTPUT_OBGYN_GEOCODED_FILE <-  "data/04-geocode/output/obgyn_geocoded_results.csv"
+#' 
+#' ## Create directories if they don't exist ----
+#' if (!dir.exists(INTERMEDIATE_DIR)) {
+#'   dir.create(INTERMEDIATE_DIR, recursive = TRUE)
+#'   logger::log_info("Created intermediate directory: {INTERMEDIATE_DIR}")
 #' }
-#'
-#' @examples
-#' # Example 1: Most cost-effective - geocode each unique address only once
-#' prepare_combined_addresses_for_geocoding(
+#' 
+#' if (!dir.exists(OUTPUT_DIR)) {
+#'   dir.create(OUTPUT_DIR, recursive = TRUE)
+#'   logger::log_info("Created output directory: {OUTPUT_DIR}")
+#' }
+#' 
+#' #********************
+#' # HELPER FUNCTIONS
+#' #********************
+#' 
+#' #' Format numbers with commas for better readability
+#' #' 
+#' #' @noRd
+#' format_with_commas <- function(x) {
+#'   format(x, big.mark = ",", scientific = FALSE)
+#' }
+#' 
+#' #********************
+#' # MAIN GEOCODING FUNCTIONS -----
+#' #********************
+#' 
+#' # Prepare Address Data for Geocoding (Updated for Combined Addresses) ----
+#' #'
+#' #' This function reads a dataset (CSV or RDS) with pre-combined address fields
+#' #' and prepares it for geocoding. It handles datasets where address components
+#' #' are already combined into single fields (like "123 Main St, City, ST, 12345").
+#' #' For maximum cost efficiency, use deduplicate_by_address_only=TRUE to geocode 
+#' #' each unique address only once.
+#' #'
+#' #' @param input_file_path Character string. Path to input file (CSV or RDS format).
+#' #'   Default: INPUT_OBGYN_PROVIDER_DATASET constant
+#' #' @param address_column_name Character string. Name of the combined address column.
+#' #'   Default: "practice_address"
+#' #' @param output_csv_path Character string. Path for output CSV file.
+#' #'   Default: INTERMEDIATE_OBGYN_ADDRESSES_FILE constant
+#' #' @param deduplicate_by_npi Logical. Whether to keep only one record per unique
+#' #'   NPI-address combination. Default is TRUE
+#' #' @param deduplicate_by_address_only Logical. Whether to keep only one record 
+#' #'   per unique address (ignoring NPI). Default is FALSE. When TRUE, this 
+#' #'   minimizes geocoding costs by geocoding each address only once
+#' #' @param state_filter Character string. Optional state filter for testing
+#' #'   (e.g., "CO" for Colorado). Default is NULL to include all states
+#' #' @param verbose Logical. Whether to enable verbose logging. Default is TRUE
+#' #'
+#' #' @return A tibble with the processed data ready for geocoding
+#' #'  
+#' #' @section Output Columns:
+#' #' The returned data frame contains the following columns:
+#' #' \itemize{
+#' #'   \item \strong{address}: The address column ready for geocoding
+#' #'   \item \strong{npi}: National Provider Identifier (if available)
+#' #'   \item All other original columns from the input dataset
+#' #' }
+#' #'
+#' #' @examples
+#' #' # Example 1: Most cost-effective - geocode each unique address only once
+#' #' prepare_combined_addresses_for_geocoding(
+#' #'   deduplicate_by_address_only = TRUE,
+#' #'   output_csv_path = file.path(INTERMEDIATE_DIR, "unique_addresses_only.csv")
+#' #' )
+#' #'
+#' #' # Example 2: Test with Colorado addresses only
+#' #' prepare_combined_addresses_for_geocoding(
+#' #'   state_filter = "CO",
+#' #'   deduplicate_by_address_only = TRUE
+#' #' )
+#' #'
+#' #' # Example 3: Use mailing addresses instead of practice addresses
+#' #' prepare_combined_addresses_for_geocoding(
+#' #'   address_column_name = "pm_address",
+#' #'   deduplicate_by_address_only = TRUE
+#' #' )
+#' #'
+#' #' @importFrom readr read_csv read_rds write_csv
+#' #' @importFrom dplyr mutate distinct arrange desc group_by slice ungroup across all_of filter rename
+#' #' @importFrom stringr str_to_title str_detect
+#' #' @importFrom rlang sym
+#' #' @importFrom assertthat assert_that
+#' #' @importFrom logger log_info log_error log_warn
+#' #' @importFrom tools file_ext
+#' #' @importFrom tibble as_tibble
+#' #'
+#' #' @export
+#' prepare_combined_addresses_for_geocoding <- function(input_file_path = INPUT_OBGYN_PROVIDER_DATASET,
+#'                                                      address_column_name = "practice_address",
+#'                                                      output_csv_path = INTERMEDIATE_OBGYN_ADDRESSES_FILE,
+#'                                                      deduplicate_by_npi = TRUE,
+#'                                                      deduplicate_by_address_only = FALSE,
+#'                                                      state_filter = NULL,
+#'                                                      verbose = TRUE) {
+#'   
+#'   # Configure logging based on verbose setting
+#'   if (verbose) {
+#'     logger::log_info("Starting address preparation for geocoding (combined addresses)")
+#'     logger::log_info("Input file: {input_file_path}")
+#'     logger::log_info("Output file: {output_csv_path}")
+#'     logger::log_info("Address column: {address_column_name}")
+#'   }
+#'   
+#'   # Validate input parameters
+#'   assertthat::assert_that(is.character(input_file_path),
+#'                           msg = "input_file_path must be a character string")
+#'   assertthat::assert_that(file.exists(input_file_path),
+#'                           msg = paste("Input file does not exist:", input_file_path))
+#'   assertthat::assert_that(file.size(input_file_path) > 0,
+#'                           msg = "Input file is empty")
+#'   
+#'   assertthat::assert_that(is.character(address_column_name),
+#'                           msg = "address_column_name must be a character string")
+#'   assertthat::assert_that(is.character(output_csv_path),
+#'                           msg = "output_csv_path must be a character string")
+#'   
+#'   if (verbose) {
+#'     logger::log_info("Parameter validation completed successfully")
+#'   }
+#'   
+#'   # Determine file type and read data accordingly
+#'   input_file_extension <- tools::file_ext(input_file_path)
+#'   
+#'   if (verbose) {
+#'     logger::log_info("Detected file type: {input_file_extension}")
+#'   }
+#'   
+#'   tryCatch({
+#'     if (tolower(input_file_extension) == "rds") {
+#'       if (verbose) logger::log_info("Reading RDS file")
+#'       provider_dataset <- readr::read_rds(input_file_path)
+#'     } else if (tolower(input_file_extension) == "csv") {
+#'       if (verbose) logger::log_info("Reading CSV file")
+#'       provider_dataset <- readr::read_csv(input_file_path, show_col_types = FALSE)
+#'     } else {
+#'       stop(paste("Unsupported file type:", input_file_extension, 
+#'                  "- only CSV and RDS files are supported"))
+#'     }
+#'   }, error = function(e) {
+#'     logger::log_error("Failed to read input file: {e$message}")
+#'     stop(paste("Error reading file:", e$message))
+#'   })
+#'   
+#'   # Convert to tibble if not already
+#'   provider_dataset <- tibble::as_tibble(provider_dataset)
+#'   
+#'   # Validate dataset and required columns
+#'   assertthat::assert_that(is.data.frame(provider_dataset),
+#'                           msg = "Input data is not a valid data frame")
+#'   assertthat::assert_that(nrow(provider_dataset) > 0,
+#'                           msg = "Input dataset contains no rows")
+#'   
+#'   # Check if address column exists
+#'   assertthat::assert_that(address_column_name %in% names(provider_dataset),
+#'                           msg = paste("Address column not found:", address_column_name,
+#'                                       "\nAvailable columns:", paste(names(provider_dataset), collapse = ", ")))
+#'   
+#'   initial_row_count <- nrow(provider_dataset)
+#'   initial_column_count <- ncol(provider_dataset)
+#'   
+#'   if (verbose) {
+#'     logger::log_info("Dataset loaded successfully")
+#'     logger::log_info("Initial dimensions: {format_with_commas(initial_row_count)} rows x {initial_column_count} columns")
+#'     logger::log_info("Address column found: {address_column_name}")
+#'     
+#'     # Show sample addresses
+#'     sample_addresses <- head(provider_dataset[[address_column_name]], 3)
+#'     sample_addresses <- sample_addresses[!is.na(sample_addresses)]
+#'     if (length(sample_addresses) > 0) {
+#'       logger::log_info("Sample addresses:")
+#'       for (i in seq_along(sample_addresses)) {
+#'         logger::log_info("  {i}: {sample_addresses[i]}")
+#'       }
+#'     }
+#'   }
+#'   
+#'   # Rename address column to standardized name "address" for geocoding
+#'   if (address_column_name != "address") {
+#'     provider_dataset <- provider_dataset %>%
+#'       dplyr::rename(address = !!rlang::sym(address_column_name))
+#'     
+#'     if (verbose) {
+#'       logger::log_info("Renamed '{address_column_name}' column to 'address'")
+#'     }
+#'   }
+#'   
+#'   # Filter by state if requested
+#'   if (!is.null(state_filter)) {
+#'     if (verbose) {
+#'       logger::log_info("Filtering dataset for state: {state_filter}")
+#'     }
+#'     
+#'     pre_filter_count <- nrow(provider_dataset)
+#'     
+#'     # Filter addresses that contain the state abbreviation
+#'     provider_dataset <- provider_dataset %>%
+#'       dplyr::filter(stringr::str_detect(address, paste0("\\b", state_filter, "\\b")))
+#'     
+#'     post_filter_count <- nrow(provider_dataset)
+#'     records_filtered_out <- pre_filter_count - post_filter_count
+#'     
+#'     if (verbose) {
+#'       logger::log_info("State filtering completed")
+#'       logger::log_info("Records before state filter: {pre_filter_count}")
+#'       logger::log_info("Records after filtering for {state_filter}: {post_filter_count}")
+#'       logger::log_info("Records filtered out: {records_filtered_out}")
+#'     }
+#'     
+#'     # Check if any records remain
+#'     if (post_filter_count == 0) {
+#'       stop(paste("No records found for state:", state_filter))
+#'     }
+#'   }
+#'   
+#'   # Remove records with missing addresses
+#'   missing_addresses <- sum(is.na(provider_dataset$address) | provider_dataset$address == "")
+#'   if (missing_addresses > 0) {
+#'     if (verbose) {
+#'       logger::log_warn("Removing {missing_addresses} records with missing addresses")
+#'     }
+#'     provider_dataset <- provider_dataset %>%
+#'       dplyr::filter(!is.na(address) & address != "")
+#'   }
+#'   
+#'   # Deduplicate if requested
+#'   if (deduplicate_by_npi || deduplicate_by_address_only) {
+#'     
+#'     pre_dedup_count <- nrow(provider_dataset)
+#'     
+#'     if (deduplicate_by_address_only) {
+#'       if (verbose) {
+#'         logger::log_info("Deduplicating dataset by unique address only (most cost-effective)")
+#'         logger::log_info("This minimizes geocoding costs by geocoding each address only once")
+#'       }
+#'       
+#'       provider_dataset <- provider_dataset %>%
+#'         dplyr::group_by(address) %>%
+#'         dplyr::slice(1) %>%
+#'         dplyr::ungroup()
+#'       
+#'       combination_type <- "unique addresses"
+#'       
+#'     } else if (deduplicate_by_npi && "npi" %in% names(provider_dataset)) {
+#'       if (verbose) {
+#'         logger::log_info("Deduplicating dataset by NPI and address combination")
+#'       }
+#'       
+#'       provider_dataset <- provider_dataset %>%
+#'         dplyr::group_by(npi, address) %>%
+#'         dplyr::slice(1) %>%
+#'         dplyr::ungroup()
+#'       
+#'       combination_type <- "unique NPI-address combinations"
+#'       
+#'     } else {
+#'       if (verbose) {
+#'         logger::log_info("NPI column not found - falling back to address-only deduplication")
+#'       }
+#'       
+#'       provider_dataset <- provider_dataset %>%
+#'         dplyr::group_by(address) %>%
+#'         dplyr::slice(1) %>%
+#'         dplyr::ungroup()
+#'       
+#'       combination_type <- "unique addresses"
+#'     }
+#'     
+#'     post_dedup_count <- nrow(provider_dataset)
+#'     records_removed <- pre_dedup_count - post_dedup_count
+#'     
+#'     if (verbose) {
+#'       logger::log_info("Deduplication completed")
+#'       logger::log_info("Records before deduplication: {pre_dedup_count}")
+#'       logger::log_info("{stringr::str_to_title(combination_type)}: {post_dedup_count}")
+#'       logger::log_info("Duplicate records removed: {records_removed}")
+#'       
+#'       # Show cost savings for address-only deduplication
+#'       if (deduplicate_by_address_only) {
+#'         estimated_cost_after_free <- max(0, post_dedup_count - 10000) * 0.005
+#'         logger::log_info("Estimated geocoding cost (after 10k free): ${round(estimated_cost_after_free, 2)}")
+#'       }
+#'     }
+#'   }
+#'   
+#'   final_row_count <- nrow(provider_dataset)
+#'   final_column_count <- ncol(provider_dataset)
+#'   
+#'   if (verbose) {
+#'     logger::log_info("Address preparation completed")
+#'     logger::log_info("Final dimensions: {format_with_commas(final_row_count)} rows x {final_column_count} columns")
+#'     
+#'     # Show deduplication effectiveness if applied
+#'     if ((deduplicate_by_npi || deduplicate_by_address_only) && exists("records_removed")) {
+#'       deduplication_efficiency <- round((final_row_count / initial_row_count) * 100, 1)
+#'       logger::log_info("Deduplication efficiency: {deduplication_efficiency}% of original records retained")
+#'     }
+#'   }
+#'   
+#'   # Create output directory if it doesn't exist
+#'   output_directory <- dirname(output_csv_path)
+#'   if (!dir.exists(output_directory)) {
+#'     if (verbose) {
+#'       logger::log_info("Creating output directory: {output_directory}")
+#'     }
+#'     dir.create(output_directory, recursive = TRUE)
+#'   }
+#'   
+#'   # Write to CSV file
+#'   if (verbose) {
+#'     logger::log_info("Writing geocoding-ready dataset to CSV")
+#'   }
+#'   
+#'   tryCatch({
+#'     readr::write_csv(provider_dataset, output_csv_path)
+#'   }, error = function(e) {
+#'     logger::log_error("Failed to write output file: {e$message}")
+#'     stop(paste("Error writing CSV file:", e$message))
+#'   })
+#'   
+#'   # Validate output file was created
+#'   assertthat::assert_that(file.exists(output_csv_path),
+#'                           msg = "Output CSV file was not created")
+#'   
+#'   output_file_size_bytes <- file.size(output_csv_path)
+#'   output_file_size_mb <- round(output_file_size_bytes / (1024^2), 2)
+#'   
+#'   if (verbose) {
+#'     logger::log_info("Geocoding preparation completed successfully")
+#'     logger::log_info("Output file: {output_csv_path}")
+#'     logger::log_info("Output file size: {output_file_size_mb} MB")
+#'     logger::log_info("Records prepared for geocoding: {format_with_commas(final_row_count)}")
+#'   }
+#'   
+#'   # Return the processed dataset
+#'   return(provider_dataset)
+#' }
+#' # run ----
+#' output_prepare_combined_addresses_for_geocoding <- prepare_combined_addresses_for_geocoding(
+#'   input_file_path = INPUT_OBGYN_PROVIDER_DATASET,
 #'   deduplicate_by_address_only = TRUE,
-#'   output_csv_path = file.path(INTERMEDIATE_DIR, "unique_addresses_only.csv")
+#'   deduplicate_by_npi = TRUE,
+#'   output_csv_path = file.path(INTERMEDIATE_DIR, "output_prepare_combined_addresses_for_geocoding.csv"),
+#'   verbose = TRUE
 #' )
-#'
-#' # Example 2: Test with Colorado addresses only
-#' prepare_combined_addresses_for_geocoding(
-#'   state_filter = "CO",
-#'   deduplicate_by_address_only = TRUE
-#' )
-#'
-#' # Example 3: Use mailing addresses instead of practice addresses
-#' prepare_combined_addresses_for_geocoding(
-#'   address_column_name = "pm_address",
-#'   deduplicate_by_address_only = TRUE
-#' )
-#'
-#' @importFrom readr read_csv read_rds write_csv
-#' @importFrom dplyr mutate distinct arrange desc group_by slice ungroup across all_of filter rename
-#' @importFrom stringr str_to_title str_detect
-#' @importFrom rlang sym
-#' @importFrom assertthat assert_that
-#' @importFrom logger log_info log_error log_warn
-#' @importFrom tools file_ext
-#' @importFrom tibble as_tibble
-#'
-#' @export
-prepare_combined_addresses_for_geocoding <- function(input_file_path = INPUT_OBGYN_PROVIDER_DATASET,
-                                                     address_column_name = "practice_address",
-                                                     output_csv_path = INTERMEDIATE_OBGYN_ADDRESSES_FILE,
-                                                     deduplicate_by_npi = TRUE,
-                                                     deduplicate_by_address_only = FALSE,
-                                                     state_filter = NULL,
-                                                     verbose = TRUE) {
-  
-  # Configure logging based on verbose setting
-  if (verbose) {
-    logger::log_info("Starting address preparation for geocoding (combined addresses)")
-    logger::log_info("Input file: {input_file_path}")
-    logger::log_info("Output file: {output_csv_path}")
-    logger::log_info("Address column: {address_column_name}")
-  }
-  
-  # Validate input parameters
-  assertthat::assert_that(is.character(input_file_path),
-                          msg = "input_file_path must be a character string")
-  assertthat::assert_that(file.exists(input_file_path),
-                          msg = paste("Input file does not exist:", input_file_path))
-  assertthat::assert_that(file.size(input_file_path) > 0,
-                          msg = "Input file is empty")
-  
-  assertthat::assert_that(is.character(address_column_name),
-                          msg = "address_column_name must be a character string")
-  assertthat::assert_that(is.character(output_csv_path),
-                          msg = "output_csv_path must be a character string")
-  
-  if (verbose) {
-    logger::log_info("Parameter validation completed successfully")
-  }
-  
-  # Determine file type and read data accordingly
-  input_file_extension <- tools::file_ext(input_file_path)
-  
-  if (verbose) {
-    logger::log_info("Detected file type: {input_file_extension}")
-  }
-  
-  tryCatch({
-    if (tolower(input_file_extension) == "rds") {
-      if (verbose) logger::log_info("Reading RDS file")
-      provider_dataset <- readr::read_rds(input_file_path)
-    } else if (tolower(input_file_extension) == "csv") {
-      if (verbose) logger::log_info("Reading CSV file")
-      provider_dataset <- readr::read_csv(input_file_path, show_col_types = FALSE)
-    } else {
-      stop(paste("Unsupported file type:", input_file_extension, 
-                 "- only CSV and RDS files are supported"))
-    }
-  }, error = function(e) {
-    logger::log_error("Failed to read input file: {e$message}")
-    stop(paste("Error reading file:", e$message))
-  })
-  
-  # Convert to tibble if not already
-  provider_dataset <- tibble::as_tibble(provider_dataset)
-  
-  # Validate dataset and required columns
-  assertthat::assert_that(is.data.frame(provider_dataset),
-                          msg = "Input data is not a valid data frame")
-  assertthat::assert_that(nrow(provider_dataset) > 0,
-                          msg = "Input dataset contains no rows")
-  
-  # Check if address column exists
-  assertthat::assert_that(address_column_name %in% names(provider_dataset),
-                          msg = paste("Address column not found:", address_column_name,
-                                      "\nAvailable columns:", paste(names(provider_dataset), collapse = ", ")))
-  
-  initial_row_count <- nrow(provider_dataset)
-  initial_column_count <- ncol(provider_dataset)
-  
-  if (verbose) {
-    logger::log_info("Dataset loaded successfully")
-    logger::log_info("Initial dimensions: {format_with_commas(initial_row_count)} rows x {initial_column_count} columns")
-    logger::log_info("Address column found: {address_column_name}")
-    
-    # Show sample addresses
-    sample_addresses <- head(provider_dataset[[address_column_name]], 3)
-    sample_addresses <- sample_addresses[!is.na(sample_addresses)]
-    if (length(sample_addresses) > 0) {
-      logger::log_info("Sample addresses:")
-      for (i in seq_along(sample_addresses)) {
-        logger::log_info("  {i}: {sample_addresses[i]}")
-      }
-    }
-  }
-  
-  # Rename address column to standardized name "address" for geocoding
-  if (address_column_name != "address") {
-    provider_dataset <- provider_dataset %>%
-      dplyr::rename(address = !!rlang::sym(address_column_name))
-    
-    if (verbose) {
-      logger::log_info("Renamed '{address_column_name}' column to 'address'")
-    }
-  }
-  
-  # Filter by state if requested
-  if (!is.null(state_filter)) {
-    if (verbose) {
-      logger::log_info("Filtering dataset for state: {state_filter}")
-    }
-    
-    pre_filter_count <- nrow(provider_dataset)
-    
-    # Filter addresses that contain the state abbreviation
-    provider_dataset <- provider_dataset %>%
-      dplyr::filter(stringr::str_detect(address, paste0("\\b", state_filter, "\\b")))
-    
-    post_filter_count <- nrow(provider_dataset)
-    records_filtered_out <- pre_filter_count - post_filter_count
-    
-    if (verbose) {
-      logger::log_info("State filtering completed")
-      logger::log_info("Records before state filter: {pre_filter_count}")
-      logger::log_info("Records after filtering for {state_filter}: {post_filter_count}")
-      logger::log_info("Records filtered out: {records_filtered_out}")
-    }
-    
-    # Check if any records remain
-    if (post_filter_count == 0) {
-      stop(paste("No records found for state:", state_filter))
-    }
-  }
-  
-  # Remove records with missing addresses
-  missing_addresses <- sum(is.na(provider_dataset$address) | provider_dataset$address == "")
-  if (missing_addresses > 0) {
-    if (verbose) {
-      logger::log_warn("Removing {missing_addresses} records with missing addresses")
-    }
-    provider_dataset <- provider_dataset %>%
-      dplyr::filter(!is.na(address) & address != "")
-  }
-  
-  # Deduplicate if requested
-  if (deduplicate_by_npi || deduplicate_by_address_only) {
-    
-    pre_dedup_count <- nrow(provider_dataset)
-    
-    if (deduplicate_by_address_only) {
-      if (verbose) {
-        logger::log_info("Deduplicating dataset by unique address only (most cost-effective)")
-        logger::log_info("This minimizes geocoding costs by geocoding each address only once")
-      }
-      
-      provider_dataset <- provider_dataset %>%
-        dplyr::group_by(address) %>%
-        dplyr::slice(1) %>%
-        dplyr::ungroup()
-      
-      combination_type <- "unique addresses"
-      
-    } else if (deduplicate_by_npi && "npi" %in% names(provider_dataset)) {
-      if (verbose) {
-        logger::log_info("Deduplicating dataset by NPI and address combination")
-      }
-      
-      provider_dataset <- provider_dataset %>%
-        dplyr::group_by(npi, address) %>%
-        dplyr::slice(1) %>%
-        dplyr::ungroup()
-      
-      combination_type <- "unique NPI-address combinations"
-      
-    } else {
-      if (verbose) {
-        logger::log_info("NPI column not found - falling back to address-only deduplication")
-      }
-      
-      provider_dataset <- provider_dataset %>%
-        dplyr::group_by(address) %>%
-        dplyr::slice(1) %>%
-        dplyr::ungroup()
-      
-      combination_type <- "unique addresses"
-    }
-    
-    post_dedup_count <- nrow(provider_dataset)
-    records_removed <- pre_dedup_count - post_dedup_count
-    
-    if (verbose) {
-      logger::log_info("Deduplication completed")
-      logger::log_info("Records before deduplication: {pre_dedup_count}")
-      logger::log_info("{stringr::str_to_title(combination_type)}: {post_dedup_count}")
-      logger::log_info("Duplicate records removed: {records_removed}")
-      
-      # Show cost savings for address-only deduplication
-      if (deduplicate_by_address_only) {
-        estimated_cost_after_free <- max(0, post_dedup_count - 10000) * 0.005
-        logger::log_info("Estimated geocoding cost (after 10k free): ${round(estimated_cost_after_free, 2)}")
-      }
-    }
-  }
-  
-  final_row_count <- nrow(provider_dataset)
-  final_column_count <- ncol(provider_dataset)
-  
-  if (verbose) {
-    logger::log_info("Address preparation completed")
-    logger::log_info("Final dimensions: {format_with_commas(final_row_count)} rows x {final_column_count} columns")
-    
-    # Show deduplication effectiveness if applied
-    if ((deduplicate_by_npi || deduplicate_by_address_only) && exists("records_removed")) {
-      deduplication_efficiency <- round((final_row_count / initial_row_count) * 100, 1)
-      logger::log_info("Deduplication efficiency: {deduplication_efficiency}% of original records retained")
-    }
-  }
-  
-  # Create output directory if it doesn't exist
-  output_directory <- dirname(output_csv_path)
-  if (!dir.exists(output_directory)) {
-    if (verbose) {
-      logger::log_info("Creating output directory: {output_directory}")
-    }
-    dir.create(output_directory, recursive = TRUE)
-  }
-  
-  # Write to CSV file
-  if (verbose) {
-    logger::log_info("Writing geocoding-ready dataset to CSV")
-  }
-  
-  tryCatch({
-    readr::write_csv(provider_dataset, output_csv_path)
-  }, error = function(e) {
-    logger::log_error("Failed to write output file: {e$message}")
-    stop(paste("Error writing CSV file:", e$message))
-  })
-  
-  # Validate output file was created
-  assertthat::assert_that(file.exists(output_csv_path),
-                          msg = "Output CSV file was not created")
-  
-  output_file_size_bytes <- file.size(output_csv_path)
-  output_file_size_mb <- round(output_file_size_bytes / (1024^2), 2)
-  
-  if (verbose) {
-    logger::log_info("Geocoding preparation completed successfully")
-    logger::log_info("Output file: {output_csv_path}")
-    logger::log_info("Output file size: {output_file_size_mb} MB")
-    logger::log_info("Records prepared for geocoding: {format_with_commas(final_row_count)}")
-  }
-  
-  # Return the processed dataset
-  return(provider_dataset)
-}
-# run ----
-output_prepare_combined_addresses_for_geocoding <- prepare_combined_addresses_for_geocoding(
-  deduplicate_by_address_only = TRUE,
-  output_csv_path = file.path(INTERMEDIATE_DIR, "unique_addresses_only.csv")
-)
-
-
+#' 
+#' # Load the NPI subspecialists data (this is the file with subspecialty info)
+#' INPUT_NPI_SUBSPECIALISTS_FILE <- "data/03-search_and_process_npi/output/end_complete_npi_for_subspecialists.rds"
+#' 
+#' # Read the subspecialists data
+#' npi_subspecialists_data <- readr::read_rds(INPUT_NPI_SUBSPECIALISTS_FILE) %>%
+#'   dplyr::distinct(NPI, .keep_all = TRUE)
+#' logger::log_info("NPI subspecialists loaded: {format(nrow(npi_subspecialists_data), big.mark = ',')} rows")
+#' 
+#' # Check the column names to make sure we have the right ones
+#' logger::log_info("Column names in subspecialists data: {paste(names(npi_subspecialists_data), collapse = ', ')}")
+#' 
+#' # Perform the inner join with the subspecialists data (not the OBGYN provider dataset)
+#' # We used the NPPES practice_location column for more accurate addressing than the GOBA city, state
+#' subspecialist_geocoding_data <- output_prepare_combined_addresses_for_geocoding %>%
+#'   dplyr::inner_join(
+#'     npi_subspecialists_data %>% dplyr::select(NPI, sub1, first_name, last_name),
+#'     by = c("npi" = "NPI")
+#'   ) %>%
+#'   dplyr::relocate(sub1, .before = 1) %>%   # Move sub1 to the first column
+#'   dplyr::arrange(npi)
+#' 
+#' logger::log_info("Results after inner join:")
+#' logger::log_info("  Original geocoding dataset: {format(nrow(output_prepare_combined_addresses_for_geocoding), big.mark = ',')} rows")
+#' logger::log_info("  Subspecialists dataset: {format(nrow(npi_subspecialists_data), big.mark = ',')} rows") 
+#' logger::log_info("  After inner join: {format(nrow(subspecialist_geocoding_data), big.mark = ',')} rows")
+#' 
+#' # Show subspecialty breakdown
+#' subspecialty_counts <- table(subspecialist_geocoding_data$sub1, useNA = "ifany")
+#' logger::log_info("Subspecialty breakdown with unique addresses:")
+#' for (specialty in names(subspecialty_counts)) {
+#'   logger::log_info("  {specialty}: {subspecialty_counts[specialty]} records")
+#' }
+#' 
+#' # Check a few sample records
+#' logger::log_info("Sample of subspecialist data:")
+#' sample_data <- subspecialist_geocoding_data %>%
+#'   dplyr::select(npi, plname, pfname, sub1, address) %>%
+#'   head(3)
+#' 
+#' for (i in 1:nrow(sample_data)) {
+#'   logger::log_info("  {i}. {sample_data$pfname[i]} {sample_data$plname[i]} (NPI: {sample_data$npi[i]}, Specialty: {sample_data$sub1[i]})")
+#'   logger::log_info("     Address: {sample_data$address[i]}")
+#' }
 
 
 # Geocoding Using HERE API ----
