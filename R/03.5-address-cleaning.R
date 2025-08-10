@@ -1,32 +1,13 @@
-# Setup and Configuration ----
-source("R/01-setup.R")
+
 
 #***********
 # GOBA_Scrape_subspecialists_only.csv has Guntupalli.  
-
-#' Comprehensive Data Processing and Geocoding Workflow for Clinician Data
-#'
-#' This script processes clinician data through geocoding preparation, subspecialty
-#' filtering, address standardization using postmastr, and ACOG district assignment.
-#' The workflow is designed for reproducibility with extensive logging and error handling.
-#'
-#' @importFrom readr read_csv read_rds write_csv
-#' @importFrom dplyr inner_join select relocate arrange filter mutate distinct group_by slice ungroup rename left_join join_by
-#' @importFrom stringr str_squish str_replace regex str_detect str_to_title
-#' @importFrom postmastr pm_identify pm_prep pm_postal_parse pm_dictionary pm_state_all pm_state_parse pm_city_all pm_city_parse pm_house_all pm_house_parse pm_streetSuf_parse pm_streetDir_parse pm_street_parse pm_replace
-#' @importFrom exploratory str_remove str_remove_after left_join
-#' @importFrom assertthat assert_that
-#' @importFrom logger log_info log_warn log_error
-#' @importFrom tyler ACOG_Districts
-#' @importFrom tools file_ext
-#' @importFrom tibble as_tibble
-#' @importFrom rlang sym
-#' @importFrom glue glue
 
 # Setup and Configuration ----
 source("R/01-setup.R")
 
 # File Path Constants ----
+INPUT_DIR <- "data/04-geocode/input"
 INPUT_NPI_SUBSPECIALISTS_FILE <- "data/03-search_and_process_npi/output/end_complete_npi_for_subspecialists.rds"
 INPUT_OBGYN_PROVIDER_DATASET <- "data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv"
 INTERMEDIATE_DIR <- "data/04-geocode/intermediate"
@@ -985,12 +966,11 @@ parse_addresses_with_postmastr <- function(input_data_path,
 }
 
 # Main Workflow Execution ----
-
 #' Execute Complete Geocoding Workflow
 #'
 #' This function orchestrates the complete geocoding workflow by calling all
-#' processing functions in the correct sequence. It provides comprehensive
-#' logging and error handling for the entire pipeline.
+#' processing functions in the correct sequence. It follows a structured folder
+#' organization with input, intermediate, and output directories.
 #'
 #' @param subspecialty_filter Character string. Subspecialty code to filter for
 #'   (e.g., "FPM" for Family Planning Medicine). Default is "FPM"
@@ -998,44 +978,63 @@ parse_addresses_with_postmastr <- function(input_data_path,
 #'   addresses only (most cost-effective for geocoding). Default is TRUE
 #' @param state_filter Character string. Optional state filter for testing.
 #'   Default is NULL
+#' @param output_filename Character string. Name of the final output file.
+#'   Default is "final_parsed_addresses_with_acog_districts.csv"
+#' @param input_obgyn_dataset Character string. Path to OBGYN provider dataset.
+#'   Default uses INPUT_OBGYN_PROVIDER_DATASET constant
+#' @param input_subspecialists_file Character string. Path to subspecialists file.
+#'   Default uses INPUT_NPI_SUBSPECIALISTS_FILE constant  
+#' @param input_city_dictionary Character string. Path to city dictionary file.
+#'   Default uses CITY_DICTIONARY_PATH constant
 #' @param verbose Logical. Whether to enable verbose logging. Default is TRUE
 #'
-#' @return A list containing all processed datasets and workflow results:
-#'   \item{prepared_geocoding_data}{Prepared address data for geocoding}
-#'   \item{subspecialist_results}{Results from subspecialist processing}
-#'   \item{cleaned_addresses}{Cleaned addresses for matching}
-#'   \item{parsed_addresses}{Final parsed addresses with ACOG districts}
-#'   \item{workflow_summary}{Summary statistics of the workflow}
+#' @return A tibble containing the final parsed addresses with ACOG districts.
+#'   All intermediate results are saved to INTERMEDIATE_DIR.
+#'   Final output is saved to OUTPUT_DIR.
+#'
+#' @section Folder Structure:
+#' The function uses the following folder organization:
+#' \describe{
+#'   \item{INPUT_DIR}{Reserved for input files (currently uses external sources)}
+#'   \item{INTERMEDIATE_DIR}{All intermediate processing files}
+#'   \item{OUTPUT_DIR}{Final output files}
+#' }
 #'
 #' @examples
-#' # Example 1: Run complete workflow for Family Planning Medicine specialists
-#' workflow_results <- execute_complete_geocoding_workflow(
+#' # Example 1: Basic usage with default folder structure
+#' final_addresses <- execute_complete_geocoding_workflow(
 #'   subspecialty_filter = "FPM",
-#'   deduplicate_by_address_only = TRUE,
-#'   verbose = TRUE
-#' )
-#'
-#' # Example 2: Run workflow with state filter for testing
-#' workflow_results <- execute_complete_geocoding_workflow(
-#'   subspecialty_filter = "FPM",
-#'   state_filter = "CO",
 #'   deduplicate_by_address_only = TRUE
 #' )
 #'
-#' # Example 3: Run workflow for different subspecialty
-#' workflow_results <- execute_complete_geocoding_workflow(
+#' # Example 2: State filter with custom output filename
+#' colorado_addresses <- execute_complete_geocoding_workflow(
+#'   subspecialty_filter = "FPM",
+#'   state_filter = "CO",
+#'   output_filename = "colorado_fpm_specialists.csv"
+#' )
+#'
+#' # Example 3: Different subspecialty with custom inputs
+#' rei_addresses <- execute_complete_geocoding_workflow(
 #'   subspecialty_filter = "REI",
-#'   deduplicate_by_address_only = FALSE,
-#'   verbose = TRUE
+#'   output_filename = "rei_specialists.csv",
+#'   input_obgyn_dataset = file.path(INPUT_DIR, "custom_obgyn_data.csv")
 #' )
 #'
 #' @export
 execute_complete_geocoding_workflow <- function(subspecialty_filter = "FPM",
                                                 deduplicate_by_address_only = TRUE,
                                                 state_filter = NULL,
+                                                output_filename = "final_parsed_addresses_with_acog_districts.csv",
+                                                input_obgyn_dataset = INPUT_OBGYN_PROVIDER_DATASET,
+                                                input_subspecialists_file = INPUT_NPI_SUBSPECIALISTS_FILE,
+                                                input_city_dictionary = CITY_DICTIONARY_PATH,
                                                 verbose = TRUE) {
   
   workflow_start_time <- Sys.time()
+  
+  # Construct full output path using the existing OUTPUT_DIR constant
+  final_output_path <- file.path(OUTPUT_DIR, output_filename)
   
   if (verbose) {
     logger::log_info("=== STARTING COMPLETE GEOCODING WORKFLOW ===")
@@ -1043,13 +1042,24 @@ execute_complete_geocoding_workflow <- function(subspecialty_filter = "FPM",
     logger::log_info("Subspecialty filter: {subspecialty_filter}")
     logger::log_info("Address-only deduplication: {deduplicate_by_address_only}")
     logger::log_info("State filter: {ifelse(is.null(state_filter), 'None', state_filter)}")
+    logger::log_info("")
+    logger::log_info("=== FOLDER STRUCTURE ===")
+    logger::log_info("Input directory: {INPUT_DIR}")
+    logger::log_info("Intermediate directory: {INTERMEDIATE_DIR}")
+    logger::log_info("Output directory: {OUTPUT_DIR}")
+    logger::log_info("Final output: {final_output_path}")
   }
   
-  # Ensure directories exist
+  # Validate inputs and ensure directories exist
+  assertthat::assert_that(
+    is.character(output_filename),
+    msg = "output_filename must be a character string"
+  )
+  
+  # Create all directories using existing constants
+  ensure_directory_exists(INPUT_DIR, verbose)
   ensure_directory_exists(INTERMEDIATE_DIR, verbose)
   ensure_directory_exists(OUTPUT_DIR, verbose)
-  
-  workflow_results <- list()
   
   # Phase 1: Prepare combined addresses for geocoding
   if (verbose) {
@@ -1057,8 +1067,8 @@ execute_complete_geocoding_workflow <- function(subspecialty_filter = "FPM",
   }
   
   tryCatch({
-    workflow_results$prepared_geocoding_data <- prepare_combined_addresses_for_geocoding(
-      input_file_path = INPUT_OBGYN_PROVIDER_DATASET,
+    prepared_geocoding_data <- prepare_combined_addresses_for_geocoding(
+      input_file_path = input_obgyn_dataset,
       deduplicate_by_address_only = deduplicate_by_address_only,
       deduplicate_by_npi = TRUE,
       state_filter = state_filter,
@@ -1076,9 +1086,9 @@ execute_complete_geocoding_workflow <- function(subspecialty_filter = "FPM",
   }
   
   tryCatch({
-    workflow_results$subspecialist_results <- process_subspecialist_geocoding_data(
-      geocoding_prepared_data = workflow_results$prepared_geocoding_data,
-      subspecialists_file_path = INPUT_NPI_SUBSPECIALISTS_FILE,
+    subspecialist_results <- process_subspecialist_geocoding_data(
+      geocoding_prepared_data = prepared_geocoding_data,
+      subspecialists_file_path = input_subspecialists_file,
       subspecialty_filter = subspecialty_filter,
       output_subspecialist_path = file.path(INTERMEDIATE_DIR, "subspecialist_geocoding_data.csv"),
       output_filtered_path = file.path(INTERMEDIATE_DIR, glue::glue("{subspecialty_filter}_only_subspecialist_geocoding_data.csv")),
@@ -1095,8 +1105,8 @@ execute_complete_geocoding_workflow <- function(subspecialty_filter = "FPM",
   }
   
   tryCatch({
-    workflow_results$cleaned_addresses <- clean_addresses_for_matching(
-      input_address_data = workflow_results$subspecialist_results$filtered_subspecialists,
+    cleaned_addresses <- clean_addresses_for_matching(
+      input_address_data = subspecialist_results$filtered_subspecialists,
       output_file_path = file.path(INTERMEDIATE_DIR, "cleaned_addresses_for_matching.csv"),
       verbose = verbose
     )
@@ -1111,14 +1121,14 @@ execute_complete_geocoding_workflow <- function(subspecialty_filter = "FPM",
   }
   
   tryCatch({
-    # Save filtered data for postmastr input
+    # Save filtered data for postmastr input in INTERMEDIATE_DIR
     filtered_subspecialist_path <- file.path(INTERMEDIATE_DIR, glue::glue("{subspecialty_filter}_filtered_for_postmastr.csv"))
-    readr::write_csv(workflow_results$subspecialist_results$filtered_subspecialists, filtered_subspecialist_path)
+    readr::write_csv(subspecialist_results$filtered_subspecialists, filtered_subspecialist_path)
     
-    workflow_results$parsed_addresses <- parse_addresses_with_postmastr(
+    final_parsed_addresses <- parse_addresses_with_postmastr(
       input_data_path = filtered_subspecialist_path,
-      city_dictionary_path = CITY_DICTIONARY_PATH,
-      output_file_path = file.path(OUTPUT_DIR, "final_parsed_addresses_with_acog_districts.csv"),
+      city_dictionary_path = input_city_dictionary,
+      output_file_path = final_output_path,  # Save to OUTPUT_DIR
       verbose = verbose
     )
   }, error = function(e) {
@@ -1126,92 +1136,80 @@ execute_complete_geocoding_workflow <- function(subspecialty_filter = "FPM",
     stop(glue::glue("Address parsing with postmastr failed: {e$message}"))
   })
   
-  # Generate workflow summary
+  # Generate and log workflow summary
   workflow_end_time <- Sys.time()
   workflow_duration <- difftime(workflow_end_time, workflow_start_time, units = "mins")
   
-  workflow_results$workflow_summary <- list(
-    start_time = workflow_start_time,
-    end_time = workflow_end_time,
-    duration_minutes = as.numeric(workflow_duration),
-    subspecialty_filter = subspecialty_filter,
-    state_filter = state_filter,
-    initial_addresses = nrow(workflow_results$prepared_geocoding_data),
-    subspecialist_matches = nrow(workflow_results$subspecialist_results$all_subspecialists),
-    filtered_subspecialists = nrow(workflow_results$subspecialist_results$filtered_subspecialists),
-    final_parsed_addresses = nrow(workflow_results$parsed_addresses),
-    subspecialty_breakdown = workflow_results$subspecialist_results$subspecialty_summary
-  )
+  # Calculate summary statistics
+  initial_addresses <- nrow(prepared_geocoding_data)
+  subspecialist_matches <- nrow(subspecialist_results$all_subspecialists)
+  filtered_subspecialists <- nrow(subspecialist_results$filtered_subspecialists)
+  final_record_count <- nrow(final_parsed_addresses)
+  acog_coverage <- sum(!is.na(final_parsed_addresses$ACOG_District))
+  acog_coverage_percent <- round((acog_coverage / final_record_count) * 100, 1)
   
   if (verbose) {
     logger::log_info("=== WORKFLOW COMPLETED SUCCESSFULLY ===")
     logger::log_info("Total processing time: {round(workflow_duration, 2)} minutes")
-    logger::log_info("Final dataset contains {format_number_with_commas(nrow(workflow_results$parsed_addresses))} records")
-    logger::log_info("Main output file: {file.path(OUTPUT_DIR, 'final_parsed_addresses_with_acog_districts.csv')}")
+    logger::log_info("Final output file: {final_output_path}")
+    logger::log_info("")
+    logger::log_info("=== PROCESSING SUMMARY ===")
+    logger::log_info("Initial addresses: {format_number_with_commas(initial_addresses)}")
+    logger::log_info("Subspecialist matches: {format_number_with_commas(subspecialist_matches)}")
+    logger::log_info("Filtered subspecialists: {format_number_with_commas(filtered_subspecialists)}")
+    logger::log_info("Final parsed addresses: {format_number_with_commas(final_record_count)}")
+    logger::log_info("Records with ACOG District: {format_number_with_commas(acog_coverage)} ({acog_coverage_percent}%)")
     
     # Log final subspecialty distribution
     if (!is.null(subspecialty_filter)) {
-      final_specialty_count <- sum(workflow_results$parsed_addresses$sub1 == subspecialty_filter, na.rm = TRUE)
-      logger::log_info("Records with {subspecialty_filter} subspecialty in final dataset: {format_number_with_commas(final_specialty_count)}")
+      final_specialty_count <- sum(final_parsed_addresses$sub1 == subspecialty_filter, na.rm = TRUE)
+      logger::log_info("Records with {subspecialty_filter} subspecialty: {format_number_with_commas(final_specialty_count)}")
     }
     
-    # Log ACOG district coverage
-    acog_coverage <- sum(!is.na(workflow_results$parsed_addresses$ACOG_District))
-    acog_coverage_percent <- round((acog_coverage / nrow(workflow_results$parsed_addresses)) * 100, 1)
-    logger::log_info("Records with ACOG District assignments: {format_number_with_commas(acog_coverage)} ({acog_coverage_percent}%)")
+    # Log subspecialty breakdown
+    logger::log_info("")
+    logger::log_info("=== SUBSPECIALTY BREAKDOWN ===")
+    for (specialty_name in names(subspecialist_results$subspecialty_summary)) {
+      count <- subspecialist_results$subspecialty_summary[specialty_name]
+      logger::log_info("  {specialty_name}: {count} records")
+    }
+    
+    # Log all file locations using existing constants
+    logger::log_info("")
+    logger::log_info("=== FILE LOCATIONS ===")
+    logger::log_info("INPUT FILES:")
+    logger::log_info("  OBGYN dataset: {input_obgyn_dataset}")
+    logger::log_info("  Subspecialists: {input_subspecialists_file}")
+    logger::log_info("  City dictionary: {input_city_dictionary}")
+    logger::log_info("")
+    logger::log_info("INTERMEDIATE FILES ({INTERMEDIATE_DIR}):")
+    logger::log_info("  Prepared addresses: prepared_addresses_for_geocoding.csv")
+    logger::log_info("  All subspecialists: subspecialist_geocoding_data.csv")
+    logger::log_info("  Filtered subspecialists: {subspecialty_filter}_only_subspecialist_geocoding_data.csv")
+    logger::log_info("  Cleaned addresses: cleaned_addresses_for_matching.csv")
+    logger::log_info("  Postmastr input: {subspecialty_filter}_filtered_for_postmastr.csv")
+    logger::log_info("")
+    logger::log_info("OUTPUT FILES ({OUTPUT_DIR}):")
+    logger::log_info("  Final dataset: {output_filename}")
   }
   
-  return(workflow_results)
+  # Return just the final dataset - clean and simple!
+  return(final_parsed_addresses)
 }
 
-# Execute the workflow if this script is run directly ----
-if (!interactive()) {
-  
-  # Configuration for production run
-  SUBSPECIALTY_TO_PROCESS <- "FPM"  # Family Planning Medicine/Gynecologic Oncology
-  USE_ADDRESS_DEDUPLICATION <- TRUE  # Most cost-effective for geocoding
-  STATE_FILTER_FOR_TESTING <- NULL  # Set to "CO" for Colorado testing, NULL for all states
-  
-  logger::log_info("Starting automated geocoding workflow execution")
-  
-  tryCatch({
-    complete_workflow_results <- execute_complete_geocoding_workflow(
-      subspecialty_filter = SUBSPECIALTY_TO_PROCESS,
-      deduplicate_by_address_only = USE_ADDRESS_DEDUPLICATION,
-      state_filter = STATE_FILTER_FOR_TESTING,
-      verbose = TRUE
-    )
-    
-    logger::log_info("Automated workflow execution completed successfully")
-    
-    # Save workflow summary
-    workflow_summary_path <- file.path(OUTPUT_DIR, "workflow_execution_summary.rds")
-    saveRDS(complete_workflow_results$workflow_summary, workflow_summary_path)
-    logger::log_info("Workflow summary saved: {workflow_summary_path}")
-    
-  }, error = function(e) {
-    logger::log_error("AUTOMATED WORKFLOW EXECUTION FAILED: {e$message}")
-    stop(glue::glue("Workflow execution failed: {e$message}"))
-  })
-  
-} else {
-  logger::log_info("Geocoding workflow functions loaded successfully")
-  logger::log_info("To execute the complete workflow, run:")
-  logger::log_info("  workflow_results <- execute_complete_geocoding_workflow()")
-  logger::log_info("Or customize parameters:")
-  logger::log_info("  workflow_results <- execute_complete_geocoding_workflow(")
-  logger::log_info("    subspecialty_filter = 'FPM',")
-  logger::log_info("    state_filter = 'CO',")
-  logger::log_info("    verbose = TRUE")
-  logger::log_info("  )")
-}
+# run ----
 workflow_results <- execute_complete_geocoding_workflow(
-subspecialty_filter = 'ONC',
-state_filter = 'CO',
-verbose = TRUE)
+  subspecialty_filter = 'ONC',
+  deduplicate_by_address_only = TRUE,
+  state_filter = 'CO',
+  output_filename = "data/04-geocode/output/final_parsed_addresses_with_acog_districts.csv",
+  input_obgyn_dataset = INPUT_OBGYN_PROVIDER_DATASET,
+  input_subspecialists_file = INPUT_NPI_SUBSPECIALISTS_FILE,
+  input_city_dictionary = CITY_DICTIONARY_PATH,
+  verbose = TRUE
+)
 
-View(workflow_results)
-workflow_results$subspecialist_results
+#View(workflow_results)
 
 # QC ----
 # Load the subspecialists data
@@ -1238,590 +1236,4 @@ obgyn_data %>%
   dplyr::filter(stringr::str_detect(stringr::str_to_upper(pfname), "SAKETH")) %>%
   dplyr::select(npi, plname, pfname, practice_address)
 
-# ORIGINAL ----
-#This code is part of a data preprocessing and cleaning workflow for geocoded clinician data. It starts by reading in a CSV file named "end_completed_clinician_data_geocoded_addresses_12_8_2023.csv" into the `geocoded_data` data frame. Then, it performs several data transformation steps on this data, including cleaning and formatting the address information. The cleaned data is written to a CSV file named "geocoded_data_to_match_house_number.csv." In the second part of the code, it reads another CSV file named "for_street_matching_with_HERE_results_clinician_data.csv" into the `clinician_data_for_matching` data frame and applies a series of data parsing and cleaning operations using the "postmastr" package to extract and standardize various address components. The result is stored in the `clinician_data_postmastr_parsed` data frame and written to a CSV file named "end_postmastr_clinician_data.csv." The code then performs an inner join between the postmastr processed clinician data and the geocoded data based on specific columns, creating an `inner_join_postmastr_clinician_data` data frame. Finally, it generates ACOG (American College of Obstetricians and Gynecologists) districts using the `tyler` package and stores the result in the `acog_districts_sf` object.
-
-#TODO: Please assess if we need this hacky way to match the geocoded results by a parsed address if we can pass a unique_id variable to create_geocode in order to match the original dataframe with the geocoded output.  
-
-#******
-# Setup ----
-source("R/01-setup.R")
-#******
-
-# Define File Paths as Constants for Easier Maintenance ----
-#' 
-#' This section defines all file paths used in the geocoding pipeline as constants.
-#' This makes the code more maintainable and allows for easy updates when 
-#' directory structures change.
-
-## Input Data Paths ----
-INPUT_NPI_SUBSPECIALISTS_FILE <- "data/03-search_and_process_npi/output/end_complete_npi_for_subspecialists.rds"
-INPUT_OBGYN_PROVIDER_DATASET <- "data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv"
-
-## Intermediate Data Paths ----
-INTERMEDIATE_DIR <- "data/04-geocode/intermediate"
-INTERMEDIATE_GEOCODING_READY_FILE <- "data/04-geocode/intermediate/for_street_matching_with_HERE_results_clinician_data.csv"
-INTERMEDIATE_OBGYN_ADDRESSES_FILE <- "data/04-geocode/intermediate/obgyn_practice_addresses_for_geocoding.csv"
-
-## Output Data Paths ----
-OUTPUT_DIR <- "data/04-geocode/output"
-OUTPUT_GEOCODED_CLINICIAN_FILE <- "data/04-geocode/output/end_completed_clinician_data_geocoded_addresses.csv"
-OUTPUT_OBGYN_GEOCODED_FILE <-  "data/04-geocode/output/obgyn_geocoded_results.csv"
-
-## Create directories if they don't exist ----
-if (!dir.exists(INTERMEDIATE_DIR)) {
-  dir.create(INTERMEDIATE_DIR, recursive = TRUE)
-  logger::log_info("Created intermediate directory: {INTERMEDIATE_DIR}")
-}
-
-if (!dir.exists(OUTPUT_DIR)) {
-  dir.create(OUTPUT_DIR, recursive = TRUE)
-  logger::log_info("Created output directory: {OUTPUT_DIR}")
-}
-
-#********************
-# HELPER FUNCTIONS
-#********************
-
-#' Format numbers with commas for better readability
-#' 
-#' @noRd
-format_with_commas <- function(x) {
-  format(x, big.mark = ",", scientific = FALSE)
-}
-
-#********************
-# PREPARE DATA FOR GEOCODING FUNCTIONS -----
-#********************
-
-# Prepare Address Data for Geocoding (Updated for Combined Addresses) ----
-#'
-#' This function reads a dataset (CSV or RDS) with pre-combined address fields
-#' and prepares it for geocoding. It handles datasets where address components
-#' are already combined into single fields (like "123 Main St, City, ST, 12345").
-#' For maximum cost efficiency, use deduplicate_by_address_only=TRUE to geocode 
-#' each unique address only once.
-#'
-#' @param input_file_path Character string. Path to input file (CSV or RDS format).
-#'   Default: INPUT_OBGYN_PROVIDER_DATASET constant
-#' @param address_column_name Character string. Name of the combined address column.
-#'   Default: "practice_address"
-#' @param output_csv_path Character string. Path for output CSV file.
-#'   Default: INTERMEDIATE_OBGYN_ADDRESSES_FILE constant
-#' @param deduplicate_by_npi Logical. Whether to keep only one record per unique
-#'   NPI-address combination. Default is TRUE
-#' @param deduplicate_by_address_only Logical. Whether to keep only one record 
-#'   per unique address (ignoring NPI). Default is FALSE. When TRUE, this 
-#'   minimizes geocoding costs by geocoding each address only once
-#' @param state_filter Character string. Optional state filter for testing
-#'   (e.g., "CO" for Colorado). Default is NULL to include all states
-#' @param verbose Logical. Whether to enable verbose logging. Default is TRUE
-#'
-#' @return A tibble with the processed data ready for geocoding
-#'  
-#' @section Output Columns:
-#' The returned data frame contains the following columns:
-#' \itemize{
-#'   \item \strong{address}: The address column ready for geocoding
-#'   \item \strong{npi}: National Provider Identifier (if available)
-#'   \item All other original columns from the input dataset
-#' }
-#'
-#' @examples
-#' # Example 1: Most cost-effective - geocode each unique address only once
-#' prepare_combined_addresses_for_geocoding(
-#'   deduplicate_by_address_only = TRUE,
-#'   output_csv_path = file.path(INTERMEDIATE_DIR, "unique_addresses_only.csv")
-#' )
-#'
-#' # Example 2: Test with Colorado addresses only
-#' prepare_combined_addresses_for_geocoding(
-#'   state_filter = "CO",
-#'   deduplicate_by_address_only = TRUE
-#' )
-#'
-#' # Example 3: Use mailing addresses instead of practice addresses
-#' prepare_combined_addresses_for_geocoding(
-#'   address_column_name = "pm_address",
-#'   deduplicate_by_address_only = TRUE
-#' )
-#'
-#' @importFrom readr read_csv read_rds write_csv
-#' @importFrom dplyr mutate distinct arrange desc group_by slice ungroup across all_of filter rename
-#' @importFrom stringr str_to_title str_detect
-#' @importFrom rlang sym
-#' @importFrom assertthat assert_that
-#' @importFrom logger log_info log_error log_warn
-#' @importFrom tools file_ext
-#' @importFrom tibble as_tibble
-#'
-#' @export
-prepare_combined_addresses_for_geocoding <- function(input_file_path = INPUT_OBGYN_PROVIDER_DATASET,
-                                                     address_column_name = "practice_address",
-                                                     output_csv_path = INTERMEDIATE_OBGYN_ADDRESSES_FILE,
-                                                     deduplicate_by_npi = TRUE,
-                                                     deduplicate_by_address_only = FALSE,
-                                                     state_filter = NULL,
-                                                     verbose = TRUE) {
-  
-  # Configure logging based on verbose setting
-  if (verbose) {
-    logger::log_info("Starting address preparation for geocoding (combined addresses)")
-    logger::log_info("Input file: {input_file_path}")
-    logger::log_info("Output file: {output_csv_path}")
-    logger::log_info("Address column: {address_column_name}")
-  }
-  
-  # Validate input parameters
-  assertthat::assert_that(is.character(input_file_path),
-                          msg = "input_file_path must be a character string")
-  assertthat::assert_that(file.exists(input_file_path),
-                          msg = paste("Input file does not exist:", input_file_path))
-  assertthat::assert_that(file.size(input_file_path) > 0,
-                          msg = "Input file is empty")
-  
-  assertthat::assert_that(is.character(address_column_name),
-                          msg = "address_column_name must be a character string")
-  assertthat::assert_that(is.character(output_csv_path),
-                          msg = "output_csv_path must be a character string")
-  
-  if (verbose) {
-    logger::log_info("Parameter validation completed successfully")
-  }
-  
-  # Determine file type and read data accordingly
-  input_file_extension <- tools::file_ext(input_file_path)
-  
-  if (verbose) {
-    logger::log_info("Detected file type: {input_file_extension}")
-  }
-  
-  tryCatch({
-    if (tolower(input_file_extension) == "rds") {
-      if (verbose) logger::log_info("Reading RDS file")
-      provider_dataset <- readr::read_rds(input_file_path)
-    } else if (tolower(input_file_extension) == "csv") {
-      if (verbose) logger::log_info("Reading CSV file")
-      provider_dataset <- readr::read_csv(input_file_path, show_col_types = FALSE)
-    } else {
-      stop(paste("Unsupported file type:", input_file_extension, 
-                 "- only CSV and RDS files are supported"))
-    }
-  }, error = function(e) {
-    logger::log_error("Failed to read input file: {e$message}")
-    stop(paste("Error reading file:", e$message))
-  })
-  
-  # Convert to tibble if not already
-  provider_dataset <- tibble::as_tibble(provider_dataset)
-  
-  # Validate dataset and required columns
-  assertthat::assert_that(is.data.frame(provider_dataset),
-                          msg = "Input data is not a valid data frame")
-  assertthat::assert_that(nrow(provider_dataset) > 0,
-                          msg = "Input dataset contains no rows")
-  
-  # Check if address column exists
-  assertthat::assert_that(address_column_name %in% names(provider_dataset),
-                          msg = paste("Address column not found:", address_column_name,
-                                      "\nAvailable columns:", paste(names(provider_dataset), collapse = ", ")))
-  
-  initial_row_count <- nrow(provider_dataset)
-  initial_column_count <- ncol(provider_dataset)
-  
-  if (verbose) {
-    logger::log_info("Dataset loaded successfully")
-    logger::log_info("Initial dimensions: {format_with_commas(initial_row_count)} rows x {initial_column_count} columns")
-    logger::log_info("Address column found: {address_column_name}")
-    
-    # Show sample addresses
-    sample_addresses <- head(provider_dataset[[address_column_name]], 3)
-    sample_addresses <- sample_addresses[!is.na(sample_addresses)]
-    if (length(sample_addresses) > 0) {
-      logger::log_info("Sample addresses:")
-      for (i in seq_along(sample_addresses)) {
-        logger::log_info("  {i}: {sample_addresses[i]}")
-      }
-    }
-  }
-  
-  # Rename address column to standardized name "address" for geocoding
-  if (address_column_name != "address") {
-    provider_dataset <- provider_dataset %>%
-      dplyr::rename(address = !!rlang::sym(address_column_name))
-    
-    if (verbose) {
-      logger::log_info("Renamed '{address_column_name}' column to 'address'")
-    }
-  }
-  
-  # Filter by state if requested
-  if (!is.null(state_filter)) {
-    if (verbose) {
-      logger::log_info("Filtering dataset for state: {state_filter}")
-    }
-    
-    pre_filter_count <- nrow(provider_dataset)
-    
-    # Filter addresses that contain the state abbreviation
-    provider_dataset <- provider_dataset %>%
-      dplyr::filter(stringr::str_detect(address, paste0("\\b", state_filter, "\\b")))
-    
-    post_filter_count <- nrow(provider_dataset)
-    records_filtered_out <- pre_filter_count - post_filter_count
-    
-    if (verbose) {
-      logger::log_info("State filtering completed")
-      logger::log_info("Records before state filter: {pre_filter_count}")
-      logger::log_info("Records after filtering for {state_filter}: {post_filter_count}")
-      logger::log_info("Records filtered out: {records_filtered_out}")
-    }
-    
-    # Check if any records remain
-    if (post_filter_count == 0) {
-      stop(paste("No records found for state:", state_filter))
-    }
-  }
-  
-  # Remove records with missing addresses
-  missing_addresses <- sum(is.na(provider_dataset$address) | provider_dataset$address == "")
-  if (missing_addresses > 0) {
-    if (verbose) {
-      logger::log_warn("Removing {missing_addresses} records with missing addresses")
-    }
-    provider_dataset <- provider_dataset %>%
-      dplyr::filter(!is.na(address) & address != "")
-  }
-  
-  # Deduplicate if requested
-  if (deduplicate_by_npi || deduplicate_by_address_only) {
-    
-    pre_dedup_count <- nrow(provider_dataset)
-    
-    if (deduplicate_by_address_only) {
-      if (verbose) {
-        logger::log_info("Deduplicating dataset by unique address only (most cost-effective)")
-        logger::log_info("This minimizes geocoding costs by geocoding each address only once")
-      }
-      
-      provider_dataset <- provider_dataset %>%
-        dplyr::group_by(address) %>%
-        dplyr::slice(1) %>%
-        dplyr::ungroup()
-      
-      combination_type <- "unique addresses"
-      
-    } else if (deduplicate_by_npi && "npi" %in% names(provider_dataset)) {
-      if (verbose) {
-        logger::log_info("Deduplicating dataset by NPI and address combination")
-      }
-      
-      provider_dataset <- provider_dataset %>%
-        dplyr::group_by(npi, address) %>%
-        dplyr::slice(1) %>%
-        dplyr::ungroup()
-      
-      combination_type <- "unique NPI-address combinations"
-      
-    } else {
-      if (verbose) {
-        logger::log_info("NPI column not found - falling back to address-only deduplication")
-      }
-      
-      provider_dataset <- provider_dataset %>%
-        dplyr::group_by(address) %>%
-        dplyr::slice(1) %>%
-        dplyr::ungroup()
-      
-      combination_type <- "unique addresses"
-    }
-    
-    post_dedup_count <- nrow(provider_dataset)
-    records_removed <- pre_dedup_count - post_dedup_count
-    
-    if (verbose) {
-      logger::log_info("Deduplication completed")
-      logger::log_info("Records before deduplication: {pre_dedup_count}")
-      logger::log_info("{stringr::str_to_title(combination_type)}: {post_dedup_count}")
-      logger::log_info("Duplicate records removed: {records_removed}")
-      
-      # Show cost savings for address-only deduplication
-      if (deduplicate_by_address_only) {
-        estimated_cost_after_free <- max(0, post_dedup_count - 10000) * 0.005
-        logger::log_info("Estimated geocoding cost (after 10k free): ${round(estimated_cost_after_free, 2)}")
-      }
-    }
-  }
-  
-  final_row_count <- nrow(provider_dataset)
-  final_column_count <- ncol(provider_dataset)
-  
-  if (verbose) {
-    logger::log_info("Address preparation completed")
-    logger::log_info("Final dimensions: {format_with_commas(final_row_count)} rows x {final_column_count} columns")
-    
-    # Show deduplication effectiveness if applied
-    if ((deduplicate_by_npi || deduplicate_by_address_only) && exists("records_removed")) {
-      deduplication_efficiency <- round((final_row_count / initial_row_count) * 100, 1)
-      logger::log_info("Deduplication efficiency: {deduplication_efficiency}% of original records retained")
-    }
-  }
-  
-  # Create output directory if it doesn't exist
-  output_directory <- dirname(output_csv_path)
-  if (!dir.exists(output_directory)) {
-    if (verbose) {
-      logger::log_info("Creating output directory: {output_directory}")
-    }
-    dir.create(output_directory, recursive = TRUE)
-  }
-  
-  # Write to CSV file
-  if (verbose) {
-    logger::log_info("Writing geocoding-ready dataset to CSV")
-  }
-  
-  tryCatch({
-    readr::write_csv(provider_dataset, output_csv_path)
-  }, error = function(e) {
-    logger::log_error("Failed to write output file: {e$message}")
-    stop(paste("Error writing CSV file:", e$message))
-  })
-  
-  # Validate output file was created
-  assertthat::assert_that(file.exists(output_csv_path),
-                          msg = "Output CSV file was not created")
-  
-  output_file_size_bytes <- file.size(output_csv_path)
-  output_file_size_mb <- round(output_file_size_bytes / (1024^2), 2)
-  
-  if (verbose) {
-    logger::log_info("Geocoding preparation completed successfully")
-    logger::log_info("Output file: {output_csv_path}")
-    logger::log_info("Output file size: {output_file_size_mb} MB")
-    logger::log_info("Records prepared for geocoding: {format_with_commas(final_row_count)}")
-  }
-  
-  # Return the processed dataset
-  return(provider_dataset)
-}
-# run ----
-output_prepare_combined_addresses_for_geocoding <- prepare_combined_addresses_for_geocoding(
-  input_file_path = INPUT_OBGYN_PROVIDER_DATASET,
-  deduplicate_by_address_only = TRUE,
-  deduplicate_by_npi = TRUE,
-  output_csv_path = file.path(INTERMEDIATE_DIR, "output_prepare_combined_addresses_for_geocoding.csv"),
-  verbose = TRUE
-)
-
-# Load the NPI subspecialists data (this is the file with subspecialty info)
-INPUT_NPI_SUBSPECIALISTS_FILE <- "data/03-search_and_process_npi/output/end_complete_npi_for_subspecialists.rds"
-
-# Read the subspecialists data
-npi_subspecialists_data <- readr::read_rds(INPUT_NPI_SUBSPECIALISTS_FILE) %>%
-  dplyr::distinct(NPI, .keep_all = TRUE)
-logger::log_info("NPI subspecialists loaded: {format(nrow(npi_subspecialists_data), big.mark = ',')} rows")
-
-# Check the column names to make sure we have the right ones
-logger::log_info("Column names in subspecialists data: {paste(names(npi_subspecialists_data), collapse = ', ')}")
-
-# Perform the inner join with the subspecialists data (not the OBGYN provider dataset)
-# We used the NPPES practice_location column for more accurate addressing than the GOBA city, state
-subspecialist_geocoding_data <- output_prepare_combined_addresses_for_geocoding %>%
-  dplyr::inner_join(
-    npi_subspecialists_data %>% dplyr::select(NPI, sub1, first_name, last_name),
-    by = c("npi" = "NPI")
-  ) %>%
-  dplyr::relocate(sub1, .before = 1) %>%   # Move sub1 to the first column
-  dplyr::arrange(npi) %>%
-  readr::write_csv("data/04-geocode/intermediate/subspecialist_geocoding_data.csv")
-
-logger::log_info("Results after inner join:")
-logger::log_info("  Original geocoding dataset: {format(nrow(output_prepare_combined_addresses_for_geocoding), big.mark = ',')} rows")
-logger::log_info("  Subspecialists dataset: {format(nrow(npi_subspecialists_data), big.mark = ',')} rows") 
-logger::log_info("  After inner join: {format(nrow(subspecialist_geocoding_data), big.mark = ',')} rows")
-
-# Show subspecialty breakdown
-subspecialty_counts <- table(subspecialist_geocoding_data$sub1, useNA = "ifany")
-logger::log_info("Subspecialty breakdown with unique addresses:")
-for (specialty in names(subspecialty_counts)) {
-  logger::log_info("  {specialty}: {subspecialty_counts[specialty]} records")
-}
-
-# Check a few sample records
-logger::log_info("Sample of subspecialist data:")
-sample_data <- subspecialist_geocoding_data %>%
-  dplyr::select(npi, plname, pfname, sub1, address) %>%
-  head(3)
-
-for (i in 1:nrow(sample_data)) {
-  logger::log_info("  {i}. {sample_data$pfname[i]} {sample_data$plname[i]} (NPI: {sample_data$npi[i]}, Specialty: {sample_data$sub1[i]})")
-  logger::log_info("     Address: {sample_data$address[i]}")
-}
-
-#**************************
-#* FILTER TO GYNECOLOGIC ONCOLOGISTS ONLY ----
-#**************************
-GO_subspecialist_geocoding_data <- subspecialist_geocoding_data %>%
-  dplyr::filter(sub1=="FPM") %>%
-  readr::write_csv("data/04-geocode/intermediate/GO_only_subspecialist_geocoding_data.csv")
-
-
-#**************************
-#* STEP A TO CLINICIAN_DATA TO GEOCODED_DATA 
-#**************************
-# 
-# Get data formatted the same so we can match it better.
-# geocoded_data <- read_csv("data/04-geocode/end_completed_clinician_data_geocoded_addresses_12_8_2023.csv")
-
-geocoded_data_to_match_house_number <- GO_subspecialist_geocoding_data %>%
-  mutate(address_cleaned = exploratory::str_remove(address, regex(", United States$", ignore_case = TRUE), remove_extra_space = TRUE), .after = ifelse("address" %in% names(.), "address", last_col())) %>%
-  mutate(address_cleaned = exploratory::str_remove_after(address_cleaned, sep = "\\-")) %>%
-  mutate(address_cleaned = str_replace(address_cleaned, "([A-Z]{2}) ([0-9]{5})", "\\1, \\2")) %>%
-  readr::write_csv("data/04-geocode/intermediate/geocoded_data_to_match_house_number.csv")
-
-
-#**************************
-#* STEP B TO MATCH CLINICIAN_DATA TO GEOCODED_DATA
-#**************************
-#*  https://slu-opengis.github.io/postmastr/index.html
-#postmastr’s functionality rests on an order of operations that must be followed to ensure correct parsing:
-# * prep
-# * postal code
-# * state
-# * city
-# * unit
-# * house number
-# * ranged house number
-# * fractional house number
-# * house suffix
-# * street directionals
-# * street suffix
-# * street name
-# * reconstruct
-
-# Prep
-clinician_data_for_matching <- readr::read_csv("data/04-geocode/intermediate/GO_only_subspecialist_geocoding_data.csv")
-clinician_data_postmastr <- clinician_data_for_matching %>% postmastr::pm_identify(var = "address")
-clinician_data_postmastr_min <- postmastr::pm_prep(clinician_data_postmastr, var = "address", type = "street") %>%
-  mutate(pm.address = stringr::str_squish(pm.address))
-
-# removes the second line address with the word "suite" and the suite number.  postmastr needs a little help at the start
-# clinician_data_postmastr_min <- clinician_data_postmastr_min %>%
-#   mutate(postmastr::pm.address = stringr::str_replace_all(pm.address, "\\bSUITE \\d+\\b", ""))
-
-# Postal code parsing
-# Postal code: Once we have our data prepared, we can begin working our way down the order of operations list.
-clinician_data_postmastr_min <- postmastr::pm_postal_parse(clinician_data_postmastr_min)
-
-# State parsing
-# Create state directory
-stateDict <- postmastr::pm_dictionary(locale = "us", type = "state", case = c("title", "upper")); stateDict
-postmastr::pm_state_all(clinician_data_postmastr_min, dictionary = stateDict) #Checks to make sure that all states have matches in the dataset with the created dictionary
-clinician_data_postmastr_min <- postmastr::pm_state_parse(clinician_data_postmastr_min, dictionary = stateDict)
-
-# City parsing
-# City dictionary
-# city <- pm_dictionary(type = "city", locale = "us", filter = c("AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA", "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ", "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY"), case = c("title", "upper", "lower")) %>%
-# write_rds("data/city.rds")
-
-# This is provided in the repository in the ""data/05-geocode-cleaning" path.  
-#This takes a while so a hard copy is stored in data/05-geocode-cleaning
-city <- readr::read_rds("data/05-geocode-cleaning/city.rds")
-
-postmastr::pm_city_all(clinician_data_postmastr_min, dictionary = city) #Checks to make sure that all cities have matches
-clinician_data_postmastr_min <- postmastr::pm_city_parse(clinician_data_postmastr_min, dictionary = city, locale = "us") # may take some time
-
-# House number parse
-postmastr::pm_house_all(clinician_data_postmastr_min)
-clinician_data_postmastr_min <- postmastr::pm_house_parse(clinician_data_postmastr_min, locale = "us")
-clinician_data_postmastr_min <- postmastr::pm_streetSuf_parse(clinician_data_postmastr_min, locale = "us")
-clinician_data_postmastr_min <- postmastr::pm_streetDir_parse(clinician_data_postmastr_min, locale = "us") 
-
-# Street Parse
-clinician_data_postmastr_min <- postmastr::pm_street_parse(clinician_data_postmastr_min, ordinal = TRUE, drop = TRUE, locale = "us")
-
-ACOG_Districts <- tyler::ACOG_Districts #Also found on READ.ME as an appendix.  
-
-# Writes the postmastr data back to the original dataframe
-clinician_data_postmastr_parsed <- postmastr::pm_replace(street = clinician_data_postmastr_min, 
-                                                         source = clinician_data_postmastr) %>%
-  exploratory::left_join(`ACOG_Districts`, by = join_by(`pm.state` == `State_Abbreviations`))
-#View(clinician_data_postmastr_parsed)
-
-# Reorder factor levels
-clinician_data_postmastr_parsed$ACOG_District <- factor(
-  clinician_data_postmastr_parsed$ACOG_District,
-  levels = c("District I", "District II", "District III", "District IV", "District V",
-             "District VI", "District VII", "District VIII", "District IX",
-             "District XI", "District XII"))
-
-# View(clinician_data_postmastr_parsed)
-readr::write_csv(clinician_data_postmastr_parsed, "data/04-geocode/output/end_postmastr_clinician_data.csv")
-
-
-
-# 
-# #**********************************************
-# # INNER JOIN BY HOUSE_NUMBER AND STATE
-# #**********************************************
-# # Provenance from 05-geocode-cleaning.R at the top of the script
-# geocoded_data_to_match_house_number <- readr::read_csv("data/05-geocode-cleaning/geocoded_data_to_match_house_number.csv")
-# 
-# # Provenance
-# clinician_data_postmastr_parsed <- readr::read_csv("data/05-geocode-cleaning/postmastr_clinician_data.csv")
-# 
-# inner_join_postmastr_clinician_data <- clinician_data_postmastr_parsed %>%
-#   rename(house_number = pm.house, street = pm.street) %>%
-#   exploratory::left_join(`geocoded_data_to_match_house_number`, by = c("house_number" = "house_number", "pm.state" = "state_code"), exclude_target_columns = TRUE, target_columns = c("country_code", "district", "state", "country"), ignorecase=TRUE) %>%
-#   distinct(pm.uid, .keep_all = TRUE) %>%
-#   filter(!is.na(score)) 
-# 
-# # Define the number of ACOG districts
-# num_acog_districts <- 11
-# 
-# # Create a custom color palette using viridis.  I like using the viridis palette because it is ok for color blind folks.  
-# district_colors <- viridis::viridis(num_acog_districts, option = "viridis")
-# 
-# # Generate ACOG districts with geometry borders in sf using tyler::generate_acog_districts_sf()
-# acog_districts_sf <- tyler::generate_acog_districts_sf()
-# 
-
-#**********************************************
-# SANITY CHECK
-#**********************************************
-#
-#TODO:  I get an error:  Error in leaflet::addLegend(., position = "bottomright", colors = district_colors,  : 
-# 'colors' and 'labels' must be of the same length
-# In addition: Warning message:
-#   Unknown or uninitialised column: `ACOG_District`. 
-
-
-leaflet::leaflet(data = inner_join_postmastr_clinician_data) %>%
-  leaflet::addCircleMarkers(
-    data = inner_join_postmastr_clinician_data,
-    lng = ~long,
-    lat = ~lat,
-    radius = 3,         # Adjust the radius as needed
-    stroke = TRUE,      # Add a stroke (outline)
-    weight = 1,         # Adjust the outline weight as needed
-    color = district_colors[as.numeric(inner_join_postmastr_clinician_data$ACOG_District)],   # Set the outline color to black
-    fillOpacity = 0.8#,  # Fill opacity
-    #popup = as.formula(paste0("~", popup_var))  # Popup text based on popup_var argument
-  ) %>%
-  # Add ACOG district boundaries
-  leaflet::addPolygons(
-    data = acog_districts_sf,
-    color = district_colors[as.numeric(inner_join_postmastr_clinician_data$ACOG_District)],      # Boundary color
-    weight = 2,         # Boundary weight
-    fill = TRUE,       # No fill
-    opacity = 0.1,      # Boundary opacity
-    popup = ~acog_districts_sf$ACOG_District   # Popup text
-  ) %>%
-  #Add a legend
-  leaflet::addLegend(
-    position = "bottomright",   # Position of the legend on the map
-    colors = district_colors,   # Colors for the legend
-    labels = levels(inner_join_postmastr_clinician_data$ACOG_District),   # Labels for legend items
-    title = "ACOG Districts"   # Title for the legend
-  )
+###
