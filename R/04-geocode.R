@@ -1,5 +1,5 @@
-#' 
-#' 
+
+# Setup ----
 source("R/01-setup.R")
 
 # Moved to 03.5-address-cleaning.R 
@@ -773,7 +773,7 @@ geocoding_using_HERE_API <- function(csv_file_path,
 }
 
 #******
-# Geocoding with caching
+# Geocoding with caching ----
 #******
 # Geocoding Using HERE API with Intelligent Caching ----
 #'
