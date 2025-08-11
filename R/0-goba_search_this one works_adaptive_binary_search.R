@@ -1173,8 +1173,8 @@ search_physicians_by_sequential_ids <- function(start_physician_id,
 # run ----
 # Search starting from ID 9000000 for 10 physicians
 results <- search_physicians_by_sequential_ids(
-  start_physician_id = 9000000,
-  target_physician_count = 10,
+  start_physician_id = 9014000,
+  target_physician_count = 1000,
   batch_save_size = 50
 )
 

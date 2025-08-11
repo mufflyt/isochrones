@@ -1,3 +1,6 @@
+# Setup and Configuration ----
+source("R/01-setup.R")
+
 # install.packages(c("rvest", "httr2", "pdftools", "stringr", "assertthat"))
 library(rvest)
 library(httr2)
@@ -960,15 +963,6 @@ extract_subspecialty_continuing_cert_from_pdf_text <- function(pdf_text) {
 }
 
 # run ----
-# Test with Tor using the enhanced configuration
-elena_results_browser <- extract_subspecialty_from_pdf_letters(
-  physician_id_list = 9020382,
-  use_proxy_requests = TRUE,
-  proxy_url_requests = "socks5://127.0.0.1:9150",  # Tor Browser port
-  chunk_size_records = 10,
-  verbose_extraction_logging = TRUE
-)
-
 # Load your physician data
 physician_data <- readr::read_rds("physician_data/discovery_results/physician_data_from_exploratory_after_2020.rds")
 
@@ -979,9 +973,13 @@ physician_id_list <- physician_data$userid
 length(physician_id_list)  # Should show 7,083
 head(physician_id_list)    # Should show first few IDs like 9046330, 9046328, etc.
 
+# Alternative approach
+# Sequential vector of IDs from 9014566 to 9019566
+physician_id_list <- 9014500:9025566
+
 # Run the full extraction with optimal settings for 7,083 physicians
 large_scale_results <- extract_subspecialty_from_pdf_letters(
-  physician_id_list = physician_id_list,                    # All 7,083 IDs
+  physician_id_list = physician_id_list,                    
   use_proxy_requests = TRUE,                                # Use Tor for anonymity
   proxy_url_requests = "socks5://127.0.0.1:9150",         # Your working Tor BROWSER setup
   output_directory_extractions = "physician_data/abog_large_scale_2025",  # Organized output folder
@@ -992,3 +990,487 @@ large_scale_results <- extract_subspecialty_from_pdf_letters(
   verbose_extraction_logging = TRUE                        # Monitor progress
 )
 
+# Based on the search results, non-expiring certification from the American Board of Obstetrics and Gynecology (ABOG) ended in 1986. If you achieved specialty certification prior to 1986, you hold a certificate that is not time-limited and your certificate doesn't expire
+
+# Helper function ----
+# dplyr::distinct takes the first npi that it comes across.  Here it takes the first one with sub1 filled out.  
+# df %>%
+#   dplyr::group_by(userid) %>%
+#   dplyr::slice_max(order_by = !is.na(sub1), n = 1, with_ties = FALSE) %>%
+#   dplyr::ungroup()
+
+
+# NOT WORKING!!! -----
+# Test with just the subspecialty extraction files
+subspecialty_files <- list.files(
+  "physician_data/discovery_results", 
+  pattern = "subspecialty_extractions", 
+  full.names = TRUE
+)
+
+length(subspecialty_files)  # How many subspecialty files?
+
+# Read one subspecialty file to test
+test_file <- readr::read_csv(subspecialty_files[1])
+table(test_file$subspecialty_name, useNA = "always")
+
+# Count subspecialists in each file type
+merged_data_consolidated %>%
+  mutate(
+    file_type = case_when(
+      str_detect(source_file, "subspecialty_extractions") ~ "subspecialty",
+      str_detect(source_file, "sequential_discovery") ~ "discovery", 
+      TRUE ~ "other"
+    )
+  ) %>%
+  group_by(file_type) %>%
+  summarise(
+    total_rows = n(),
+    with_subspecialty = sum(!is.na(subspecialty_name) & subspecialty_name != ""),
+    subspecialty_rate = round(with_subspecialty / total_rows * 100, 2)
+  )
+
+# Process subspecialty files separately
+subspecialty_data <- map_dfr(subspecialty_files, readr::read_csv) %>%
+  filter(!is.na(subspecialty_name) & subspecialty_name != "")
+
+# Process discovery files separately  
+discovery_files <- list.files(
+  "physician_data/discovery_results",
+  pattern = "sequential_discovery", 
+  full.names = TRUE
+)
+
+discovery_data <- map_dfr(discovery_files, readr::read_csv)
+
+# Check subspecialty counts
+table(subspecialty_data$subspecialty_name, useNA = "always")
+
+
+
+# Try merging just 2 files manually to see what happens
+file1 <- readr::read_csv(subspecialty_files[1])
+file2 <- readr::read_csv(discovery_files[1])
+
+# Check subspecialty counts before merge
+cat("File 1 subspecialties:", sum(!is.na(file1$subspecialty_name)), "\n")
+cat("File 2 subspecialities:", sum(!is.na(file2$subspecialty_name)), "\n")
+
+# Merge and check after
+manual_merge <- bind_rows(file1, file2)
+cat("After merge subspecialties:", sum(!is.na(manual_merge$subspecialty_name)), "\n")
+
+
+#' # Merge All CSV Files in a Directory -----
+#' #' Merge All CSV Files in a Directory
+#' #'
+#' #' This function reads all CSV files from a specified directory and combines them
+#' #' into a single data frame. Handles column name standardization and provides
+#' #' detailed logging of the merge process.
+#' #'
+#' #' @param directory_path character. Path to directory containing CSV files.
+#' #'   Default: "physician_data/discovery_results"
+#' #' @param output_file_path character. Path to save merged CSV file. If NULL,
+#' #'   no file is saved. Default: NULL
+#' #' @param verbose_logging logical. Enable detailed logging. Default: TRUE
+#' #' @param standardize_column_names logical. Whether to standardize column names
+#' #'   across files. Default: TRUE
+#' #' @param remove_duplicates logical. Whether to remove duplicate rows based on
+#' #'   all columns. Default: FALSE
+#' #' @param add_source_file_column logical. Whether to add a column indicating
+#' #'   source file for each row. Default: TRUE
+#' #'
+#' #' @return data.frame containing all merged CSV data
+#' #'
+#' #' @examples
+#' #' # Example 1: Basic merge with logging
+#' #' merged_physician_data <- merge_all_csv_files_in_directory(
+#' #'   directory_path = "physician_data/discovery_results",
+#' #'   verbose_logging = TRUE
+#' #' )
+#' #'
+#' #' # Example 2: Merge and save to file with source tracking
+#' #' comprehensive_dataset <- merge_all_csv_files_in_directory(
+#' #'   directory_path = "physician_data/discovery_results",
+#' #'   output_file_path = "physician_data/merged_discovery_results.csv",
+#' #'   add_source_file_column = TRUE,
+#' #'   verbose_logging = TRUE
+#' #' )
+#' #'
+#' #' # Example 3: Clean merge with duplicate removal
+#' #' clean_merged_data <- merge_all_csv_files_in_directory(
+#' #'   directory_path = "physician_data/discovery_results",
+#' #'   standardize_column_names = TRUE,
+#' #'   remove_duplicates = TRUE,
+#' #'   add_source_file_column = FALSE,
+#' #'   verbose_logging = FALSE
+#' #' )
+#' #'
+#' #' @importFrom readr read_csv write_csv
+#' #' @importFrom dplyr bind_rows mutate
+#' #' @importFrom stringr str_detect str_replace_all str_to_lower
+#' #' @importFrom logger log_info log_warn log_error
+#' #' @importFrom assertthat assert_that
+#' #'
+#' #' @export
+#' merge_all_csv_files_in_directory <- function(directory_path = "physician_data/discovery_results",
+#'                                              output_file_path = NULL,
+#'                                              verbose_logging = TRUE,
+#'                                              standardize_column_names = TRUE,
+#'                                              remove_duplicates = FALSE,
+#'                                              add_source_file_column = TRUE) {
+#'   
+#'   # Input validation
+#'   assertthat::assert_that(is.character(directory_path))
+#'   assertthat::assert_that(dir.exists(directory_path), 
+#'                           msg = paste("Directory does not exist:", directory_path))
+#'   assertthat::assert_that(is.logical(verbose_logging))
+#'   assertthat::assert_that(is.logical(standardize_column_names))
+#'   assertthat::assert_that(is.logical(remove_duplicates))
+#'   assertthat::assert_that(is.logical(add_source_file_column))
+#'   
+#'   if (verbose_logging) {
+#'     logger::log_info("🔍 Starting CSV file merge process")
+#'     logger::log_info("📁 Directory: {directory_path}")
+#'   }
+#'   
+#'   # Find all CSV files in directory
+#'   csv_file_paths <- list.files(
+#'     path = directory_path,
+#'     pattern = "\\.csv$",
+#'     full.names = TRUE,
+#'     recursive = FALSE
+#'   )
+#'   
+#'   if (length(csv_file_paths) == 0) {
+#'     if (verbose_logging) {
+#'       logger::log_warn("⚠️ No CSV files found in directory: {directory_path}")
+#'     }
+#'     return(data.frame())
+#'   }
+#'   
+#'   if (verbose_logging) {
+#'     logger::log_info("📄 Found {length(csv_file_paths)} CSV files:")
+#'     for (i in seq_along(csv_file_paths)) {
+#'       file_name <- basename(csv_file_paths[i])
+#'       logger::log_info("  {i}. {file_name}")
+#'     }
+#'   }
+#'   
+#'   # Initialize list to store data frames
+#'   csv_data_list <- list()
+#'   successful_files <- character(0)
+#'   failed_files <- character(0)
+#'   total_rows_processed <- 0
+#'   
+#'   # Read each CSV file
+#'   for (i in seq_along(csv_file_paths)) {
+#'     current_file_path <- csv_file_paths[i]
+#'     current_file_name <- basename(current_file_path)
+#'     
+#'     if (verbose_logging) {
+#'       logger::log_info("📖 Reading file {i}/{length(csv_file_paths)}: {current_file_name}")
+#'     }
+#'     
+#'     tryCatch({
+#'       # Read CSV file with consistent column types
+#'       current_data <- readr::read_csv(
+#'         current_file_path, 
+#'         show_col_types = FALSE,
+#'         col_types = readr::cols(.default = readr::col_character())
+#'       )
+#'       
+#'       # Add source file column if requested
+#'       if (add_source_file_column) {
+#'         current_data <- current_data %>%
+#'           dplyr::mutate(source_file = current_file_name, .before = 1)
+#'       }
+#'       
+#'       # Standardize column names if requested
+#'       if (standardize_column_names) {
+#'         current_data <- standardize_csv_column_names(current_data, verbose_logging)
+#'       }
+#'       
+#'       # Store data frame
+#'       csv_data_list[[i]] <- current_data
+#'       successful_files <- c(successful_files, current_file_name)
+#'       
+#'       current_row_count <- nrow(current_data)
+#'       total_rows_processed <- total_rows_processed + current_row_count
+#'       
+#'       if (verbose_logging) {
+#'         logger::log_info("  ✅ Success: {current_row_count} rows, {ncol(current_data)} columns")
+#'         if (standardize_column_names) {
+#'           logger::log_info("  📝 Columns: {paste(names(current_data)[1:min(5, ncol(current_data))], collapse = ', ')}...")
+#'         }
+#'       }
+#'       
+#'     }, error = function(e) {
+#'       failed_files <<- c(failed_files, current_file_name)
+#'       if (verbose_logging) {
+#'         logger::log_error("  ❌ Failed to read {current_file_name}: {e$message}")
+#'       }
+#'     })
+#'   }
+#'   
+#'   # Check if any files were successfully read
+#'   if (length(csv_data_list) == 0) {
+#'     if (verbose_logging) {
+#'       logger::log_error("❌ No CSV files could be read successfully")
+#'     }
+#'     return(data.frame())
+#'   }
+#'   
+#'   # Remove NULL entries (failed reads)
+#'   csv_data_list <- csv_data_list[!sapply(csv_data_list, is.null)]
+#'   
+#'   if (verbose_logging) {
+#'     logger::log_info("🔗 Combining {length(csv_data_list)} data frames...")
+#'   }
+#'   
+#'   # Combine all data frames with type conversion
+#'   tryCatch({
+#'     # Convert all data frames to have consistent column types before binding
+#'     standardized_data_list <- lapply(csv_data_list, function(df) {
+#'       # Convert userid columns to character to avoid type conflicts
+#'       userid_columns <- names(df)[stringr::str_detect(names(df), "userid")]
+#'       for (col in userid_columns) {
+#'         df[[col]] <- as.character(df[[col]])
+#'       }
+#'       return(df)
+#'     })
+#'     
+#'     merged_dataset <- dplyr::bind_rows(standardized_data_list)
+#'     
+#'     if (verbose_logging) {
+#'       logger::log_info("✅ Successfully combined data frames")
+#'       logger::log_info("📊 Merged dataset: {nrow(merged_dataset)} rows, {ncol(merged_dataset)} columns")
+#'     }
+#'     
+#'     # Remove duplicates if requested
+#'     if (remove_duplicates) {
+#'       original_row_count <- nrow(merged_dataset)
+#'       
+#'       # Remove duplicates based on all columns except source_file
+#'       if (add_source_file_column) {
+#'         merged_dataset <- merged_dataset %>%
+#'           dplyr::distinct(dplyr::across(-source_file), .keep_all = TRUE)
+#'       } else {
+#'         merged_dataset <- merged_dataset %>%
+#'           dplyr::distinct()
+#'       }
+#'       
+#'       duplicates_removed <- original_row_count - nrow(merged_dataset)
+#'       
+#'       if (verbose_logging) {
+#'         logger::log_info("🧹 Removed {duplicates_removed} duplicate rows")
+#'         logger::log_info("📊 Final dataset: {nrow(merged_dataset)} rows")
+#'       }
+#'     }
+#'     
+#'     # Save to file if requested
+#'     if (!is.null(output_file_path)) {
+#'       if (verbose_logging) {
+#'         logger::log_info("💾 Saving merged dataset to: {output_file_path}")
+#'       }
+#'       
+#'       # Create output directory if it doesn't exist
+#'       output_directory <- dirname(output_file_path)
+#'       if (!dir.exists(output_directory)) {
+#'         dir.create(output_directory, recursive = TRUE)
+#'         if (verbose_logging) {
+#'           logger::log_info("📁 Created output directory: {output_directory}")
+#'         }
+#'       }
+#'       
+#'       readr::write_csv(merged_dataset, output_file_path)
+#'       
+#'       if (verbose_logging) {
+#'         file_size_mb <- round(file.size(output_file_path) / 1024^2, 2)
+#'         logger::log_info("✅ File saved successfully ({file_size_mb} MB)")
+#'       }
+#'     }
+#'     
+#'     # Print summary
+#'     if (verbose_logging) {
+#'       logger::log_info("🏁 CSV merge completed successfully")
+#'       logger::log_info("=" %>% rep(60) %>% paste(collapse = ""))
+#'       logger::log_info("📈 MERGE SUMMARY:")
+#'       logger::log_info("  • Total files found: {length(csv_file_paths)}")
+#'       logger::log_info("  • Successfully read: {length(successful_files)}")
+#'       logger::log_info("  • Failed to read: {length(failed_files)}")
+#'       logger::log_info("  • Total rows processed: {total_rows_processed}")
+#'       logger::log_info("  • Final dataset rows: {nrow(merged_dataset)}")
+#'       logger::log_info("  • Final dataset columns: {ncol(merged_dataset)}")
+#'       
+#'       if (length(failed_files) > 0) {
+#'         logger::log_info("  • Failed files: {paste(failed_files, collapse = ', ')}")
+#'       }
+#'       
+#'       if (!is.null(output_file_path)) {
+#'         logger::log_info("  • Output file: {output_file_path}")
+#'       }
+#'       
+#'       logger::log_info("=" %>% rep(60) %>% paste(collapse = ""))
+#'     }
+#'     
+#'     return(merged_dataset)
+#'     
+#'   }, error = function(e) {
+#'     if (verbose_logging) {
+#'       logger::log_error("❌ Error combining data frames: {e$message}")
+#'     }
+#'     return(data.frame())
+#'   })
+#' }
+#' 
+#' #' @noRd
+#' standardize_csv_column_names <- function(data_frame, verbose_logging) {
+#'   original_names <- names(data_frame)
+#'   
+#'   # Common column name mappings
+#'   name_mappings <- list(
+#'     # Physician identification
+#'     "physician_name" = "name",
+#'     "doctor_name" = "name",
+#'     "physician_id" = "userid",
+#'     "doctor_id" = "userid",
+#'     "abog_id" = "abog_id_number",
+#'     "id" = "userid",
+#'     
+#'     # Subspecialty information
+#'     "subspecialty" = "subspecialty_name",
+#'     "specialty" = "subspecialty_name",
+#'     "sub_specialty" = "subspecialty_name",
+#'     
+#'     # Certification information
+#'     "cert_date" = "primary_cert_date",
+#'     "certification_date" = "primary_cert_date",
+#'     "cert_status" = "primary_cert_status",
+#'     "certification_status" = "primary_cert_status",
+#'     
+#'     # Location information
+#'     "state_name" = "state",
+#'     "city_name" = "city"
+#'   )
+#'   
+#'   # Apply name mappings
+#'   new_names <- original_names
+#'   for (old_name in names(name_mappings)) {
+#'     if (old_name %in% original_names) {
+#'       new_name <- name_mappings[[old_name]]
+#'       new_names[which(original_names == old_name)] <- new_name
+#'       
+#'       if (verbose_logging) {
+#'         logger::log_info("    🔄 Column renamed: '{old_name}' → '{new_name}'")
+#'       }
+#'     }
+#'   }
+#'   
+#'   # Clean column names (remove special characters, convert to lowercase)
+#'   cleaned_names <- new_names %>%
+#'     stringr::str_replace_all("[^a-zA-Z0-9_]", "_") %>%
+#'     stringr::str_replace_all("_{2,}", "_") %>%
+#'     stringr::str_replace_all("^_|_$", "") %>%
+#'     stringr::str_to_lower()
+#'   
+#'   # Apply cleaned names
+#'   names(data_frame) <- cleaned_names
+#'   
+#'   return(data_frame)
+#' }
+#' 
+#' #run ----
+#' merged_data <- merge_all_csv_files_in_directory(
+#'   directory_path = "physician_data/discovery_results",
+#'   output_file_path = "physician_data/merged_discovery_results.csv",
+#'   verbose_logging = TRUE,
+#'   standardize_column_names = TRUE,
+#'   add_source_file_column = TRUE
+#' )
+#' View(merged_data)
+#' glimpse(merged_data)
+#' str(merged_data)
+#' 
+#' # Coalesce all userid columns into the main userid column ----
+#' merged_data_consolidated <- merged_data %>%
+#'   # Get all userid column names
+#'   {
+#'     userid_cols <- names(.)[str_detect(names(.), "^userid")]
+#'     print(paste("Found userid columns:", paste(userid_cols, collapse = ", ")))
+#'     
+#'     # Coalesce all userid columns into the first one (userid)
+#'     mutate(., userid = coalesce(!!!syms(userid_cols))) %>%
+#'       
+#'       # Remove all the other userid... columns
+#'       select(-any_of(userid_cols[-1]))  # Keep the first one (userid), remove the rest
+#'   }
+#' 
+#' # Check the results
+#' glimpse(merged_data_consolidated)
+#' 
+#' # Verify no data was lost in the userid column
+#' cat("Original userid NAs:", sum(is.na(merged_data$userid)), "\n")
+#' cat("Consolidated userid NAs:", sum(is.na(merged_data_consolidated$userid)), "\n")
+#' cat("Total rows maintained:", nrow(merged_data_consolidated), "\n")
+#' 
+#' # ----
+#' #View(merged_data_consolidated)
+#' 
+#' # Fill in variables and chose to remove duplicates with sub1 ----
+#' merged_data_deduplicated <- merged_data %>%
+#'   dplyr::group_by(userid) %>%
+#'   dplyr::arrange(userid) %>%
+#'   
+#'   # Fill down first
+#'   tidyr::fill(
+#'     name, subspecialty_name, primary_certification, 
+#'     physician_city, physician_state, physician_location, city, state, id, clinicallyactive, primary_certification, clinically_active_status, clinicallyactive, sub1, 
+#'     .direction = "down"
+#'   ) %>%
+#'   
+#'   # Then fill up to catch any remaining NAs
+#'   tidyr::fill(
+#'     name, subspecialty_name, primary_certification, 
+#'     physician_city, physician_state, physician_location, city, state, id, clinicallyactive, primary_certification, clinically_active_status, clinicallyactive, sub1, 
+#'     .direction = "up"
+#'   ) %>%
+#'   
+#'   # Then select the best row
+#'   dplyr::slice_max(
+#'     order_by = !is.na(sub1) | !is.na(subspecialty_name),
+#'     n = 1,
+#'     with_ties = FALSE
+#'   ) %>%
+#'   dplyr::ungroup()
+#' 
+#' View(merged_data_deduplicated)
+#' 
+#' # Or use table() to include NAs
+#' table(merged_data_consolidated$subspecialty_name, useNA = "always")
+#' 
+#' # Calculate NA percentage for each column
+#' na_summary <- merged_data_deduplicated %>%
+#'   dplyr::summarise(across(everything(), ~ round(mean(is.na(.)) * 100, 1))) %>%
+#'   tidyr::pivot_longer(everything(), names_to = "column", values_to = "na_percentage") %>%
+#'   dplyr::arrange(desc(na_percentage))
+#' 
+#' # View the summary
+#' print(na_summary)
+#' 
+#' # Show columns with >99% NAs ----
+#' high_na_columns <- na_summary %>%
+#'   dplyr::filter(na_percentage > 99) %>%
+#'   dplyr::pull(column)
+#' 
+#' print(paste("Columns with >99% NAs:", paste(high_na_columns, collapse = ", ")))
+#' 
+#' cleaned_data <- merged_data_deduplicated %>%
+#'   dplyr::select(-all_of(high_na_columns)) %>%
+#'   dplyr::select(-abog_id_number) %>%
+#'   dplyr::arrange(userid) %>%
+#'   readr::write_csv("data/0-Download/output/merged_data_deduplicated.csv")
+#' # View(cleaned_data)
+#' 
+#' miss_var_summary(cleaned_data)
+#' 
