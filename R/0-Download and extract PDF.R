@@ -13,14 +13,7 @@ library(cli)
 
 # Based on the search results, non-expiring certification from the American Board of Obstetrics and Gynecology (ABOG) ended in 1986. If you achieved specialty certification prior to 1986, you hold a certificate that is not time-limited and your certificate doesn't expire
 
-# Helper function ----
-# dplyr::distinct takes the first npi that it comes across.  Here it takes the first one with sub1 filled out.  
-# df %>%
-#   dplyr::group_by(userid) %>%
-#   dplyr::slice_max(order_by = !is.na(sub1), n = 1, with_ties = FALSE) %>%
-#   dplyr::ungroup()
-
-# new ----
+# Extract ABOG Subspecialty Data via PDF Certification Letters ----
 #' Extract ABOG Subspecialty Data via PDF Certification Letters
 #'
 #' This function automates the process of downloading ABOG certification letter PDFs
@@ -1123,11 +1116,11 @@ extract_subspecialty_continuing_cert_from_pdf_text <- function(pdf_text) {
 # run ----
 # Run the full extraction with optimal settings
 large_scale_results <- extract_subspecialty_from_pdf_letters(
-  physician_id_list = 1:4,                    
+  physician_id_list = next_ids,                    
   use_proxy_requests = TRUE,
   proxy_url_requests = "socks5://127.0.0.1:9150",
   output_directory_extractions = "physician_data/abog_large_scale_2025",
-  request_delay_seconds = 2.0,
+  request_delay_seconds = 1.0,
   chunk_size_records = 100,
   cleanup_downloaded_pdfs = FALSE,
   save_individual_files = TRUE,
@@ -1135,123 +1128,821 @@ large_scale_results <- extract_subspecialty_from_pdf_letters(
 )
 
 
-# Where to search?  -----
-#' Smart ABOG Physician ID Search Tracking with Non-Existent ID Filtering
+#' # Where to search?  -----
+#' #' Smart ABOG Physician ID Search Tracking with Non-Existent ID Filtering
+#' #' 
+#' #' This improved system tracks which IDs exist vs don't exist, and excludes
+#' #' non-existent IDs from future searches automatically.
 #' 
-#' This improved system tracks which IDs exist vs don't exist, and excludes
-#' non-existent IDs from future searches automatically.
+#' #' Analyze Search Results with Smart ID Classification
+#' #'
+#' #' @param results_directory character. Directory containing extraction results
+#' #' @param verbose logical. Enable detailed logging
+#' #' @param save_exclusion_list logical. Save non-existent IDs to file
+#' #'
+#' #' @return list containing smart search analysis and recommendations
+#' #'
+#' #' @examples
+#' #' # Smart analysis that tracks non-existent IDs
+#' #' smart_analysis <- analyze_search_results_smart(
+#' #'   results_directory = "physician_data/abog_large_scale_2025",
+#' #'   verbose = TRUE,
+#' #'   save_exclusion_list = TRUE
+#' #' )
+#' #'
+#' #' @importFrom readr read_csv write_csv
+#' #' @importFrom dplyr bind_rows arrange distinct summarise group_by filter
+#' #' @importFrom logger log_info log_warn
+#' #' @export
+#' analyze_search_results_smart <- function(results_directory, 
+#'                                          verbose = TRUE,
+#'                                          save_exclusion_list = TRUE) {
+#'   
+#'   if (verbose) {
+#'     logger::log_info("🧠 Smart analysis of ABOG search results...")
+#'   }
+#'   
+#'   # Find all extraction result files
+#'   all_csv_files <- list.files(
+#'     results_directory, 
+#'     pattern = "(combined_subspecialty_extractions|chunk_.*_subspecialty_extractions).*\\.csv$", 
+#'     recursive = TRUE, 
+#'     full.names = TRUE
+#'   )
+#'   
+#'   if (length(all_csv_files) == 0) {
+#'     if (verbose) {
+#'       logger::log_warn("⚠️ No extraction result files found in {results_directory}")
+#'     }
+#'     return(NULL)
+#'   }
+#'   
+#'   if (verbose) {
+#'     logger::log_info("📁 Found {length(all_csv_files)} result files")
+#'   }
+#'   
+#'   # Read and combine all results
+#'   all_search_results <- list()
+#'   
+#'   for (csv_file in all_csv_files) {
+#'     tryCatch({
+#'       file_data <- readr::read_csv(csv_file, show_col_types = FALSE)
+#'       
+#'       # Extract search info from filename
+#'       file_info <- extract_search_info_from_filename(basename(csv_file))
+#'       
+#'       # Add file metadata to data
+#'       file_data$source_file <- basename(csv_file)
+#'       file_data$extraction_date <- file_info$extraction_date
+#'       file_data$extraction_time <- file_info$extraction_time
+#'       
+#'       all_search_results[[length(all_search_results) + 1]] <- file_data
+#'       
+#'       if (verbose) {
+#'         logger::log_info("✅ Loaded {nrow(file_data)} records from {basename(csv_file)}")
+#'       }
+#'       
+#'     }, error = function(e) {
+#'       if (verbose) {
+#'         logger::log_warn("❌ Failed to read {basename(csv_file)}: {e$message}")
+#'       }
+#'     })
+#'   }
+#'   
+#'   if (length(all_search_results) == 0) {
+#'     if (verbose) {
+#'       logger::log_warn("⚠️ No valid data found in result files")
+#'     }
+#'     return(NULL)
+#'   }
+#'   
+#'   # Combine all results
+#'   combined_results <- dplyr::bind_rows(all_search_results)
+#'   
+#'   # Smart classification of physician IDs
+#'   id_classification <- classify_physician_ids_smart(combined_results, verbose)
+#'   
+#'   # Create smart search analysis
+#'   smart_analysis <- create_smart_search_analysis(combined_results, id_classification, verbose)
+#'   
+#'   # Save exclusion lists if requested
+#'   if (save_exclusion_list) {
+#'     save_exclusion_lists(id_classification, results_directory, verbose)
+#'   }
+#'   
+#'   # Generate smart recommendations
+#'   smart_recommendations <- generate_smart_recommendations(smart_analysis, id_classification, verbose)
+#'   
+#'   return(list(
+#'     smart_analysis = smart_analysis,
+#'     id_classification = id_classification,
+#'     recommendations = smart_recommendations,
+#'     combined_data = combined_results
+#'   ))
+#' }
+#' 
+#' #' @noRd
+#' classify_physician_ids_smart <- function(combined_data, verbose) {
+#'   
+#'   if (verbose) {
+#'     logger::log_info("🔍 Classifying physician IDs by existence and success...")
+#'   }
+#'   
+#'   # Group by physician_id and analyze each
+#'   id_summary <- combined_data %>%
+#'     dplyr::group_by(physician_id) %>%
+#'     dplyr::summarise(
+#'       search_count = dplyr::n(),
+#'       has_name = any(!is.na(physician_name)),
+#'       has_valid_data = any(!is.na(physician_name) & physician_name != ""),
+#'       has_subspecialty = any(!is.na(subspecialty_name) & subspecialty_name != ""),
+#'       latest_search_date = max(extraction_timestamp, na.rm = TRUE),
+#'       .groups = "drop"
+#'     )
+#'   
+#'   # Classify IDs based on search results
+#'   id_classification <- list(
+#'     # IDs that exist and have valid physician data
+#'     valid_existing = id_summary$physician_id[id_summary$has_valid_data],
+#'     
+#'     # IDs that were searched but returned no valid physician data (likely don't exist)
+#'     non_existent = id_summary$physician_id[!id_summary$has_valid_data & id_summary$search_count >= 1],
+#'     
+#'     # IDs that exist but have minimal data (exist but incomplete records)
+#'     minimal_data = id_summary$physician_id[id_summary$has_name & !id_summary$has_valid_data],
+#'     
+#'     # IDs with subspecialty training
+#'     with_subspecialty = id_summary$physician_id[id_summary$has_subspecialty],
+#'     
+#'     # All searched IDs
+#'     all_searched = sort(unique(combined_data$physician_id))
+#'   )
+#'   
+#'   # Additional analysis
+#'   id_classification$summary <- list(
+#'     total_searched = length(id_classification$all_searched),
+#'     valid_physicians = length(id_classification$valid_existing),
+#'     non_existent_count = length(id_classification$non_existent),
+#'     subspecialty_count = length(id_classification$with_subspecialty),
+#'     existence_rate = round((length(id_classification$valid_existing) / 
+#'                               length(id_classification$all_searched)) * 100, 2),
+#'     subspecialty_rate = round((length(id_classification$with_subspecialty) / 
+#'                                  length(id_classification$valid_existing)) * 100, 2)
+#'   )
+#'   
+#'   if (verbose) {
+#'     logger::log_info("📊 ID Classification Results:")
+#'     logger::log_info("   ✅ Valid physicians: {formatC(id_classification$summary$valid_physicians, big.mark = ',', format = 'd')}")
+#'     logger::log_info("   ❌ Non-existent IDs: {formatC(id_classification$summary$non_existent_count, big.mark = ',', format = 'd')}")
+#'     logger::log_info("   🏥 With subspecialty: {formatC(id_classification$summary$subspecialty_count, big.mark = ',', format = 'd')}")
+#'     logger::log_info("   📈 Existence rate: {id_classification$summary$existence_rate}%")
+#'     logger::log_info("   📈 Subspecialty rate: {id_classification$summary$subspecialty_rate}%")
+#'   }
+#'   
+#'   return(id_classification)
+#' }
+#' 
+#' #' @noRd
+#' create_smart_search_analysis <- function(combined_data, id_classification, verbose) {
+#'   
+#'   # Get ranges for different ID types
+#'   valid_ids <- sort(id_classification$valid_existing)
+#'   non_existent_ids <- sort(id_classification$non_existent)
+#'   all_searched_ids <- sort(id_classification$all_searched)
+#'   
+#'   # Calculate search coverage excluding known non-existent IDs
+#'   if (length(all_searched_ids) > 0) {
+#'     min_searched <- min(all_searched_ids)
+#'     max_searched <- max(all_searched_ids)
+#'     
+#'     # IDs in the searched range that we haven't tried yet
+#'     full_searched_range <- min_searched:max_searched
+#'     unsearched_in_range <- setdiff(full_searched_range, all_searched_ids)
+#'     
+#'     # IDs in range that we know don't exist
+#'     non_existent_in_range <- intersect(full_searched_range, non_existent_ids)
+#'     
+#'     # IDs that are actually missing (haven't searched AND not known non-existent)
+#'     truly_missing_ids <- setdiff(unsearched_in_range, non_existent_ids)
+#'     
+#'   } else {
+#'     min_searched <- NA
+#'     max_searched <- NA
+#'     unsearched_in_range <- c()
+#'     non_existent_in_range <- c()
+#'     truly_missing_ids <- c()
+#'   }
+#'   
+#'   # Analyze ID density patterns
+#'   density_analysis <- analyze_id_density_patterns(valid_ids, verbose)
+#'   
+#'   smart_analysis <- list(
+#'     # Basic coverage
+#'     total_searches = nrow(combined_data),
+#'     unique_ids_searched = length(all_searched_ids),
+#'     min_id_searched = min_searched,
+#'     max_id_searched = max_searched,
+#'     
+#'     # Smart classification
+#'     valid_physician_count = length(valid_ids),
+#'     non_existent_count = length(non_existent_ids),
+#'     existence_rate = id_classification$summary$existence_rate,
+#'     
+#'     # Gap analysis (excluding known non-existent)
+#'     unsearched_in_range = unsearched_in_range,
+#'     non_existent_in_range = non_existent_in_range,
+#'     truly_missing_ids = truly_missing_ids,
+#'     truly_missing_count = length(truly_missing_ids),
+#'     
+#'     # Subspecialty analysis
+#'     subspecialty_count = length(id_classification$with_subspecialty),
+#'     subspecialty_rate = id_classification$summary$subspecialty_rate,
+#'     
+#'     # Density patterns
+#'     density_analysis = density_analysis,
+#'     
+#'     # ID lists for reference
+#'     valid_ids = valid_ids,
+#'     non_existent_ids = non_existent_ids
+#'   )
+#'   
+#'   if (verbose) {
+#'     logger::log_info("🧠 Smart Search Analysis Complete:")
+#'     logger::log_info("   📊 Total searches: {formatC(smart_analysis$total_searches, big.mark = ',', format = 'd')}")
+#'     logger::log_info("   ✅ Valid physicians found: {formatC(smart_analysis$valid_physician_count, big.mark = ',', format = 'd')}")
+#'     logger::log_info("   ❌ Non-existent IDs identified: {formatC(smart_analysis$non_existent_count, big.mark = ',', format = 'd')}")
+#'     logger::log_info("   🔍 Truly missing IDs in range: {formatC(smart_analysis$truly_missing_count, big.mark = ',', format = 'd')}")
+#'     logger::log_info("   📈 Physician existence rate: {smart_analysis$existence_rate}%")
+#'   }
+#'   
+#'   return(smart_analysis)
+#' }
+#' 
+#' #' @noRd
+#' analyze_id_density_patterns <- function(valid_ids, verbose) {
+#'   
+#'   if (length(valid_ids) < 10) {
+#'     return(list(
+#'       pattern = "insufficient_data",
+#'       density_score = NA,
+#'       recommendation = "Need more data to analyze patterns"
+#'     ))
+#'   }
+#'   
+#'   # Calculate gaps between consecutive valid IDs
+#'   id_gaps <- diff(sort(valid_ids))
+#'   
+#'   # Analyze gap patterns
+#'   gap_analysis <- list(
+#'     mean_gap = mean(id_gaps),
+#'     median_gap = median(id_gaps),
+#'     max_gap = max(id_gaps),
+#'     min_gap = min(id_gaps),
+#'     gap_std = sd(id_gaps)
+#'   )
+#'   
+#'   # Determine density pattern
+#'   if (gap_analysis$mean_gap < 10) {
+#'     pattern <- "dense"
+#'     recommendation <- "IDs are densely packed - search systematically"
+#'   } else if (gap_analysis$mean_gap < 100) {
+#'     pattern <- "moderate"
+#'     recommendation <- "Moderate density - focus on ranges with known valid IDs"
+#'   } else {
+#'     pattern <- "sparse"
+#'     recommendation <- "Sparse ID distribution - consider larger jumps between searches"
+#'   }
+#'   
+#'   # Calculate density score (0-100, where 100 = very dense)
+#'   density_score <- min(100, max(0, 100 - (gap_analysis$mean_gap - 1)))
+#'   
+#'   return(list(
+#'     pattern = pattern,
+#'     density_score = density_score,
+#'     gap_analysis = gap_analysis,
+#'     recommendation = recommendation
+#'   ))
+#' }
+#' 
+#' #' @noRd
+#' save_exclusion_lists <- function(id_classification, results_directory, verbose) {
+#'   
+#'   timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
+#'   
+#'   # Save non-existent IDs list
+#'   if (length(id_classification$non_existent) > 0) {
+#'     non_existent_df <- data.frame(
+#'       physician_id = sort(id_classification$non_existent),
+#'       status = "non_existent",
+#'       identified_date = Sys.Date(),
+#'       note = "ID searched but returned no valid physician data"
+#'     )
+#'     
+#'     non_existent_file <- file.path(results_directory, 
+#'                                    paste0("non_existent_physician_ids_", timestamp, ".csv"))
+#'     readr::write_csv(non_existent_df, non_existent_file)
+#'     
+#'     if (verbose) {
+#'       logger::log_info("❌ Saved non-existent IDs: {basename(non_existent_file)}")
+#'       logger::log_info("   📊 {formatC(nrow(non_existent_df), big.mark = ',', format = 'd')} non-existent IDs excluded from future searches")
+#'     }
+#'   }
+#'   
+#'   # Save valid IDs list
+#'   if (length(id_classification$valid_existing) > 0) {
+#'     valid_df <- data.frame(
+#'       physician_id = sort(id_classification$valid_existing),
+#'       status = "valid",
+#'       has_subspecialty = id_classification$valid_existing %in% id_classification$with_subspecialty,
+#'       identified_date = Sys.Date()
+#'     )
+#'     
+#'     valid_file <- file.path(results_directory, 
+#'                             paste0("valid_physician_ids_", timestamp, ".csv"))
+#'     readr::write_csv(valid_df, valid_file)
+#'     
+#'     if (verbose) {
+#'       logger::log_info("✅ Saved valid IDs: {basename(valid_file)}")
+#'     }
+#'   }
+#' }
+#' 
+#' #' @noRd
+#' generate_smart_recommendations <- function(smart_analysis, id_classification, verbose) {
+#'   
+#'   if (verbose) {
+#'     logger::log_info("💡 Generating smart search recommendations...")
+#'   }
+#'   
+#'   recommendations <- list()
+#'   
+#'   # 1. Priority: Fill truly missing gaps (excluding known non-existent)
+#'   if (smart_analysis$truly_missing_count > 0) {
+#'     recommendations$fill_smart_gaps <- list(
+#'       description = "Fill gaps excluding known non-existent IDs",
+#'       priority = "HIGH",
+#'       missing_ids = smart_analysis$truly_missing_ids,
+#'       missing_count = smart_analysis$truly_missing_count,
+#'       estimated_success_rate = paste0(smart_analysis$existence_rate, "%"),
+#'       recommended_batch_size = min(1000, smart_analysis$truly_missing_count)
+#'     )
+#'   }
+#'   
+#'   # 2. Extend range based on density patterns
+#'   current_max <- smart_analysis$max_id_searched
+#'   density_pattern <- smart_analysis$density_analysis$pattern
+#'   
+#'   if (density_pattern == "dense") {
+#'     extend_size <- 5000
+#'     extend_note <- "Dense pattern detected - search systematically"
+#'   } else if (density_pattern == "moderate") {
+#'     extend_size <- 2000
+#'     extend_note <- "Moderate density - focus search efforts"
+#'   } else {
+#'     extend_size <- 1000
+#'     extend_note <- "Sparse pattern - consider targeted approach"
+#'   }
+#'   
+#'   recommendations$smart_extend_range <- list(
+#'     description = "Extend search range with density-aware strategy",
+#'     priority = if (smart_analysis$truly_missing_count > 500) "MEDIUM" else "HIGH",
+#'     current_max = current_max,
+#'     recommended_next_range = (current_max + 1):(current_max + extend_size),
+#'     density_pattern = density_pattern,
+#'     extend_note = extend_note
+#'   )
+#'   
+#'   # 3. Subspecialty-focused recommendations
+#'   if (smart_analysis$subspecialty_rate < 15) {
+#'     recommendations$subspecialty_strategy <- list(
+#'       description = "Low subspecialty rate - target higher ID ranges",
+#'       priority = "MEDIUM",
+#'       current_rate = smart_analysis$subspecialty_rate,
+#'       recommendation = "Focus on ID ranges > 5000000 (more recent physicians)"
+#'     )
+#'   }
+#'   
+#'   # 4. Efficiency warning
+#'   if (smart_analysis$existence_rate < 30) {
+#'     recommendations$efficiency_warning <- list(
+#'       description = "Low existence rate - consider strategy adjustment",
+#'       priority = "HIGH",
+#'       current_rate = smart_analysis$existence_rate,
+#'       recommendation = "Current ID range has many non-existent IDs. Consider skipping to higher ranges."
+#'     )
+#'   }
+#'   
+#'   if (verbose) {
+#'     logger::log_info("🎯 Smart recommendations generated:")
+#'     for (rec_name in names(recommendations)) {
+#'       rec <- recommendations[[rec_name]]
+#'       logger::log_info("   • {rec$description} (Priority: {rec$priority})")
+#'     }
+#'   }
+#'   
+#'   return(recommendations)
+#' }
+#' 
+#' #' Generate Smart Next Search List (Excludes Non-Existent IDs)
+#' #'
+#' #' @param smart_analysis output from analyze_search_results_smart()
+#' #' @param strategy character. "smart_gaps", "smart_extend", or "smart_mixed"
+#' #' @param batch_size numeric. Number of IDs to include
+#' #' @param exclude_non_existent logical. Exclude known non-existent IDs
+#' #' @param verbose logical. Enable detailed logging
+#' #'
+#' #' @return numeric vector of physician IDs to search next (excludes non-existent)
+#' #'
+#' #' @examples
+#' #' # Smart analysis first
+#' #' smart_analysis <- analyze_search_results_smart("physician_data/abog_large_scale_2025")
+#' #' 
+#' #' # Get next search list excluding non-existent IDs
+#' #' next_ids <- generate_smart_search_list(
+#' #'   smart_analysis = smart_analysis,
+#' #'   strategy = "smart_gaps",
+#' #'   batch_size = 1000,
+#' #'   exclude_non_existent = TRUE,
+#' #'   verbose = TRUE
+#' #' )
+#' #'
+#' #' @export
+#' generate_smart_search_list <- function(smart_analysis, 
+#'                                        strategy = "smart_mixed",
+#'                                        batch_size = 7000,
+#'                                        exclude_non_existent = TRUE,
+#'                                        verbose = TRUE) {
+#'   
+#'   assertthat::assert_that(is.list(smart_analysis))
+#'   assertthat::assert_that(strategy %in% c("smart_gaps", "smart_extend", "smart_mixed"))
+#'   assertthat::assert_that(is.numeric(batch_size) && batch_size > 0)
+#'   assertthat::assert_that(is.logical(exclude_non_existent))
+#'   
+#'   if (verbose) {
+#'     logger::log_info("🧠 Generating smart search list...")
+#'     logger::log_info("   Strategy: {strategy}")
+#'     logger::log_info("   Batch size: {formatC(batch_size, big.mark = ',', format = 'd')}")
+#'     logger::log_info("   Exclude non-existent: {exclude_non_existent}")
+#'   }
+#'   
+#'   next_search_ids <- c()
+#'   
+#'   if (strategy == "smart_gaps" || strategy == "smart_mixed") {
+#'     # Add truly missing IDs (already excludes non-existent)
+#'     truly_missing <- smart_analysis$smart_analysis$truly_missing_ids
+#'     
+#'     if (length(truly_missing) > 0) {
+#'       gaps_to_add <- min(batch_size, length(truly_missing))
+#'       next_search_ids <- c(next_search_ids, truly_missing[1:gaps_to_add])
+#'       
+#'       if (verbose) {
+#'         logger::log_info("   📍 Added {formatC(gaps_to_add, big.mark = ',', format = 'd')} truly missing IDs (non-existent excluded)")
+#'       }
+#'     }
+#'   }
+#'   
+#'   if (strategy == "smart_extend" || strategy == "smart_mixed") {
+#'     # Add new IDs beyond current maximum
+#'     current_max <- smart_analysis$smart_analysis$max_id_searched
+#'     remaining_space <- batch_size - length(next_search_ids)
+#'     
+#'     if (remaining_space > 0) {
+#'       new_ids <- (current_max + 1):(current_max + remaining_space)
+#'       next_search_ids <- c(next_search_ids, new_ids)
+#'       
+#'       if (verbose) {
+#'         logger::log_info("   🚀 Added {formatC(remaining_space, big.mark = ',', format = 'd')} new IDs beyond {formatC(current_max, big.mark = ',', format = 'd')}")
+#'       }
+#'     }
+#'   }
+#'   
+#'   # Remove non-existent IDs if requested (shouldn't be needed for truly_missing, but safety check)
+#'   if (exclude_non_existent && length(smart_analysis$smart_analysis$non_existent_ids) > 0) {
+#'     original_count <- length(next_search_ids)
+#'     next_search_ids <- setdiff(next_search_ids, smart_analysis$smart_analysis$non_existent_ids)
+#'     removed_count <- original_count - length(next_search_ids)
+#'     
+#'     if (removed_count > 0 && verbose) {
+#'       logger::log_info("   🚫 Removed {formatC(removed_count, big.mark = ',', format = 'd')} known non-existent IDs")
+#'     }
+#'   }
+#'   
+#'   # Remove duplicates and sort
+#'   next_search_ids <- sort(unique(next_search_ids))
+#'   
+#'   if (verbose) {
+#'     logger::log_info("✅ Smart search list generated:")
+#'     logger::log_info("   🔢 Total IDs: {formatC(length(next_search_ids), big.mark = ',', format = 'd')}")
+#'     
+#'     if (length(next_search_ids) > 0) {
+#'       logger::log_info("   🆔 Range: {formatC(min(next_search_ids), big.mark = ',', format = 'd')} to {formatC(max(next_search_ids), big.mark = ',', format = 'd')}")
+#'       
+#'       # Show some examples
+#'       if (length(next_search_ids) <= 10) {
+#'         logger::log_info("   📋 IDs: {paste(next_search_ids, collapse = ', ')}")
+#'       } else {
+#'         first_few <- paste(head(next_search_ids, 5), collapse = ", ")
+#'         last_few <- paste(tail(next_search_ids, 5), collapse = ", ")
+#'         logger::log_info("   📋 IDs: {first_few} ... {last_few}")
+#'       }
+#'       
+#'       # Estimate success rate
+#'       estimated_success <- round(smart_analysis$smart_analysis$existence_rate, 1)
+#'       estimated_valid <- round(length(next_search_ids) * estimated_success / 100)
+#'       logger::log_info("   📈 Estimated valid physicians: ~{formatC(estimated_valid, big.mark = ',', format = 'd')} ({estimated_success}% rate)")
+#'     }
+#'   }
+#'   
+#'   return(next_search_ids)
+#' }
+#' 
+#' #' @noRd  
+#' extract_search_info_from_filename <- function(filename) {
+#'   # Extract timestamp from filename
+#'   timestamp_match <- stringr::str_extract(filename, "\\d{8}_\\d{6}")
+#'   
+#'   if (!is.na(timestamp_match)) {
+#'     extraction_date <- substr(timestamp_match, 1, 8)
+#'     extraction_time <- substr(timestamp_match, 10, 15)
+#'     
+#'     # Convert to readable format
+#'     formatted_date <- paste0(
+#'       substr(extraction_date, 1, 4), "-",
+#'       substr(extraction_date, 5, 6), "-", 
+#'       substr(extraction_date, 7, 8)
+#'     )
+#'     
+#'     formatted_time <- paste0(
+#'       substr(extraction_time, 1, 2), ":",
+#'       substr(extraction_time, 3, 4), ":",
+#'       substr(extraction_time, 5, 6)
+#'     )
+#'     
+#'     return(list(
+#'       extraction_date = formatted_date,
+#'       extraction_time = formatted_time,
+#'       timestamp = timestamp_match
+#'     ))
+#'   }
+#'   
+#'   return(list(
+#'     extraction_date = NA_character_,
+#'     extraction_time = NA_character_,
+#'     timestamp = NA_character_
+#'   ))
+#' }
+#' 
+#' #run ----
+#' # Copy the new smart tracking code from the artifact above
+#' 
+#' # Run smart analysis
+#' smart_analysis <- analyze_search_results_smart(
+#'   results_directory = "physician_data/abog_large_scale_2025",
+#'   verbose = TRUE,
+#'   save_exclusion_list = TRUE  # Saves non-existent IDs to CSV
+#' )
+#' 
+#' # Generate next search list (automatically excludes non-existent IDs)
+#' next_ids_smart <- generate_smart_search_list(
+#'   smart_analysis = smart_analysis,
+#'   strategy = "smart_gaps",      # Fill gaps, excluding non-existent
+#'   batch_size = 5000,
+#'   exclude_non_existent = TRUE,  # Double safety check
+#'   verbose = TRUE
+#' )
+#' 
+#' # Run extraction with smart ID list
+#' smart_results <- extract_subspecialty_from_pdf_letters(
+#'   physician_id_list = next_ids_smart,
+#'   use_proxy_requests = TRUE,
+#'   proxy_url_requests = "socks5://127.0.0.1:9150",
+#'   output_directory_extractions = "physician_data/abog_large_scale_2025",
+#'   request_delay_seconds = 2.0,
+#'   chunk_size_records = 100,
+#'   cleanup_downloaded_pdfs = FALSE,
+#'   save_individual_files = TRUE,
+#'   verbose_extraction_logging = TRUE
+#' )
 
-#' Analyze Search Results with Smart ID Classification
+# Make where to search search recursively? ----
+#' Enhanced Smart ABOG Physician ID Search with Recursive Directory Search
+#' 
+#' This improved system searches ALL subdirectories and tracks which IDs exist 
+#' vs don't exist, excluding non-existent IDs from future searches automatically.
+
+#' Analyze Search Results with Smart ID Classification (Recursive Directory Search)
 #'
-#' @param results_directory character. Directory containing extraction results
-#' @param verbose logical. Enable detailed logging
-#' @param save_exclusion_list logical. Save non-existent IDs to file
+#' @param search_results_directory character. Directory containing extraction 
+#'   results (searches all subdirectories recursively)
+#' @param extraction_file_pattern character. Pattern to match result files. 
+#'   Default matches combined and chunk extraction files
+#' @param enable_verbose_logging logical. Enable detailed logging via console
+#' @param save_exclusion_lists logical. Save non-existent IDs to file for 
+#'   future exclusion
 #'
 #' @return list containing smart search analysis and recommendations
 #'
 #' @examples
-#' # Smart analysis that tracks non-existent IDs
-#' smart_analysis <- analyze_search_results_smart(
-#'   results_directory = "physician_data/abog_large_scale_2025",
-#'   verbose = TRUE,
-#'   save_exclusion_list = TRUE
+#' # Smart analysis that searches ALL subdirectories recursively
+#' search_analysis_results <- analyze_search_results_smart(
+#'   search_results_directory = "physician_data/abog_large_scale_2025",
+#'   extraction_file_pattern = "(combined_subspecialty_extractions|chunk_.*_subspecialty_extractions|physician_.*_cert_).*\\.csv$",
+#'   enable_verbose_logging = TRUE,
+#'   save_exclusion_lists = TRUE
+#' )
+#' 
+#' # Analyze with custom file pattern and verbose output
+#' custom_analysis_results <- analyze_search_results_smart(
+#'   search_results_directory = "data/physician_extractions", 
+#'   extraction_file_pattern = ".*_extractions.*\\.csv$",
+#'   enable_verbose_logging = FALSE,
+#'   save_exclusion_lists = FALSE
+#' )
+#' 
+#' # Quick analysis with minimal logging
+#' quick_analysis_results <- analyze_search_results_smart(
+#'   search_results_directory = "results",
+#'   extraction_file_pattern = ".*\\.csv$", 
+#'   enable_verbose_logging = FALSE,
+#'   save_exclusion_lists = TRUE
 #' )
 #'
 #' @importFrom readr read_csv write_csv
-#' @importFrom dplyr bind_rows arrange distinct summarise group_by filter
+#' @importFrom dplyr bind_rows arrange distinct summarise group_by filter n n_distinct first
 #' @importFrom logger log_info log_warn
+#' @importFrom assertthat assert_that
+#' @importFrom stringr str_extract
 #' @export
-analyze_search_results_smart <- function(results_directory, 
-                                         verbose = TRUE,
-                                         save_exclusion_list = TRUE) {
+analyze_search_results_smart <- function(search_results_directory, 
+                                         extraction_file_pattern = "(combined_subspecialty_extractions|chunk_.*_subspecialty_extractions|physician_.*_cert_).*\\.csv$",
+                                         enable_verbose_logging = TRUE,
+                                         save_exclusion_lists = TRUE) {
   
-  if (verbose) {
-    logger::log_info("🧠 Smart analysis of ABOG search results...")
+  # Input validation with assertthat
+  assertthat::assert_that(is.character(search_results_directory))
+  assertthat::assert_that(is.character(extraction_file_pattern))
+  assertthat::assert_that(is.logical(enable_verbose_logging))
+  assertthat::assert_that(is.logical(save_exclusion_lists))
+  
+  if (enable_verbose_logging) {
+    logger::log_info("🧠 Smart analysis of ABOG search results (recursive search)...")
+    logger::log_info("📁 Searching in: {search_results_directory}")
+    logger::log_info("🔍 File pattern: {extraction_file_pattern}")
   }
   
-  # Find all extraction result files
+  # Find all extraction result files RECURSIVELY in all subdirectories
   all_csv_files <- list.files(
-    results_directory, 
-    pattern = "(combined_subspecialty_extractions|chunk_.*_subspecialty_extractions).*\\.csv$", 
-    recursive = TRUE, 
-    full.names = TRUE
+    search_results_directory, 
+    pattern = extraction_file_pattern,
+    recursive = TRUE,        # KEY: Search all subdirectories
+    full.names = TRUE,
+    include.dirs = FALSE
   )
   
   if (length(all_csv_files) == 0) {
-    if (verbose) {
-      logger::log_warn("⚠️ No extraction result files found in {results_directory}")
+    if (enable_verbose_logging) {
+      logger::log_warn("⚠️ No extraction result files found in {search_results_directory}")
+      logger::log_info("🔍 Searched pattern: {extraction_file_pattern}")
+      logger::log_info("📂 Available subdirectories:")
+      subdirs <- list.dirs(search_results_directory, recursive = FALSE)
+      for (subdir in subdirs) {
+        subdir_files <- list.files(subdir, pattern = "\\.csv$")
+        logger::log_info("   📁 {basename(subdir)}: {length(subdir_files)} CSV files")
+      }
     }
     return(NULL)
   }
   
-  if (verbose) {
-    logger::log_info("📁 Found {length(all_csv_files)} result files")
+  if (enable_verbose_logging) {
+    logger::log_info("📁 Found {length(all_csv_files)} result files across subdirectories")
+    
+    # Show which subdirectories contain files
+    subdirs_with_files <- unique(dirname(all_csv_files))
+    for (subdir in subdirs_with_files) {
+      files_in_subdir <- sum(dirname(all_csv_files) == subdir)
+      logger::log_info("   📂 {basename(subdir)}: {files_in_subdir} files")
+    }
   }
   
   # Read and combine all results
   all_search_results <- list()
+  successful_reads <- 0
+  failed_reads <- 0
   
   for (csv_file in all_csv_files) {
     tryCatch({
       file_data <- readr::read_csv(csv_file, show_col_types = FALSE)
+      
+      # Standardize common column types to prevent binding errors
+      file_data <- standardize_column_types(file_data, enable_verbose_logging)
       
       # Extract search info from filename
       file_info <- extract_search_info_from_filename(basename(csv_file))
       
       # Add file metadata to data
       file_data$source_file <- basename(csv_file)
+      file_data$source_subdir <- basename(dirname(csv_file))
       file_data$extraction_date <- file_info$extraction_date
       file_data$extraction_time <- file_info$extraction_time
+      file_data$full_file_path <- csv_file
       
       all_search_results[[length(all_search_results) + 1]] <- file_data
+      successful_reads <- successful_reads + 1
       
-      if (verbose) {
-        logger::log_info("✅ Loaded {nrow(file_data)} records from {basename(csv_file)}")
+      if (enable_verbose_logging) {
+        logger::log_info("✅ {basename(dirname(csv_file))}/{basename(csv_file)}: {nrow(file_data)} records")
       }
       
     }, error = function(e) {
-      if (verbose) {
+      failed_reads <- failed_reads + 1
+      if (enable_verbose_logging) {
         logger::log_warn("❌ Failed to read {basename(csv_file)}: {e$message}")
       }
     })
   }
   
   if (length(all_search_results) == 0) {
-    if (verbose) {
+    if (enable_verbose_logging) {
       logger::log_warn("⚠️ No valid data found in result files")
     }
     return(NULL)
   }
   
+  if (enable_verbose_logging) {
+    logger::log_info("📊 File reading summary:")
+    logger::log_info("   ✅ Successfully read: {successful_reads} files")
+    logger::log_info("   ❌ Failed to read: {failed_reads} files")
+  }
+  
   # Combine all results
   combined_results <- dplyr::bind_rows(all_search_results)
   
+  if (enable_verbose_logging) {
+    logger::log_info("📋 Combined dataset: {nrow(combined_results)} total records")
+    logger::log_info("🔢 Unique physician IDs: {length(unique(combined_results$physician_id))}")
+  }
+  
   # Smart classification of physician IDs
-  id_classification <- classify_physician_ids_smart(combined_results, verbose)
+  id_classification <- classify_physician_ids_smart(combined_results, enable_verbose_logging)
   
   # Create smart search analysis
-  smart_analysis <- create_smart_search_analysis(combined_results, id_classification, verbose)
+  smart_analysis <- create_smart_search_analysis(combined_results, id_classification, enable_verbose_logging)
   
   # Save exclusion lists if requested
-  if (save_exclusion_list) {
-    save_exclusion_lists(id_classification, results_directory, verbose)
+  if (save_exclusion_lists) {
+    save_exclusion_lists_helper(id_classification, search_results_directory, enable_verbose_logging)
   }
   
   # Generate smart recommendations
-  smart_recommendations <- generate_smart_recommendations(smart_analysis, id_classification, verbose)
+  smart_recommendations <- generate_smart_recommendations(smart_analysis, id_classification, enable_verbose_logging)
   
   return(list(
     smart_analysis = smart_analysis,
     id_classification = id_classification,
     recommendations = smart_recommendations,
-    combined_data = combined_results
+    combined_data = combined_results,
+    file_summary = list(
+      total_files_found = length(all_csv_files),
+      files_successfully_read = successful_reads,
+      files_failed_to_read = failed_reads,
+      subdirectories_searched = unique(basename(dirname(all_csv_files)))
+    )
   ))
 }
 
 #' @noRd
-classify_physician_ids_smart <- function(combined_data, verbose) {
+standardize_column_types <- function(file_data, enable_verbose_logging = FALSE) {
   
-  if (verbose) {
+  # Convert common problematic columns to character to prevent binding issues
+  problematic_columns <- c("extraction_timestamp", "physician_id", "subspecialty_name", 
+                           "physician_name", "certification_date", "status")
+  
+  for (col_name in problematic_columns) {
+    if (col_name %in% names(file_data)) {
+      # Convert to character to standardize across files
+      file_data[[col_name]] <- as.character(file_data[[col_name]])
+    }
+  }
+  
+  # Ensure physician_id is numeric if it exists and contains only numbers
+  if ("physician_id" %in% names(file_data)) {
+    # Try to convert to numeric, keeping as character if it fails
+    tryCatch({
+      file_data$physician_id <- as.numeric(file_data$physician_id)
+    }, warning = function(w) {
+      if (enable_verbose_logging) {
+        logger::log_warn("Could not convert physician_id to numeric, keeping as character")
+      }
+    })
+  }
+  
+  return(file_data)
+}
+
+#' @noRd
+classify_physician_ids_smart <- function(combined_data, enable_verbose_logging) {
+  
+  if (enable_verbose_logging) {
     logger::log_info("🔍 Classifying physician IDs by existence and success...")
   }
   
@@ -1260,10 +1951,16 @@ classify_physician_ids_smart <- function(combined_data, verbose) {
     dplyr::group_by(physician_id) %>%
     dplyr::summarise(
       search_count = dplyr::n(),
-      has_name = any(!is.na(physician_name)),
-      has_valid_data = any(!is.na(physician_name) & physician_name != ""),
-      has_subspecialty = any(!is.na(subspecialty_name) & subspecialty_name != ""),
-      latest_search_date = max(extraction_timestamp, na.rm = TRUE),
+      has_name = any(!is.na(physician_name) & physician_name != "" & physician_name != "NA"),
+      has_valid_data = any(!is.na(physician_name) & physician_name != "" & physician_name != "NA"),
+      has_subspecialty = any(!is.na(subspecialty_name) & subspecialty_name != "" & subspecialty_name != "NA"),
+      latest_search_date = if("extraction_timestamp" %in% names(combined_data)) {
+        tryCatch(max(extraction_timestamp, na.rm = TRUE), error = function(e) NA_character_)
+      } else {
+        NA_character_
+      },
+      first_found_in_subdir = dplyr::first(source_subdir),
+      search_subdirs = paste(unique(source_subdir), collapse = ", "),
       .groups = "drop"
     )
   
@@ -1297,7 +1994,10 @@ classify_physician_ids_smart <- function(combined_data, verbose) {
                                  length(id_classification$valid_existing)) * 100, 2)
   )
   
-  if (verbose) {
+  # Store detailed summary for reference
+  id_classification$detailed_summary <- id_summary
+  
+  if (enable_verbose_logging) {
     logger::log_info("📊 ID Classification Results:")
     logger::log_info("   ✅ Valid physicians: {formatC(id_classification$summary$valid_physicians, big.mark = ',', format = 'd')}")
     logger::log_info("   ❌ Non-existent IDs: {formatC(id_classification$summary$non_existent_count, big.mark = ',', format = 'd')}")
@@ -1310,7 +2010,7 @@ classify_physician_ids_smart <- function(combined_data, verbose) {
 }
 
 #' @noRd
-create_smart_search_analysis <- function(combined_data, id_classification, verbose) {
+create_smart_search_analysis <- function(combined_data, id_classification, enable_verbose_logging) {
   
   # Get ranges for different ID types
   valid_ids <- sort(id_classification$valid_existing)
@@ -1341,7 +2041,10 @@ create_smart_search_analysis <- function(combined_data, id_classification, verbo
   }
   
   # Analyze ID density patterns
-  density_analysis <- analyze_id_density_patterns(valid_ids, verbose)
+  density_analysis <- analyze_id_density_patterns(valid_ids, enable_verbose_logging)
+  
+  # Analyze subdirectory distribution
+  subdir_analysis <- analyze_subdirectory_distribution(combined_data, enable_verbose_logging)
   
   smart_analysis <- list(
     # Basic coverage
@@ -1368,12 +2071,15 @@ create_smart_search_analysis <- function(combined_data, id_classification, verbo
     # Density patterns
     density_analysis = density_analysis,
     
+    # Subdirectory distribution
+    subdir_analysis = subdir_analysis,
+    
     # ID lists for reference
     valid_ids = valid_ids,
     non_existent_ids = non_existent_ids
   )
   
-  if (verbose) {
+  if (enable_verbose_logging) {
     logger::log_info("🧠 Smart Search Analysis Complete:")
     logger::log_info("   📊 Total searches: {formatC(smart_analysis$total_searches, big.mark = ',', format = 'd')}")
     logger::log_info("   ✅ Valid physicians found: {formatC(smart_analysis$valid_physician_count, big.mark = ',', format = 'd')}")
@@ -1386,7 +2092,47 @@ create_smart_search_analysis <- function(combined_data, id_classification, verbo
 }
 
 #' @noRd
-analyze_id_density_patterns <- function(valid_ids, verbose) {
+analyze_subdirectory_distribution <- function(combined_data, enable_verbose_logging) {
+  
+  if (!"source_subdir" %in% names(combined_data)) {
+    return(list(
+      subdirs_found = 0,
+      subdir_summary = data.frame()
+    ))
+  }
+  
+  subdir_summary <- combined_data %>%
+    dplyr::group_by(source_subdir) %>%
+    dplyr::summarise(
+      total_records = dplyr::n(),
+      unique_ids = dplyr::n_distinct(physician_id),
+      valid_physicians = sum(!is.na(physician_name) & physician_name != "" & physician_name != "NA"),
+      with_subspecialty = sum(!is.na(subspecialty_name) & subspecialty_name != "" & subspecialty_name != "NA"),
+      existence_rate = round((valid_physicians / unique_ids) * 100, 1),
+      .groups = "drop"
+    ) %>%
+    dplyr::arrange(desc(total_records))
+  
+  if (enable_verbose_logging) {
+    logger::log_info("📂 Subdirectory Analysis:")
+    for (i in 1:min(5, nrow(subdir_summary))) {
+      row <- subdir_summary[i, ]
+      logger::log_info("   📁 {row$source_subdir}: {row$total_records} records, {row$unique_ids} IDs, {row$existence_rate}% valid")
+    }
+    if (nrow(subdir_summary) > 5) {
+      logger::log_info("   📂 ... and {nrow(subdir_summary) - 5} more subdirectories")
+    }
+  }
+  
+  return(list(
+    subdirs_found = nrow(subdir_summary),
+    subdir_summary = subdir_summary,
+    total_subdirs = length(unique(combined_data$source_subdir))
+  ))
+}
+
+#' @noRd
+analyze_id_density_patterns <- function(valid_ids, enable_verbose_logging) {
   
   if (length(valid_ids) < 10) {
     return(list(
@@ -1432,7 +2178,7 @@ analyze_id_density_patterns <- function(valid_ids, verbose) {
 }
 
 #' @noRd
-save_exclusion_lists <- function(id_classification, results_directory, verbose) {
+save_exclusion_lists_helper <- function(id_classification, search_results_directory, enable_verbose_logging) {
   
   timestamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
   
@@ -1445,11 +2191,11 @@ save_exclusion_lists <- function(id_classification, results_directory, verbose) 
       note = "ID searched but returned no valid physician data"
     )
     
-    non_existent_file <- file.path(results_directory, 
+    non_existent_file <- file.path(search_results_directory, 
                                    paste0("non_existent_physician_ids_", timestamp, ".csv"))
     readr::write_csv(non_existent_df, non_existent_file)
     
-    if (verbose) {
+    if (enable_verbose_logging) {
       logger::log_info("❌ Saved non-existent IDs: {basename(non_existent_file)}")
       logger::log_info("   📊 {formatC(nrow(non_existent_df), big.mark = ',', format = 'd')} non-existent IDs excluded from future searches")
     }
@@ -1464,20 +2210,20 @@ save_exclusion_lists <- function(id_classification, results_directory, verbose) 
       identified_date = Sys.Date()
     )
     
-    valid_file <- file.path(results_directory, 
+    valid_file <- file.path(search_results_directory, 
                             paste0("valid_physician_ids_", timestamp, ".csv"))
     readr::write_csv(valid_df, valid_file)
     
-    if (verbose) {
+    if (enable_verbose_logging) {
       logger::log_info("✅ Saved valid IDs: {basename(valid_file)}")
     }
   }
 }
 
 #' @noRd
-generate_smart_recommendations <- function(smart_analysis, id_classification, verbose) {
+generate_smart_recommendations <- function(smart_analysis, id_classification, enable_verbose_logging) {
   
-  if (verbose) {
+  if (enable_verbose_logging) {
     logger::log_info("💡 Generating smart search recommendations...")
   }
   
@@ -1539,7 +2285,7 @@ generate_smart_recommendations <- function(smart_analysis, id_classification, ve
     )
   }
   
-  if (verbose) {
+  if (enable_verbose_logging) {
     logger::log_info("🎯 Smart recommendations generated:")
     for (rec_name in names(recommendations)) {
       rec <- recommendations[[rec_name]]
@@ -1550,86 +2296,110 @@ generate_smart_recommendations <- function(smart_analysis, id_classification, ve
   return(recommendations)
 }
 
-#' Generate Smart Next Search List (Excludes Non-Existent IDs)
+#' Generate Smart Next Search List (Excludes Non-Existent IDs, Enhanced Recursive Search)
 #'
-#' @param smart_analysis output from analyze_search_results_smart()
-#' @param strategy character. "smart_gaps", "smart_extend", or "smart_mixed"
+#' @param smart_analysis_results output from analyze_search_results_smart()
+#' @param search_strategy character. "smart_gaps", "smart_extend", or "smart_mixed"
 #' @param batch_size numeric. Number of IDs to include
 #' @param exclude_non_existent logical. Exclude known non-existent IDs
-#' @param verbose logical. Enable detailed logging
+#' @param enable_verbose_logging logical. Enable detailed logging
 #'
 #' @return numeric vector of physician IDs to search next (excludes non-existent)
 #'
 #' @examples
-#' # Smart analysis first
-#' smart_analysis <- analyze_search_results_smart("physician_data/abog_large_scale_2025")
+#' # Smart analysis first (searches all subdirectories)
+#' search_analysis_results <- analyze_search_results_smart(
+#'   search_results_directory = "physician_data/abog_large_scale_2025"
+#' )
 #' 
 #' # Get next search list excluding non-existent IDs
 #' next_ids <- generate_smart_search_list(
-#'   smart_analysis = smart_analysis,
-#'   strategy = "smart_gaps",
+#'   smart_analysis_results = search_analysis_results,
+#'   search_strategy = "smart_gaps",
 #'   batch_size = 1000,
 #'   exclude_non_existent = TRUE,
-#'   verbose = TRUE
+#'   enable_verbose_logging = TRUE
+#' )
+#' 
+#' # Generate mixed strategy search list
+#' mixed_search_ids <- generate_smart_search_list(
+#'   smart_analysis_results = search_analysis_results,
+#'   search_strategy = "smart_mixed",
+#'   batch_size = 5000,
+#'   exclude_non_existent = TRUE,
+#'   enable_verbose_logging = FALSE
+#' )
+#' 
+#' # Generate extension-only search list
+#' extension_ids <- generate_smart_search_list(
+#'   smart_analysis_results = search_analysis_results,
+#'   search_strategy = "smart_extend",
+#'   batch_size = 10000,
+#'   exclude_non_existent = FALSE,
+#'   enable_verbose_logging = TRUE
 #' )
 #'
+#' @importFrom assertthat assert_that
+#' @importFrom logger log_info
 #' @export
-generate_smart_search_list <- function(smart_analysis, 
-                                       strategy = "smart_mixed",
-                                       batch_size = 1000,
+generate_smart_search_list <- function(smart_analysis_results, 
+                                       search_strategy = "smart_mixed",
+                                       batch_size = 7000,
                                        exclude_non_existent = TRUE,
-                                       verbose = TRUE) {
+                                       enable_verbose_logging = TRUE) {
   
-  assertthat::assert_that(is.list(smart_analysis))
-  assertthat::assert_that(strategy %in% c("smart_gaps", "smart_extend", "smart_mixed"))
+  assertthat::assert_that(is.list(smart_analysis_results))
+  assertthat::assert_that(search_strategy %in% c("smart_gaps", "smart_extend", "smart_mixed"))
   assertthat::assert_that(is.numeric(batch_size) && batch_size > 0)
   assertthat::assert_that(is.logical(exclude_non_existent))
+  assertthat::assert_that(is.logical(enable_verbose_logging))
   
-  if (verbose) {
+  if (enable_verbose_logging) {
     logger::log_info("🧠 Generating smart search list...")
-    logger::log_info("   Strategy: {strategy}")
+    logger::log_info("   Strategy: {search_strategy}")
     logger::log_info("   Batch size: {formatC(batch_size, big.mark = ',', format = 'd')}")
     logger::log_info("   Exclude non-existent: {exclude_non_existent}")
+    logger::log_info("   Search covered {smart_analysis_results$file_summary$total_files_found} files in {length(smart_analysis_results$file_summary$subdirectories_searched)} subdirectories")
   }
   
   next_search_ids <- c()
   
-  if (strategy == "smart_gaps" || strategy == "smart_mixed") {
+  if (search_strategy == "smart_gaps" || search_strategy == "smart_mixed") {
     # Add truly missing IDs (already excludes non-existent)
-    truly_missing <- smart_analysis$smart_analysis$truly_missing_ids
+    truly_missing <- smart_analysis_results$smart_analysis$truly_missing_ids
     
     if (length(truly_missing) > 0) {
       gaps_to_add <- min(batch_size, length(truly_missing))
       next_search_ids <- c(next_search_ids, truly_missing[1:gaps_to_add])
       
-      if (verbose) {
+      if (enable_verbose_logging) {
         logger::log_info("   📍 Added {formatC(gaps_to_add, big.mark = ',', format = 'd')} truly missing IDs (non-existent excluded)")
       }
     }
   }
   
-  if (strategy == "smart_extend" || strategy == "smart_mixed") {
+  if (search_strategy == "smart_extend" || search_strategy == "smart_mixed") {
     # Add new IDs beyond current maximum
-    current_max <- smart_analysis$smart_analysis$max_id_searched
+    current_max <- smart_analysis_results$smart_analysis$max_id_searched
     remaining_space <- batch_size - length(next_search_ids)
     
     if (remaining_space > 0) {
       new_ids <- (current_max + 1):(current_max + remaining_space)
       next_search_ids <- c(next_search_ids, new_ids)
       
-      if (verbose) {
+      if (enable_verbose_logging) {
         logger::log_info("   🚀 Added {formatC(remaining_space, big.mark = ',', format = 'd')} new IDs beyond {formatC(current_max, big.mark = ',', format = 'd')}")
       }
     }
   }
   
   # Remove non-existent IDs if requested (shouldn't be needed for truly_missing, but safety check)
-  if (exclude_non_existent && length(smart_analysis$smart_analysis$non_existent_ids) > 0) {
+  if (exclude_non_existent && length(smart_analysis_results$smart_analysis$non_existent_ids) > 0) {
     original_count <- length(next_search_ids)
-    next_search_ids <- setdiff(next_search_ids, smart_analysis$smart_analysis$non_existent_ids)
+    next_search_ids <- setdiff(next_search_ids, smart_analysis_results$smart_analysis$non_existent_ids)
     removed_count <- original_count - length(next_search_ids)
     
-    if (removed_count > 0 && verbose) {
+    if (removed_count > 0 && enable_verbose_logging) {
       logger::log_info("   🚫 Removed {formatC(removed_count, big.mark = ',', format = 'd')} known non-existent IDs")
     }
   }
@@ -1637,7 +2407,7 @@ generate_smart_search_list <- function(smart_analysis,
   # Remove duplicates and sort
   next_search_ids <- sort(unique(next_search_ids))
   
-  if (verbose) {
+  if (enable_verbose_logging) {
     logger::log_info("✅ Smart search list generated:")
     logger::log_info("   🔢 Total IDs: {formatC(length(next_search_ids), big.mark = ',', format = 'd')}")
     
@@ -1654,7 +2424,7 @@ generate_smart_search_list <- function(smart_analysis,
       }
       
       # Estimate success rate
-      estimated_success <- round(smart_analysis$smart_analysis$existence_rate, 1)
+      estimated_success <- round(smart_analysis_results$smart_analysis$existence_rate, 1)
       estimated_valid <- round(length(next_search_ids) * estimated_success / 100)
       logger::log_info("   📈 Estimated valid physicians: ~{formatC(estimated_valid, big.mark = ',', format = 'd')} ({estimated_success}% rate)")
     }
@@ -1665,7 +2435,7 @@ generate_smart_search_list <- function(smart_analysis,
 
 #' @noRd  
 extract_search_info_from_filename <- function(filename) {
-  # Extract timestamp from filename
+  # Extract timestamp from filename using stringr
   timestamp_match <- stringr::str_extract(filename, "\\d{8}_\\d{6}")
   
   if (!is.na(timestamp_match)) {
@@ -1699,39 +2469,25 @@ extract_search_info_from_filename <- function(filename) {
   ))
 }
 
-#run ----
-# Copy the new smart tracking code from the artifact above
-
-# Run smart analysis
-smart_analysis <- analyze_search_results_smart(
-  results_directory = "physician_data/abog_large_scale_2025",
-  verbose = TRUE,
-  save_exclusion_list = TRUE  # Saves non-existent IDs to CSV
+# run ----
+# Run the analysis
+analysis_results <- analyze_search_results_smart(
+  search_results_directory = "physician_data/abog_large_scale_2025",
+  extraction_file_pattern = ".*\\.csv$",  # This will catch all CSV files
+  enable_verbose_logging = TRUE,
+  save_exclusion_lists = TRUE
 )
 
-# Generate next search list (automatically excludes non-existent IDs)
-next_ids_smart <- generate_smart_search_list(
-  smart_analysis = smart_analysis,
-  strategy = "smart_gaps",      # Fill gaps, excluding non-existent
+# Generate next search list
+next_ids <- generate_smart_search_list(
+  smart_analysis_results = analysis_results,
+  search_strategy = "smart_mixed",
   batch_size = 5000,
-  exclude_non_existent = TRUE,  # Double safety check
-  verbose = TRUE
+  exclude_non_existent = TRUE,
+  enable_verbose_logging = TRUE
 )
 
-# Run extraction with smart ID list
-smart_results <- extract_subspecialty_from_pdf_letters(
-  physician_id_list = next_ids_smart,
-  use_proxy_requests = TRUE,
-  proxy_url_requests = "socks5://127.0.0.1:9150",
-  output_directory_extractions = "physician_data/abog_large_scale_2025",
-  request_delay_seconds = 2.0,
-  chunk_size_records = 100,
-  cleanup_downloaded_pdfs = FALSE,
-  save_individual_files = TRUE,
-  verbose_extraction_logging = TRUE
-)
-
-# WORKING but superceded ----
+# WORKING but superceded
 #' # Yes with Tor Browser Feature -----
 #' #' Extract ABOG Subspecialty Data via PDF Certification Letters
 #' #'
@@ -2712,68 +3468,68 @@ smart_results <- extract_subspecialty_from_pdf_letters(
 #'   verbose_extraction_logging = TRUE                        # Monitor progress
 #' )
 
-
-
-# NOT WORKING!!! -----
-# Test with just the subspecialty extraction files
-subspecialty_files <- list.files(
-  "physician_data/discovery_results", 
-  pattern = "subspecialty_extractions", 
-  full.names = TRUE
-)
-
-length(subspecialty_files)  # How many subspecialty files?
-
-# Read one subspecialty file to test
-test_file <- readr::read_csv(subspecialty_files[1])
-table(test_file$subspecialty_name, useNA = "always")
-
-# Count subspecialists in each file type
-merged_data_consolidated %>%
-  mutate(
-    file_type = case_when(
-      str_detect(source_file, "subspecialty_extractions") ~ "subspecialty",
-      str_detect(source_file, "sequential_discovery") ~ "discovery", 
-      TRUE ~ "other"
-    )
-  ) %>%
-  group_by(file_type) %>%
-  summarise(
-    total_rows = n(),
-    with_subspecialty = sum(!is.na(subspecialty_name) & subspecialty_name != ""),
-    subspecialty_rate = round(with_subspecialty / total_rows * 100, 2)
-  )
-
-# Process subspecialty files separately
-subspecialty_data <- map_dfr(subspecialty_files, readr::read_csv) %>%
-  filter(!is.na(subspecialty_name) & subspecialty_name != "")
-
-# Process discovery files separately  
-discovery_files <- list.files(
-  "physician_data/discovery_results",
-  pattern = "sequential_discovery", 
-  full.names = TRUE
-)
-
-discovery_data <- map_dfr(discovery_files, readr::read_csv)
-
-# Check subspecialty counts
-table(subspecialty_data$subspecialty_name, useNA = "always")
-
-
-
-# Try merging just 2 files manually to see what happens
-file1 <- readr::read_csv(subspecialty_files[1])
-file2 <- readr::read_csv(discovery_files[1])
-
-# Check subspecialty counts before merge
-cat("File 1 subspecialties:", sum(!is.na(file1$subspecialty_name)), "\n")
-cat("File 2 subspecialities:", sum(!is.na(file2$subspecialty_name)), "\n")
-
-# Merge and check after
-manual_merge <- bind_rows(file1, file2)
-cat("After merge subspecialties:", sum(!is.na(manual_merge$subspecialty_name)), "\n")
-
+# 
+# 
+# NOT WORKING 
+# # Test with just the subspecialty extraction files
+# subspecialty_files <- list.files(
+#   "physician_data/discovery_results", 
+#   pattern = "subspecialty_extractions", 
+#   full.names = TRUE
+# )
+# 
+# length(subspecialty_files)  # How many subspecialty files?
+# 
+# # Read one subspecialty file to test
+# test_file <- readr::read_csv(subspecialty_files[1])
+# table(test_file$subspecialty_name, useNA = "always")
+# 
+# # Count subspecialists in each file type
+# merged_data_consolidated %>%
+#   mutate(
+#     file_type = case_when(
+#       str_detect(source_file, "subspecialty_extractions") ~ "subspecialty",
+#       str_detect(source_file, "sequential_discovery") ~ "discovery", 
+#       TRUE ~ "other"
+#     )
+#   ) %>%
+#   group_by(file_type) %>%
+#   summarise(
+#     total_rows = n(),
+#     with_subspecialty = sum(!is.na(subspecialty_name) & subspecialty_name != ""),
+#     subspecialty_rate = round(with_subspecialty / total_rows * 100, 2)
+#   )
+# 
+# # Process subspecialty files separately
+# subspecialty_data <- map_dfr(subspecialty_files, readr::read_csv) %>%
+#   filter(!is.na(subspecialty_name) & subspecialty_name != "")
+# 
+# # Process discovery files separately  
+# discovery_files <- list.files(
+#   "physician_data/discovery_results",
+#   pattern = "sequential_discovery", 
+#   full.names = TRUE
+# )
+# 
+# discovery_data <- map_dfr(discovery_files, readr::read_csv)
+# 
+# # Check subspecialty counts
+# table(subspecialty_data$subspecialty_name, useNA = "always")
+# 
+# 
+# 
+# # Try merging just 2 files manually to see what happens
+# file1 <- readr::read_csv(subspecialty_files[1])
+# file2 <- readr::read_csv(discovery_files[1])
+# 
+# # Check subspecialty counts before merge
+# cat("File 1 subspecialties:", sum(!is.na(file1$subspecialty_name)), "\n")
+# cat("File 2 subspecialities:", sum(!is.na(file2$subspecialty_name)), "\n")
+# 
+# # Merge and check after
+# manual_merge <- bind_rows(file1, file2)
+# cat("After merge subspecialties:", sum(!is.na(manual_merge$subspecialty_name)), "\n")
+# 
 
 #' # Merge All CSV Files in a Directory -----
 #' #' Merge All CSV Files in a Directory
