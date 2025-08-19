@@ -652,11 +652,11 @@ generate_hybrid_resident_search <- function(start_id, end_id, max_requests, verb
 # run ----
 gap_search_results <- scrape_abog_physicians_fixed(
   strategy = "chunk_sampling",
-  start_id = 9042699,
-  end_id = 9042999,
+  start_id = 2769186,
+  end_id = 8307558,
   chunk_size = 100,        # Will check: 9042699, 9042799, 9042899
   batch_save_size = 10,    # Save every 10 physicians found
-  max_requests = 1000,
+  max_requests = 10000,
   verbose = TRUE,
   output_directory = "physician_data/scrape_abog_physicians_fixed"
 )

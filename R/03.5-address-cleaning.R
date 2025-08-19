@@ -52,7 +52,7 @@ ensure_directory_exists <- function(directory_path, verbose = TRUE) {
   }
 }
 
-# Main Processing Functions ----
+# Prepare Combined Address Data for Geocoding ----
 
 #' Prepare Combined Address Data for Geocoding
 #'

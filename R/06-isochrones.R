@@ -1,7 +1,52 @@
-#######################
+# Setup and Configuration ----
 source("R/01-setup.R")
-#######################
+
 # This code performs a series of data processing and spatial analysis tasks using R and the tidyverse packages. It starts by reading a CSV file named "end_inner_join_postmastr_clinician_data.csv" into the `input_file` data frame and adds a unique identifier column "id" to it. Rows with a specific condition in the "postmastr.name.x" column are filtered out. Then, it keeps only distinct rows based on the "here.address" column and additional filtering criteria involving "postmastr.pm.state" and "postmastr.pm.city."  After preprocessing, the code performs isochrone testing using the "test_and_process_isochrones" function and stores potential errors in the "errors" object. It then filters out rows that are expected to produce errors, creating "input_file_no_error_rows." Next, the code generates isochrones using an external API, and it needs to save them. However, there seems to be a TODO comment indicating that the "process_and_save_isochrones" function needs modification for specifying the save path. The dimensions and class of the resulting isochrones data are checked, and there's a comment that mentions this step takes approximately 15 minutes.Following this, the code reads the isochrones data from a file, arranges it, and clips it to the borders of the USA. The clipped isochrones are validated, and any invalid geometries are corrected. Finally, the clipped isochrones are written to an ESRI Shapefile format in the specified directory. This code is part of a larger data processing and spatial analysis workflow and is designed to handle geographical data, isochrone calculations, and data validation.
+
+#****************************************************************************
+# ISOCHRONE ANALYSIS CONSTANTS ----
+#****************************************************************************
+
+# Isochrone travel time ranges (in seconds)
+ISOCHRONE_RANGES_SECONDS <- c(30*60, 60*60, 120*60, 180*60)  # 30min, 1hr, 2hr, 3hr
+
+# Isochrone travel time ranges (in minutes for easier reference)
+ISOCHRONE_RANGES_MINUTES <- c(30, 60, 120, 180)
+
+# Transport mode for isochrone analysis
+TRANSPORT_MODE <- "car"
+
+# Alternative transport modes supported
+SUPPORTED_TRANSPORT_MODES <- c("car", "walking", "cycling", "public_transport")
+
+# Yearly analysis dates for temporal trends
+ACCESSIBILITY_ANALYSIS_DATES <- c(
+  "2013-10-18 09:00:00", "2014-10-17 09:00:00", "2015-10-16 09:00:00",
+  "2016-10-21 09:00:00", "2017-10-20 09:00:00", "2018-10-19 09:00:00",
+  "2019-10-18 09:00:00", "2020-10-16 09:00:00", "2021-10-15 09:00:00",
+  "2022-10-21 09:00:00", "2023-10-20 09:00:00", "2024-10-18 09:00:00"
+)
+
+# Extract years for easier reference
+ANALYSIS_YEARS <- as.numeric(format(as.POSIXct(ACCESSIBILITY_ANALYSIS_DATES), "%Y"))
+
+# Travel time thresholds commonly used in healthcare accessibility
+HEALTHCARE_ACCESS_THRESHOLDS <- list(
+  emergency_care = 30,      # 30 minutes for emergency care
+  primary_care = 60,        # 1 hour for primary care
+  specialist_care = 120,    # 2 hours for specialist care
+  tertiary_care = 180       # 3 hours for tertiary/complex care
+)
+
+# Default isochrone analysis parameters
+DEFAULT_ISOCHRONE_PARAMS <- list(
+  ranges = ISOCHRONE_RANGES_SECONDS,
+  transport_mode = TRANSPORT_MODE,
+  departure_time = "09:00:00",
+  traffic_model = "best_guess",
+  avoid_tolls = FALSE,
+  avoid_highways = FALSE
+)
 
 
 # Validate the file of geocoded data.
@@ -16,7 +61,7 @@ input_file <- readr::read_csv("data/05-geocode-cleaning/end_inner_join_postmastr
   dplyr::filter(postmastr.pm.state == "CO" & postmastr.pm.city == "AURORA") # For testing with a small sample
 
 #**********************************************
-# TESTING ISOCHRONES WITH A ONE SECOND ISOCHRONE
+# TESTING ISOCHRONES WITH A ONE SECOND ISOCHRONE -----
 #**********************************************
 errors <- test_and_process_isochrones(input_file)
 errors
@@ -33,7 +78,7 @@ input_file_no_error_rows <- input_file %>%
 nrow(input_file_no_error_rows) * 4 
 
 #**************************
-#* HERE API CREATES ISOCHRONES
+# HERE API CREATES ISOCHRONES ----
 #**************************
 
 # Many thanks to Dr. Unterfinger who maintains the hereR package for emailing me regarding:  https://github.com/munterfi/hereR/issues/153.  "One potential solution I had considered is the option to specify an ID column in the request to hereR. This would tell the package to use this ID column from the input data.frame and append these IDs to the response. However, there are a few issues with this approach. Firstly, it results in the duplication of information. Secondly, the package would need to check the suitability of the column for use as an ID (e.g. duplicate IDs), which I think should not be the responsibility of the package.
@@ -97,9 +142,7 @@ sf::st_write(
   quiet = FALSE, append = FALSE)
 message("Saved clipped isochrones to data/06-isochrones/end_isochrones_sf_clipped")
 
-######################################
-# SANITY CHECK
-######################################
+# SANITY CHECK ----
 
 end_isochrones_sf_clipped <- sf::st_read("data/06-isochrones/end_isochrones_sf_clipped") %>%
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering.
