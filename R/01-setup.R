@@ -97,6 +97,114 @@ library(tidycensus)
 library(pdftools)
 library(R.utils)
 
+## devtools::install_github('ramnathv/htmlwidgets')
+## remotes::install_github("andrewallenbruce/provider")
+# install.packages(c("gifski", "av"))
+# remotes::install_github("slu-openGIS/postmastr")
+
+
+# # setup_system.R
+# # ----------------------------------------------------------
+# # Automate system-level installs for R + Python + GIS + Dev
+# # Run with: source("setup_system.R")
+# # ----------------------------------------------------------
+# 
+# install_with_brew <- function(formulae = NULL, casks = NULL) {
+#   if (system("which brew", ignore.stdout = TRUE, ignore.stderr = TRUE) != 0) {
+#     message("Homebrew not found. Installing...")
+#     system(
+#       '/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"'
+#     )
+#   }
+#   
+#   if (!is.null(formulae)) {
+#     for (f in formulae) {
+#       cmd <- paste("brew list --formula | grep -q '^", f, "$' || brew install", f)
+#       message("Installing formula: ", f)
+#       system(cmd)
+#     }
+#   }
+#   
+#   if (!is.null(casks)) {
+#     for (c in casks) {
+#       cmd <- paste("brew list --cask | grep -q '^", c, "$' || brew install --cask", c)
+#       message("Installing cask: ", c)
+#       system(cmd)
+#     }
+#   }
+# }
+# 
+# # ----------------------------------------------------------
+# # FORMULAE (command-line tools & libraries)
+# # ----------------------------------------------------------
+# formulae <- c(
+#   # compilers & build tools
+#   "cmake", "llvm", "libomp", "gcc", "openblas",
+#   
+#   # data & programming
+#   "python@3.13", "duckdb", "apache-arrow", "postgresql", "postgis",
+#   
+#   # GIS libraries
+#   "gdal", "geos", "proj",
+#   
+#   # networking / scraping
+#   "curl", "libxml2", "jq", "httpie", "aria2",
+#   
+#   # pdf/image/text
+#   "poppler", "imagemagick", "hunspell", "v8",
+#   
+#   # misc
+#   "pandoc"
+# )
+# 
+# # ----------------------------------------------------------
+# # CASKS (GUI apps)
+# # ----------------------------------------------------------
+# casks <- c(
+#   "rstudio", "visual-studio-code", "raycast", "rectangle",
+#   "stats", "iterm2", "qgis", "grammarly-desktop",
+#   "citrix-workspace", "prusaslicer", "balenaetcher",
+#   "obs", "shottr", "google-chrome"
+# )
+# 
+# install_with_brew(formulae, casks)
+# 
+# # ----------------------------------------------------------
+# # R PACKAGES (core set for analysis, spatial, parallel, viz)
+# # ----------------------------------------------------------
+# cran_packages <- c(
+#   "tidyverse", "data.table", "sf", "terra", "stars", "raster",
+#   "leaflet", "tmap", "gganimate", "gifski", "av",
+#   "future", "furrr", "foreach", "doParallel", "doFuture",
+#   "multidplyr", "Rcpp", "arrow", "DBI", "odbc",
+#   "xml2", "rvest", "httr2", "jsonlite",
+#   "magick", "pdftools", "hunspell",
+#   "usethis", "gitcreds", "gert"
+# )
+# 
+# for (pkg in cran_packages) {
+#   if (!requireNamespace(pkg, quietly = TRUE)) {
+#     install.packages(pkg)
+#   }
+# }
+# 
+# # ----------------------------------------------------------
+# # Bioconductor (if needed)
+# # ----------------------------------------------------------
+# if (!requireNamespace("BiocManager", quietly = TRUE)) {
+#   install.packages("BiocManager")
+# }
+# 
+# bioc_packages <- c("ComplexHeatmap", "AnnotationDbi", "biomaRt", "IRanges")
+# for (pkg in bioc_packages) {
+#   if (!requireNamespace(pkg, quietly = TRUE)) {
+#     BiocManager::install(pkg, ask = FALSE, update = FALSE)
+#   }
+# }
+# 
+# message("✅ System setup complete! Restart R/RStudio to finalize.")
+
+
 source("R/here_api_utils.R")
 
 # Parallel processing with the sweet computer
