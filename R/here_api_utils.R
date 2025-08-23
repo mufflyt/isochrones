@@ -29,3 +29,6 @@ initialize_here_api_key <- function(api_key = Sys.getenv("HERE_API_KEY"), verbos
 
   invisible(api_key)
 }
+
+initialize_here_api_key("VnDX-Rafqchcmb4LUDgEpYlvk8S1-LCYkkrtb1ujOrM
+OAuth: mmVir87u_ynWVXXZb_h4Rg")

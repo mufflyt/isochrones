@@ -105,6 +105,7 @@ data/tabulated_all_years_clean_*.xlsx
 #--------------------------------------
 # Credentials and configuration
 #--------------------------------------
+here_api_utils.R
 .here
 .env
 *.key
