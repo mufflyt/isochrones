@@ -27,6 +27,9 @@ library(tidyr)
 library(stringr)
 library(tidyverse)
 
+# OBGYN specialties used for filtering
+OBGYN_SPECIALTIES <- c("GYNECOLOGICAL ONCOLOGY", "OBSTETRICS/GYNECOLOGY")
+
 #NPI filees are from: https://data.nber.org/npi/webdir/csv/
 '%nin%' <- function(x, table) {
   !(x %in% table)
@@ -92,7 +95,7 @@ nucc_taxonomy_201 <- dplyr::tbl(db_connection, "nucc_taxonomy_201")
 physician_compare_data <- physician_compare_table %>%
   distinct(NPI, .keep_all = TRUE) %>%
   mutate(`Zip Code` = str_sub(`Zip Code`,1 ,5)) %>%
-  dplyr::filter(`Primary Specialty` %in% c("GYNECOLOGICAL ONCOLOGY", "OBSTETRICS/GYNECOLOGY")) %>%
+  dplyr::filter(`Primary Specialty` %in% OBGYN_SPECIALTIES) %>%
   mutate(year = "2023") %>%
   dplyr::compute() %>%
   collect()
@@ -164,7 +167,7 @@ read_and_clean_tables <- function(db_connection, years) {
     
     # Perform cleaning operations
     cleaned_data <- table_data %>%
-      dplyr::filter(`Primary Specialty` %in% c("OBSTETRICS/GYNECOLOGY", "GYNECOLOGICAL ONCOLOGY")) %>%
+      dplyr::filter(`Primary Specialty` %in% OBGYN_SPECIALTIES) %>%
       mutate(`Zip Code` = str_sub(`Zip Code`, 1, 5)) %>%
       distinct(NPI, .keep_all = TRUE) %>%
       mutate(Year = as.character(year_num))

@@ -5,11 +5,19 @@ source("R/01-setup.R")
 
 source("R/01-setup.R")
 
+# Supported file extensions
+EXCEL_EXTENSIONS <- c("xls", "xlsx")
+SPREADSHEET_EXTENSIONS <- c("csv", EXCEL_EXTENSIONS)
+
+# Default credentials and taxonomy filters
+DEFAULT_CREDENTIALS <- c("MD", "DO")
+TAXONOMIES_FILTER <- c("Student in an Organized Health Care Education/Training Program")
+
 search_and_process_npi <- memoise(function(input_file,
                                            enumeration_type = "ind",
                                            limit = 5L,
                                            country_code = "US",
-                                           filter_credentials = c("MD", "DO")) {
+                                           filter_credentials = DEFAULT_CREDENTIALS) {
 
   cat("Starting search_and_process_npi...\n")
 
@@ -30,8 +38,8 @@ search_and_process_npi <- memoise(function(input_file,
 
   if (file_extension == "rds") {
     names_data <- readRDS(input_file)
-  } else if (file_extension %in% c("csv", "xls", "xlsx")) {
-    if (file_extension %in% c("xls", "xlsx")) {
+  } else if (file_extension %in% SPREADSHEET_EXTENSIONS) {
+    if (file_extension %in% EXCEL_EXTENSIONS) {
       names_data <- readxl::read_xlsx(input_file)
     } else {
       names_data <- readr::read_csv(input_file)
@@ -45,7 +53,7 @@ search_and_process_npi <- memoise(function(input_file,
   last_names <- names_data$last
 
   # Define the list of taxonomies to filter
-  vc <- c("Student in an Organized Health Care Education/Training Program")
+  vc <- TAXONOMIES_FILTER
 
 
   # Create a function to search NPI based on first and last names
@@ -55,7 +63,7 @@ search_and_process_npi <- memoise(function(input_file,
       {
         npi_obj <- npi::npi_search(first_name = first_name, last_name = last_name)
         t <- npi::npi_flatten(npi_obj, cols = c("basic", "taxonomies"))
-        t %>% dplyr::filter(taxonomies_desc %in% vc)
+        t %>% dplyr::filter(taxonomies_desc %in% TAXONOMIES_FILTER)
       },
       error = function(e) {
         cat("ERROR:", conditionMessage(e), "\n")
