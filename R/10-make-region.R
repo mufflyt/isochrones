@@ -5,13 +5,18 @@ source("R/01-setup.R")
 # Make files for Mississippi Delta and Appalachia region
 
 acog_sf <- tyler::generate_acog_districts_sf()
-state_fips <- read_csv("data/fips-states.csv")
-fips_state <- read_csv("data/fips-states.csv")
+
+# File Path Constants ----
+FIPS_STATES_FILE <- "data/fips-states.csv"
+REGION_CROSSWALK_FILE <- "data/fips-appalachia-delta.csv"
+
+state_fips <- read_csv(FIPS_STATES_FILE)
+fips_state <- read_csv(FIPS_STATES_FILE)
 
 ###########################################################################
 # Clean up Excel file of regions
 ###########################################################################
-raw <- read_csv("data/fips-appalachia-delta.csv")
+raw <- read_csv(REGION_CROSSWALK_FILE)
 colnames(raw)
 
 crosswalk <- raw
@@ -71,7 +76,7 @@ regions <- counties %>% st_drop_geometry() %>%
   rename(fips_county = GEOID, fips_state = STATEFP, county_name = NAME)
 regions <- as.data.frame(regions)
 
-write.csv(regions, "data/fips-appalachia-delta.csv", na = "", row.names = FALSE)
+write.csv(regions, REGION_CROSSWALK_FILE, na = "", row.names = FALSE)
 
 # Remove AK and HI for mapping
 counties <- counties %>% filter(!(STATEFP %in% c("02", "15")))

@@ -7,15 +7,20 @@ source("R/01-setup.R")
 #************************************
 # READ IN SOME GIVEN VARIABLES
 #************************************
-regions <- read.csv("data/fips-appalachia-delta.csv", colClasses = c("fips_county" = "character"))
-state_fips <- read.csv("data/fips-states.csv", colClasses = "character")
+# File Path Constants ----
+FIPS_REGION_FILE <- "data/fips-appalachia-delta.csv"
+FIPS_STATES_FILE <- "data/fips-states.csv"
+STATE_SUMS_FILE <- "data/08.5-prep-the-census-variables/end_state_sums.csv"
+
+regions <- read.csv(FIPS_REGION_FILE, colClasses = c("fips_county" = "character"))
+state_fips <- read.csv(FIPS_STATES_FILE, colClasses = "character")
 state_fips <- state_fips %>% select(fips_state, state_code)
 
 #************************************
 # END FILE OF 09-GET-CENSUS-POPULATION DONE ELSEWHERE
 #************************************
 # Jesus I did this in exploratory and it just works
-state_sums <- read_csv("data/08.5-prep-the-census-variables/end_state_sums.csv")
+state_sums <- read_csv(STATE_SUMS_FILE)
 
 paste0("within_total:  ", format_and_round(state_sums$within_total), " is the total female population of all ages covered by the isochrones: sum(population * overlap)")
 

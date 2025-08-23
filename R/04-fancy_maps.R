@@ -1,5 +1,8 @@
 
 # Fancy map ----
+# File Path Constants ----
+GEOCODED_OBGYN_FILE <- "data/geocoded/obgyn_geocoded.csv"
+PROVIDER_DATASET_FILE <- "data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv"
 #' Create Interactive Map of Physician Locations
 #'
 #' This function creates an interactive map displaying physician locations with
@@ -135,7 +138,7 @@ create_physician_map <- function(
     cluster_markers = TRUE,
     popup_cols = NULL,
     map_title = "Physician Locations",
-    verbose = FALSE
+  verbose = FALSE
 ) {
   
   if (verbose) {
@@ -1442,7 +1445,7 @@ library(leaflet.extras)
 # Then run your map
 # Load your function and test the enhanced county demographics
 
-full_results <- readr::read_csv("data/geocoded/obgyn_geocoded.csv")
+full_results <- readr::read_csv(GEOCODED_OBGYN_FILE)
 
 create_physician_map(
   physician_geodata = full_results,
@@ -1983,7 +1986,7 @@ create_basic_county_popups <- function(counties, physician_counts) {
 }
 
 # execute ----
-full_results <- readr::read_csv("data/geocoded/obgyn_geocoded.csv")
+full_results <- readr::read_csv(GEOCODED_OBGYN_FILE)
 
 # Skip the problematic .Renviron file and set it directly
 Sys.setenv(CENSUS_API_KEY = "485c6da8987af0b9829c25f899f2393b4bb1a4fb")
@@ -6619,7 +6622,7 @@ finalize_map_with_controls <- function(leaflet_map, spatial_physician_data,
 }
 
 
-physician_location_data <- readr::read_csv("data/geocoded/obgyn_geocoded.csv")
+physician_location_data <- readr::read_csv(GEOCODED_OBGYN_FILE)
 
 # execute multiple years with county data ----
 enhanced_physician_map_with_years(
@@ -6632,7 +6635,7 @@ enhanced_physician_map_with_years(
 )
 
 # Physician and county year specific ----
-physician_by_year <- read_csv("data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv")
+physician_by_year <- read_csv(PROVIDER_DATASET_FILE)
 
 
 physician_by_year %>% filter(plname == "MUFFLY")

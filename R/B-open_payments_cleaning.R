@@ -6,6 +6,10 @@ source("R/01-setup.R")
 # Load global setup
 source("R/01-setup.R")
 #'
+# File Path Constants ----
+OPEN_PAYMENTS_BASE_DIR <- "/Volumes/Video Projects Muffly 1/open_payments_data"
+OPEN_PAYMENTS_DB_PATH <- file.path(OPEN_PAYMENTS_BASE_DIR, "open_payments_merged.duckdb")
+#'
 #' This function reads Open Payments CSV files (General, Research, or Ownership payments)
 #' into a DuckDB database, normalizes the schema across years, and merges them into a
 #' unified table for analysis. It supports verbose logging, selective column inclusion,
@@ -1040,8 +1044,8 @@ fix_npi_data_from_temp_tables <- function(conn, output_table_name, npi_column) {
 }
 ###
 # Eexcute
-base_dir <- "/Volumes/Video Projects Muffly 1/open_payments_data"
-db_path <- "/Volumes/Video Projects Muffly 1/open_payments_data/open_payments_merged.duckdb"
+base_dir <- OPEN_PAYMENTS_BASE_DIR
+db_path <- OPEN_PAYMENTS_DB_PATH
 
 ####################
 # Process the data with error-tolerant CSV parsing
@@ -3864,8 +3868,8 @@ fix_npi_data_from_temp_tables <- function(conn, output_table_name, npi_column) {
   }
 }
 
-base_dir <- "/Volumes/Video Projects Muffly 1/open_payments_data"
-db_path <- "/Volumes/Video Projects Muffly 1/open_payments_data/open_payments_merged.duckdb"
+base_dir <- OPEN_PAYMENTS_BASE_DIR
+db_path <- OPEN_PAYMENTS_DB_PATH
 
 # Process the data with the improved function
 invisible(gc())
@@ -5249,8 +5253,8 @@ fix_npi_data_from_temp_tables <- function(conn, output_table_name, npi_column) {
 }
 
 ## Execute ----
-base_dir <- "/Volumes/Video Projects Muffly 1/open_payments_data"
-db_path <- "/Volumes/Video Projects Muffly 1/open_payments_data/open_payments_merged.duckdb"
+base_dir <- OPEN_PAYMENTS_BASE_DIR
+db_path <- OPEN_PAYMENTS_DB_PATH
 
 open_payments_output <- process_open_payments_data(base_dir,
                                        db_path,

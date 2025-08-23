@@ -37,6 +37,9 @@ library(downloader)  # For downloading large files efficiently
 conflicted::conflicts_prefer(dplyr::filter)
 conflicted::conflicts_prefer(lubridate::year)
 
+# File Path Constants ----
+NPPES_DEACTIVATED_DOWNLOAD_DIR <- "data/nppes_deactivated_downloads"
+
 #==============================================================================
 # Stage 1: NPI Deactivation files
 #==============================================================================
@@ -153,7 +156,7 @@ list_nppes_deactivated_reports <- function(verbose = FALSE) {
 #' @importFrom utils unzip
 #'
 #' @export
-download_nppes_deactivated <- function(destination_directory = "nppes_deactivated_downloads",
+download_nppes_deactivated <- function(destination_directory = NPPES_DEACTIVATED_DOWNLOAD_DIR,
                                        extract_file = TRUE,
                                        retry_attempts = 3,
                                        timeout_seconds = 600,
@@ -479,7 +482,7 @@ formatFileSize <- function(size_bytes) {
 }
 
 ###########
-download_nppes_deactivated(destination_directory = "data/nppes_deactivated_downloads",
+download_nppes_deactivated(destination_directory = NPPES_DEACTIVATED_DOWNLOAD_DIR,
                                        extract_file = TRUE,
                                        retry_attempts = 3,
                                        timeout_seconds = 600,

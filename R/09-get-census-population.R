@@ -17,6 +17,12 @@ us_fips_list <- tigris::fips_codes %>%
   dplyr::select(state_code) %>%
   dplyr::pull()
 
+# File Path Constants ----
+OUTPUT_DIR <- "data/09-get-census-population"
+BG_OVERLAP_CSV <- file.path(OUTPUT_DIR, "block-group-isochrone-overlap.csv")
+BG_OVERLAP_RDS <- file.path(OUTPUT_DIR, "bg_overlap.rds")
+DEMOGRAPHICS_BG_RDS <- file.path(OUTPUT_DIR, "demographics_bg.rds")
+
 #************************************
 # GET THE ACS CENSUS VARIABLES
 #************************************
@@ -47,12 +53,12 @@ head(demographics_bg)
 # First, make a flat non-sf dataframe with the overlap information and join to population. Then multiply and summarize. This is the easiest part of the project.
 
 bg_overlap <- block_groups %>% dplyr::select(geoid = GEOID, overlap) %>%
-	sf::st_drop_geometry()
+        sf::st_drop_geometry()
 bg_overlap <- as.data.frame(bg_overlap)
-write.csv(bg_overlap, "data/09-get-census-population/block-group-isochrone-overlap.csv", na = "", row.names = FALSE)
-write_rds(bg_overlap, "data/09-get-census-population/bg_overlap.rds")
+write.csv(bg_overlap, BG_OVERLAP_CSV, na = "", row.names = FALSE)
+write_rds(bg_overlap, BG_OVERLAP_RDS)
 
-write_rds(demographics_bg, "data/09-get-census-population/demographics_bg.rds") #Census Block Group Code
+write_rds(demographics_bg, DEMOGRAPHICS_BG_RDS) #Census Block Group Code
 
 class(bg_overlap$geoid) == class(demographics_bg$fips_block_group)
 

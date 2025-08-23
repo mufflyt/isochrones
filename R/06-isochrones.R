@@ -48,12 +48,17 @@ DEFAULT_ISOCHRONE_PARAMS <- list(
   avoid_highways = FALSE
 )
 
+# File Path Constants ----
+GEOCODE_INPUT_FILE <- "data/05-geocode-cleaning/end_inner_join_postmastr_clinician_data.csv"
+ISOCHRONE_OUTPUT_DIR <- "data/06-isochrones"
+ISOCHRONE_CLIPPED_DIR <- file.path(ISOCHRONE_OUTPUT_DIR, "end_isochrones_sf_clipped")
+
 
 # Validate the file of geocoded data.
 
 ##### To do the actual gathering of the isochrones: `process_and_save_isochrones`.  We do this in chunks of 25 because we were losing the entire searched isochrones when one error hit.  There is a 1:1 relationship between isochrones and rows in the `input_file` so to match exactly on row we need no errors.  Lastly, we save as a shapefile so that we can keep the MULTIPOLYGON geometry setting for the sf object making it easier to work with the spatial data in the future for plotting, etc.  I struggled because outputing the data as a dataframe was not easy to write it back to a MULTIPOLYGON.
 
-input_file <- readr::read_csv("data/05-geocode-cleaning/end_inner_join_postmastr_clinician_data.csv") %>%
+input_file <- readr::read_csv(GEOCODE_INPUT_FILE) %>%
   dplyr::mutate(id = row_number()) %>% # creates a unique identifier number
   dplyr::filter(postmastr.name.x != "Hye In Park, MD") %>% # for testing
   dplyr::distinct(here.address, .keep_all = TRUE) %>%
@@ -108,13 +113,13 @@ isochrones_sf <- process_and_save_isochrones(input_file_no_error_rows,
                                              iso_ranges = c(30*60, 60*60, 120*60, 180*60),
                                              crs = 4326,
                                              transport_mode = "car",
-                                             save_dir = "data/06-isochrones")
+                                             save_dir = ISOCHRONE_OUTPUT_DIR)
 
 # Check the dimensions of the final isochrones_data
 dim(isochrones_sf)
 class(isochrones_sf)
 
-isochrones_df <- sf::st_read("data/06-isochrones/isochrones_20231223111020_chunk_1_to_4/isochrones.shp") %>%
+isochrones_df <- sf::st_read(file.path(ISOCHRONE_OUTPUT_DIR, "isochrones_20231223111020_chunk_1_to_4/isochrones.shp")) %>%
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering in the leaflet map later on.
 
 # Clip the isochrones to the USA border.
@@ -136,15 +141,15 @@ invalid <- st_is_valid(isochrones_sf_clipped, reasons = TRUE)
 invisible(gc())
 sf::st_write(
   isochrones_sf_clipped,
-  dsn = "data/06-isochrones/end_isochrones_sf_clipped",
+  dsn = ISOCHRONE_CLIPPED_DIR,
   layer = "isochrones",
   driver = "ESRI Shapefile",
   quiet = FALSE, append = FALSE)
-message("Saved clipped isochrones to data/06-isochrones/end_isochrones_sf_clipped")
+message("Saved clipped isochrones to " , ISOCHRONE_CLIPPED_DIR)
 
 # SANITY CHECK ----
 
-end_isochrones_sf_clipped <- sf::st_read("data/06-isochrones/end_isochrones_sf_clipped") %>%
+end_isochrones_sf_clipped <- sf::st_read(ISOCHRONE_CLIPPED_DIR) %>%
   dplyr::arrange(desc(rank)) #This is IMPORTANT for the layering.
 
 # Create a basic Leaflet map

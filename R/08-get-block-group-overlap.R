@@ -3,27 +3,30 @@ source("R/01-setup.R")
 #######################
 #This code is primarily focused on processing and analyzing the spatial overlap between block groups and isochrones. It starts by reading a shapefile of block groups for Colorado, transforming it to a suitable projection, simplifying geometries, and writing the processed shapefile to a new location. It then reads isochrones data, applies similar transformations, combines them into a single feature, and creates a reference map. Next, it calculates the percentage overlap between each block group and the isochrones, summarizing the results to provide information about the extent of overlap. The final output includes a summary message indicating the percentage of block groups that overlap with the isochrones.
 
-# Define file paths
-# The shp directory has general use files.  
-block_groups_file <- "data/shp/block-groups/colorado/" # Colorado is a smaller state for the toy example.  
-#block_groups_file <- "data/07.5-prep-get-block-group=overlap" #For full project 
+# File Path Constants ----
+BLOCK_GROUPS_DIR <- "data/shp/block-groups"
+ISOCHRONE_DIR <- "data/07-isochrone-mapping"
+OUTPUT_DIR <- "data/08-get-block-group-overlap"
+BLOCK_GROUPS_FILE <- file.path(BLOCK_GROUPS_DIR, "colorado")
+SIMPLIFIED_BG_DIR <- file.path(OUTPUT_DIR, "simplified_colorado")
+#block_groups_file <- "data/07.5-prep-get-block-group=overlap" #For full project
 
 # Read, transform, and process block groups shapefile in one chain
-block_groups <- sf::st_read(block_groups_file) %>%
+block_groups <- sf::st_read(BLOCK_GROUPS_FILE) %>%
   sf::st_transform(2163) %>%
   sf::st_make_valid() %>%
   sf::st_simplify(preserveTopology = FALSE, dTolerance = 1000)
 
 # Write processed block groups shapefile
 sf::st_write(block_groups,
-             dsn = "data/08-get-block-group-overlap/simplified_colorado", #ONLY doing COLORADO and not the USA
+             dsn = SIMPLIFIED_BG_DIR, #ONLY doing COLORADO and not the USA
              layer = "block_groups",
              driver = "ESRI Shapefile",
              quiet = FALSE, append = FALSE)
 
 # TODO: How to clip water out of the isochrones?  Rstudio crashes with a national file.  Maybe tigris::erase_water in 07.5?
 
-isochrones <- sf::st_read(dsn = "data/07-isochrone-mapping")
+isochrones <- sf::st_read(dsn = ISOCHRONE_DIR)
 
 isochrones <- isochrones %>%
   sf::st_transform(2163) %>%

@@ -73,7 +73,14 @@
 #   "207VX0000X"     # Obstetrics Only
 # )
 #
-#
+# File Path Constants ----
+NBER_NPPES_COMBINE_DIR <- "data/B-nber_nppes_combine_columns"
+FINAL_PROVIDER_CSV <- file.path(NBER_NPPES_COMBINE_DIR, "nber_nppes_combine_columns_final_obgyn_provider_dataset.csv")
+SUBSPECIALISTS_DIR <- "data/02.5-subspecialists_over_time"
+GOBA_UNRESTRICTED_CSV <- file.path(SUBSPECIALISTS_DIR, "goba_unrestricted_cleaned.csv")
+VALIDATED_SUBSPECIALISTS_RDS <- file.path(SUBSPECIALISTS_DIR, "validated_goba_unrestricted_subspecialists.rds")
+FALSE_POSITIVES_DIR <- "data"
+
 # COMPREHENSIVE DATA CLEANING PIPELINE -----
 #
 #
@@ -2045,7 +2052,7 @@ assertthat::assert_that("credential_standardized" %in% names(final_obgyn_provide
 logger::log_info("Final dataset validation successful")
 
 ## output ----
-readr::write_csv(final_obgyn_provider_dataset, "data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv")
+readr::write_csv(final_obgyn_provider_dataset, FINAL_PROVIDER_CSV)
 
 # Force garbage collection
 gc_result <- base::gc()
@@ -2053,7 +2060,7 @@ logger::log_info("Garbage collection completed")
 
 # Further cleaning: THIS TAKES A WHILE -----
 # Quick fix for missing variables
-output_cleaned_provider_csv_path <- "data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv"
+output_cleaned_provider_csv_path <- FINAL_PROVIDER_CSV
 filtering_analysis_output_csv_path <- "nppes_comprehensive_filtering_analysis.csv"
 comprehensive_report_rds_output_path <- "nppes_comprehensive_processing_report.rds"
 waterfall_chart_output_path <- "nppes_filtering_waterfall_chart.png"
@@ -2632,7 +2639,7 @@ logger::log_info("Garbage collection completed")
 # install.packages("remotes")
 #remotes::install_github("slu-openGIS/postmastr")
 
-comprehensively_cleaned_provider_records <- readr::read_csv("data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv") %>%
+comprehensively_cleaned_provider_records <- readr::read_csv(FINAL_PROVIDER_CSV) %>%
   dplyr::mutate(practice_address = paste(plocline1, ploccityname, plocstatename, ploczip, sep = ", "))
 
 # Load required libraries
@@ -2675,7 +2682,7 @@ logger::log_info("=== STEP 7: DATASET EXPORT ===")
 logger::log_info("Exporting comprehensively cleaned dataset to CSV")
 
 # Ensure output directory exists
-output_cleaned_provider_csv_path <- "data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv"
+output_cleaned_provider_csv_path <- FINAL_PROVIDER_CSV
 output_directory_path <- base::dirname(output_cleaned_provider_csv_path)
 
 if (!base::dir.exists(output_directory_path)) {
@@ -2706,11 +2713,11 @@ tryCatch({
 })
 
 # All physicians in this data set.  All generalists and specialists.  
-readr::read_csv("data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv")
+readr::read_csv(FINAL_PROVIDER_CSV)
 
 #
 # GOBA to help with self-described posers like Steve Holt as gyn onc? ----
-goba <- readr::read_csv("data/02.5-subspecialists_over_time/goba_unrestricted_cleaned.csv")
+goba <- readr::read_csv(GOBA_UNRESTRICTED_CSV)
 
 head(goba)
 glimpse(goba)
@@ -2809,7 +2816,7 @@ validate_nppes_taxonomy_by_npi <- function(nppes_data,
       )
     
     timestamp <- format(Sys.time(), "%Y%m%d-%H%M%S")
-    path <- glue::glue("data/nppes_false_positives_{timestamp}.csv")
+    path <- file.path(FALSE_POSITIVES_DIR, glue::glue("nppes_false_positives_{timestamp}.csv"))
     readr::write_csv(bad, path)
     logger::log_info("Saved {nrow(bad)} false positives to: {path}")
   }
@@ -2848,11 +2855,11 @@ validate_nppes_taxonomy_by_npi <- function(nppes_data,
 
 
 nppes_cleaned <- readr::read_csv(
-  "data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv"
+  FINAL_PROVIDER_CSV
 )
 dim(nppes_cleaned)
 
-goba <- readr::read_csv("data/02.5-subspecialists_over_time/goba_unrestricted_cleaned.csv")
+goba <- readr::read_csv(GOBA_UNRESTRICTED_CSV)
 
 # Excludes Mastro and Moroney because they were not board-certified when goba was last run. WE NEED TO RUN THE GOBA SEARCH AGAIN.  
 validated <- validate_nppes_taxonomy_by_npi(
@@ -2866,7 +2873,7 @@ validated <- validate_nppes_taxonomy_by_npi(
 
 View(validated)
 
-readr::write_rds(validated, "data/02.5-subspecialists_over_time/validated_goba_unrestricted_subspecialists.rds")
+readr::write_rds(validated, VALIDATED_SUBSPECIALISTS_RDS)
 
 #####
 #
