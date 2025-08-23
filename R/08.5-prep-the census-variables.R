@@ -21,34 +21,34 @@ vars <- load_variables(year = 2020, "dhc") #Demographic and Housing Characterist
 #*
 census_variables_prepped <- vars %>%
   # variables with only the prefix of P12_ are SEX BY AGE FOR SELECTED AGE CATEGORIES.  They are summary variables.
-  filter(!str_detect(name, fixed("P12_"))) %>%
+  dplyr::filter(!str_detect(name, fixed("P12_"))) %>%
   # We only want "SEX BY AGE" vars
-  filter(str_detect(concept, fixed("SEX BY AGE"))) %>%
+  dplyr::filter(str_detect(concept, fixed("SEX BY AGE"))) %>%
   # No males.
-  filter(!str_detect(label, fixed("!!Male:!!", ignore_case=TRUE))) %>%
+  dplyr::filter(!str_detect(label, fixed("!!Male:!!", ignore_case=TRUE))) %>%
   # No annotations.
-  filter(!str_detect(label, fixed("Annotation of Margin of Error", ignore_case=TRUE))) %>%
+  dplyr::filter(!str_detect(label, fixed("Annotation of Margin of Error", ignore_case=TRUE))) %>%
   mutate(label = str_remove(label, regex("^Annotation of Estimate!!Total:!!Female:!!", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
-  filter(!str_detect(label, fixed("Margin of Error!!", ignore_case=TRUE))) %>%
+  dplyr::filter(!str_detect(label, fixed("Margin of Error!!", ignore_case=TRUE))) %>%
   # Removing the fucking !! that are all over this document.  Jesus.
   mutate(label = str_remove(label, regex("^Annotation of Estimate!!Total:!!Female:!!", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
   mutate(label = str_remove(label, regex("^Estimate!!Total:!!Female:!!", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
-  filter(!str_detect(name, fixed("EA")) & !str_detect(label, fixed("!!Male:"))) %>%
+  dplyr::filter(!str_detect(name, fixed("EA")) & !str_detect(label, fixed("!!Male:"))) %>%
   mutate(label = str_remove(label, regex("!!", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
   mutate(label = str_remove(label, regex("!!", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
   mutate(label = str_remove(label, regex("(!!)", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
   # Keep only females.
-  filter(str_detect(label, fixed("female", ignore_case=TRUE))) %>%
+  dplyr::filter(str_detect(label, fixed("female", ignore_case=TRUE))) %>%
   mutate(label = str_remove(label, regex("^Total:", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
   arrange(concept) %>%
   # Remove QUARTERS.
-  filter(!str_detect(concept, fixed("QUARTERS"))) %>%
+  dplyr::filter(!str_detect(concept, fixed("QUARTERS"))) %>%
   mutate(concept = str_replace_all(concept, regex("AMERICAN INDIAN AND ALASKA NATIVE", ignore_case = TRUE), "AI/AN")) %>%
   mutate(concept = str_replace(concept, regex("NATIVE HAWAIIAN AND OTHER PACIFIC ISLANDER", ignore_case = TRUE), "NHPI")) %>%
-  filter(!str_detect(concept, fixed("HOUSEHOLDS")) & !str_detect(concept, fixed("SOME OTHER RACE")) & !str_detect(concept, fixed("FOR THE POPULATION UNDER 20 YEARS"))) %>%
+  dplyr::filter(!str_detect(concept, fixed("HOUSEHOLDS")) & !str_detect(concept, fixed("SOME OTHER RACE")) & !str_detect(concept, fixed("FOR THE POPULATION UNDER 20 YEARS"))) %>%
   mutate(concept = recode(concept, "SEX BY AGE FOR SELECTED AGE CATEGORIES" = "total female population", type_convert = TRUE)) %>%
   # variables with only the prefix of P12_ are SEX BY AGE FOR SELECTED AGE CATEGORIES.  "P12_" are summary variables.
-  filter(!str_detect(name, fixed("P12_"))) %>%
+  dplyr::filter(!str_detect(name, fixed("P12_"))) %>%
   # All ages included, all races included.
   mutate(concept = str_remove_all(concept, "^SEX BY AGE FOR SELECTED AGE CATEGORIES \\(", remove_extra_space = TRUE)) %>%
   rename(description = concept) %>%
@@ -65,7 +65,7 @@ write_csv(census_variables_prepped, "data/08.5-prep-the-census-variables/end_cen
 #***********************************************************************
 # Totals only
 totals_census_variables_prepped <- census_variables_prepped %>%
-  filter(str_detect(name, fixed("_026N"))) %>%
+  dplyr::filter(str_detect(name, fixed("_026N"))) %>%
   # Only totals by Race.  29 rows
   write_csv(., "data/08.5-prep-the-census-variables/end_totals_census_variables_prepped.csv"); head(totals_census_variables_prepped)
 
@@ -78,7 +78,7 @@ totals_census_variables_prepped <- census_variables_prepped %>%
 `branching_point_1`<- exploratory::read_delim_file("data/08.5-prep-the-census-variables/temp_bg.csv", delim = NULL, quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
   readr::type_convert() %>%
   exploratory::clean_data_frame() %>%  # On the Census Demographic Profile they do a "Total races tallied" using "White alone or in combination with one or more races" so I will try that here.
-filter(str_ends(complete_description, fixed(", NOT HISPANIC OR LATINO)")) & str_detect(complete_description, fixed("OR IN COMBINATION WITH ONE OR MORE OTHER RACES"))) %>%
+  dplyr::filter(str_ends(complete_description, fixed(", NOT HISPANIC OR LATINO)")) & str_detect(complete_description, fixed("OR IN COMBINATION WITH ONE OR MORE OTHER RACES"))) %>%
   reorder_cols(variable, abbreviated)
 
 # Steps to produce temp_bg_1

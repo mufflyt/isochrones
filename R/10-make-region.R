@@ -64,7 +64,7 @@ colnames(counties)
 # Files for saving
 ###########################################################################
 # Remove territories
-counties <- counties %>% filter(!(STATEFP %in% c( "60", "66", "69", "78", "72"))) %>%
+counties <- counties %>% dplyr::filter(!(STATEFP %in% c( "60", "66", "69", "78", "72"))) %>%
   select(GEOID, STATEFP, NAME, region, delta, appalachia, geometry)
 
 regions <- counties %>% st_drop_geometry() %>%
@@ -74,7 +74,7 @@ regions <- as.data.frame(regions)
 write.csv(regions, "data/fips-appalachia-delta.csv", na = "", row.names = FALSE)
 
 # Remove AK and HI for mapping
-counties <- counties %>% filter(!(STATEFP %in% c("02", "15")))
+counties <- counties %>% dplyr::filter(!(STATEFP %in% c("02", "15")))
 
 ###########################################################################
 # Map
@@ -92,8 +92,8 @@ regionmap <- ggplot() +
 regionmap
 
 # Subset shapefiles
-delta <- counties %>% filter(delta == 1)
+delta <- counties %>% dplyr::filter(delta == 1)
 plot(st_geometry(delta))
-appalachia <- counties %>% filter(appalachia == 1)
+appalachia <- counties %>% dplyr::filter(appalachia == 1)
 
 

@@ -13,7 +13,7 @@ facility_affiliation <- read_csv("/Users/tylermuffly/Dropbox (Personal)/isochron
 facility_affiliation_output <- facility_affiliation %>%
   dplyr::distinct(NPI, Ind_PAC_ID, .keep_all = TRUE) %>%
   dplyr::select(-suff) %>%
-  filter(facility_type == "Hospital") %>%
+  dplyr::filter(facility_type == "Hospital") %>%
   dplyr::mutate(year = 2025)
 
 names(facility_affiliation_output)

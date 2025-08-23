@@ -229,7 +229,7 @@ for (i in 1:nrow(op_files)) {
           )
         
         # Find general payments files based on pattern matching
-        general_files <- file_info %>% filter(is_general == TRUE)
+        general_files <- file_info %>% dplyr::filter(is_general == TRUE)
         
         if (nrow(general_files) > 0) {
           # If multiple general files found, use the largest one

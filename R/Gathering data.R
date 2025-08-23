@@ -27,11 +27,11 @@ geocoded_data <- readr::read_csv("/Users/tylermuffly/Dropbox (Personal)/workforc
         mutate(access = exploratory::str_remove(access, regex("\\)$", ignore_case = TRUE), remove_extra_space = TRUE)) %>%
         separate(access, into = c("lat", "long"), sep = "\\s+", convert = TRUE) %>%
         select(-id, -rank, -type, -district, -state) %>%
-        filter(country %in% c("United States", "Puerto Rico")) %>%
+        dplyr::filter(country %in% c("United States", "Puerto Rico")) %>%
         mutate(postal_code = str_sub(postal_code,1 ,5)) %>%
         rename(zip = postal_code) %>%
         mutate(across(c(lat, long), parse_number)) %>%
-        filter(!is.na(lat))
+        dplyr::filter(!is.na(lat))
 
       create_and_save_physician_dot_map(physician_data = geocoded_data, color_palette = "magma", popup_var = "name")
 

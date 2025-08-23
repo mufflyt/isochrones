@@ -92,7 +92,7 @@ nucc_taxonomy_201 <- dplyr::tbl(db_connection, "nucc_taxonomy_201")
 physician_compare_data <- physician_compare_table %>%
   distinct(NPI, .keep_all = TRUE) %>%
   mutate(`Zip Code` = str_sub(`Zip Code`,1 ,5)) %>%
-  filter(`Primary Specialty` %in% c("GYNECOLOGICAL ONCOLOGY", "OBSTETRICS/GYNECOLOGY")) %>%
+  dplyr::filter(`Primary Specialty` %in% c("GYNECOLOGICAL ONCOLOGY", "OBSTETRICS/GYNECOLOGY")) %>%
   mutate(year = "2023") %>%
   dplyr::compute() %>%
   collect()
@@ -164,7 +164,7 @@ read_and_clean_tables <- function(db_connection, years) {
     
     # Perform cleaning operations
     cleaned_data <- table_data %>%
-      filter(`Primary Specialty` %in% c("OBSTETRICS/GYNECOLOGY", "GYNECOLOGICAL ONCOLOGY")) %>%
+      dplyr::filter(`Primary Specialty` %in% c("OBSTETRICS/GYNECOLOGY", "GYNECOLOGICAL ONCOLOGY")) %>%
       mutate(`Zip Code` = str_sub(`Zip Code`, 1, 5)) %>%
       distinct(NPI, .keep_all = TRUE) %>%
       mutate(Year = as.character(year_num))
