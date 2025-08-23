@@ -80,6 +80,17 @@ SUBSPECIALISTS_DIR <- "data/02.5-subspecialists_over_time"
 GOBA_UNRESTRICTED_CSV <- file.path(SUBSPECIALISTS_DIR, "goba_unrestricted_cleaned.csv")
 VALIDATED_SUBSPECIALISTS_RDS <- file.path(SUBSPECIALISTS_DIR, "validated_goba_unrestricted_subspecialists.rds")
 FALSE_POSITIVES_DIR <- "data"
+FIGURES_DIR <- "figures"
+PROCESSED_DIR <- file.path("data", "processed")
+INTERMEDIATE_DIR <- file.path("data", "intermediate")
+REPORTS_DIR <- "reports"
+LOGS_DIR <- "logs"
+CACHE_DIR <- "cache"
+VALIDATION_DIR <- "validation"
+DOCUMENTATION_DIR <- "documentation"
+EXPORTS_DIR <- "exports"
+PROJECT_DIRS <- c(FIGURES_DIR, PROCESSED_DIR, INTERMEDIATE_DIR, REPORTS_DIR, LOGS_DIR, CACHE_DIR, VALIDATION_DIR, DOCUMENTATION_DIR, EXPORTS_DIR)
+
 
 # COMPREHENSIVE DATA CLEANING PIPELINE -----
 #
@@ -2080,8 +2091,7 @@ if (!exists("obgyn_credential_count")) obgyn_credential_count <- 525010
 if (!exists("continental_us_count")) continental_us_count <- 524346
 
 # Create the directory structure
-project_dirs <- c("figures", "data/processed", "data/intermediate", "reports", 
-                  "logs", "cache", "validation", "documentation", "exports")
+project_dirs <- PROJECT_DIRS
 
 for (dir in project_dirs) {
   if (!dir.exists(dir)) {

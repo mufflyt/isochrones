@@ -33,11 +33,18 @@
 # Last Updated: 2025-08-04
 ###############################################################################
 
+# File Path Constants ----
+NPI_DIR <- "data/03-search_and_process_npi"
+GOBA_SUBSPECIALISTS_FILE <- file.path(NPI_DIR, "GOBA_Scrape_subspecialists_only.csv")
+COMBINED_EXTRACTIONS_FILE <- file.path(NPI_DIR, "combined_subspecialty_extractions.csv")
+UPDATED_GOBA_OUTPUT_FILE <- file.path(NPI_DIR, "updated_GOBA_subspecialists.csv")
+
+
 # Call main function with verbose logging and overwrite output file if exists
 # updated_goba_basic <- update_goba_with_missing_subspecialists(
-#   goba_file_path = "data/03-search_and_process_npi/GOBA_Scrape_subspecialists_only.csv",
-#   combined_extractions_file_path = "data/03-search_and_process_npi/combined_subspecialty_extractions.csv",
-#   output_file_path = "data/03-search_and_process_npi/updated_GOBA_subspecialists.csv",
+#   goba_file_path = GOBA_SUBSPECIALISTS_FILE,
+#   combined_extractions_file_path = COMBINED_EXTRACTIONS_FILE,
+#   output_file_path = UPDATED_GOBA_OUTPUT_FILE,
 #   # Optional: restrict to specific subspecialties only
 #   # subspecialty_filter = c("Gynecologic Oncology", "Maternal-Fetal Medicine"),
 #   verbose = TRUE
@@ -82,17 +89,17 @@
 #' @examples
 #' # Example 1: Basic usage with default subspecialty filter and verbose output
 #' updated_goba_basic <- update_goba_with_missing_subspecialists(
-#'   goba_file_path = "data/GOBA_Scrape_subspecialists_only.csv",
-#'   combined_extractions_file_path = "data/combined_subspecialty_extractions.csv",
-#'   output_file_path = "data/updated_GOBA_subspecialists.csv",
+#'   goba_file_path = GOBA_SUBSPECIALISTS_FILE,
+#'   combined_extractions_file_path = COMBINED_EXTRACTIONS_FILE,
+#'   output_file_path = UPDATED_GOBA_OUTPUT_FILE,
 #'   subspecialty_filter = c("Gynecologic Oncology", "Maternal-Fetal Medicine"),
 #'   verbose = TRUE
 #' )
 #'
 #' # Example 2: Include all subspecialties with custom output path and logging
 #' updated_goba_all <- update_goba_with_missing_subspecialists(
-#'   goba_file_path = "data/GOBA_Scrape_subspecialists_only.csv",
-#'   combined_extractions_file_path = "data/combined_subspecialty_extractions.csv",
+#'   goba_file_path = GOBA_SUBSPECIALISTS_FILE,
+#'   combined_extractions_file_path = COMBINED_EXTRACTIONS_FILE,
 #'   output_file_path = "output/comprehensive_subspecialists_database.csv",
 #'   subspecialty_filter = NULL,
 #'   verbose = TRUE
@@ -100,8 +107,8 @@
 #'
 #' # Example 3: Return dataset without saving file, minimal logging
 #' updated_goba_memory <- update_goba_with_missing_subspecialists(
-#'   goba_file_path = "data/GOBA_Scrape_subspecialists_only.csv",
-#'   combined_extractions_file_path = "data/combined_subspecialty_extractions.csv",
+#'   goba_file_path = GOBA_SUBSPECIALISTS_FILE,
+#'   combined_extractions_file_path = COMBINED_EXTRACTIONS_FILE,
 #'   output_file_path = NULL,
 #'   subspecialty_filter = c("Gynecologic Oncology"),
 #'   verbose = FALSE
@@ -115,9 +122,9 @@
 #'
 #' @export
 update_goba_with_missing_subspecialists <- function(
-    goba_file_path,
-    combined_extractions_file_path,
-    output_file_path = NULL,
+    goba_file_path = GOBA_SUBSPECIALISTS_FILE,
+    combined_extractions_file_path = COMBINED_EXTRACTIONS_FILE,
+    output_file_path = UPDATED_GOBA_OUTPUT_FILE,
     subspecialty_filter = c("Gynecologic Oncology", "Maternal-Fetal Medicine", 
                             "Reproductive Endocrinology", "Female Pelvic Medicine"),
     verbose = TRUE
@@ -505,12 +512,12 @@ log_final_summary <- function(updated_goba_dataset, missing_subspecialists_data,
 # run ----
 
 updated_goba_basic <- update_goba_with_missing_subspecialists(
-  goba_file_path = "data/03-search_and_process_npi/GOBA_Scrape_subspecialists_only.csv",
-  combined_extractions_file_path = "data/03-search_and_process_npi/combined_subspecialty_extractions.csv",
-  output_file_path = "data/03-search_and_process_npi/updated_GOBA_subspecialists.csv",
+  goba_file_path = GOBA_SUBSPECIALISTS_FILE,
+  combined_extractions_file_path = COMBINED_EXTRACTIONS_FILE,
+  output_file_path = UPDATED_GOBA_OUTPUT_FILE,
   verbose = TRUE
 )
 
-readr::read_csv("data/03-search_and_process_npi/updated_GOBA_subspecialists.csv") %>%
+readr::read_csv(UPDATED_GOBA_OUTPUT_FILE) %>%
   dplyr::filter(stringr::str_detect(first_name, "Marisa"), 
                 stringr::str_detect(last_name, "Moroney"))

@@ -2,6 +2,11 @@
 source("R/01-setup.R")
 #######################
 
+# File Path Constants ----
+INTERN_SEARCH_DIR <- "data"
+INTERN_NAMES_FILE <- file.path(INTERN_SEARCH_DIR, "Anuja_OBGYN_resident_name_search___Sheet1.csv")
+INTERN_RESULTS_FILE <- file.path(INTERN_SEARCH_DIR, "results_of_search_and_process_npi.csv")
+
 
 source("R/01-setup.R")
 
@@ -88,7 +93,7 @@ search_and_process_npi <- memoise(function(input_file,
 })
 
 
-input_file <- "data/Anuja_OBGYN_resident_name_search___Sheet1.csv"
+input_file <- INTERN_NAMES_FILE
 search_results_df <- search_and_process_npi(input_file)
-readr::write_csv(search_results_df, "data/results_of_search_and_process_npi.csv")
+readr::write_csv(search_results_df, INTERN_RESULTS_FILE)
 

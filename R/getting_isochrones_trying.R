@@ -2,6 +2,11 @@
 source("R/01-setup.R")
 #######################
 
+# File Path Constants ----
+GEOCODED_CLINICIAN_FILE <- "data/inner_join_postmastr_clinician_data.csv"
+ISOCHRONE_OUTPUT_DIR <- "data/isochrones"
+ISOCHRONE_COMBINED_DIR <- file.path(ISOCHRONE_OUTPUT_DIR, "isochrones_all_combined")
+
 library(tidyverse)
 library(sf)
 library(easyr)
@@ -11,7 +16,7 @@ library(data.table)
 
 ##### To do the actual gathering of the isochrones: `process_and_save_isochrones`.  We do this in chunks of 25 because we were losing the entire searched isochrones when one error hit.  There is a 1:1 relationship between isochrones and rows in the `input_file` so to match exactly on row we need no errors.  Lastly, we save as a shapefile so that we can keep the MULTIPOLYGON geometry setting for the sf object making it easier to work with the spatial data in the future for plotting, etc.  I struggled because outputing the data as a dataframe was not easy to write it back to a MULTIPOLYGON.
 
-input_file <- readr::read_csv("data/inner_join_postmastr_clinician_data.csv") %>%
+input_file <- readr::read_csv(GEOCODED_CLINICIAN_FILE) %>%
   dplyr::mutate(id = row_number()) %>%
   dplyr::filter(postmastr.name.x != "Hye In Park, MD") #Not able to create isochrone for some reason
 
@@ -67,7 +72,7 @@ process_and_save_isochrones <- function(input_file, chunk_size = 25) {
       # Create the file name with the current date and time
       current_datetime <- format(Sys.time(), "%Y%m%d%H%M%S")
 
-      file_name <- paste("data/isochrones/isochrones_", current_datetime, "_chunk_", min(chunk_data$id), "_to_", max(chunk_data$id))
+        file_name <- file.path(ISOCHRONE_OUTPUT_DIR, paste0("isochrones_", current_datetime, "_chunk_", min(chunk_data$id), "_to_", max(chunk_data$id)))
 
       # Assuming "arrival" field is originally in character format with both date and time
       # Convert it to a DateTime object
@@ -102,7 +107,7 @@ class(isochrones_sf)
 
 sf::st_write(
   isochrones_sf,
-  dsn = "data/isochrones/isochrones_all_combined",
+  dsn = ISOCHRONE_COMBINED_DIR,
   layer = "isochrones",
   driver = "ESRI Shapefile",
   quiet = FALSE)

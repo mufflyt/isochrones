@@ -6,9 +6,14 @@ source("R/01-setup.R")
 # You have to download this file manually.
 source("R/01-setup.R")
 
-data_dir <- "/Volumes/Video Projects Muffly 1/physician_compare"
+# File Path Constants ----
+PHYSICIAN_COMPARE_BASE_DIR <- "/Volumes/Video Projects Muffly 1/physician_compare"
+PHYSICIAN_COMPARE_ZIP <- file.path(PHYSICIAN_COMPARE_BASE_DIR, "149961-V1.zip")
+PHYSICIAN_COMPARE_UNZIP_DIR <- file.path(PHYSICIAN_COMPARE_BASE_DIR, "unzipped_files")
 
-unzip("/Volumes/Video Projects Muffly 1/physician_compare/149961-V1.zip", 
-      exdir = data/dir)
+data_dir <- PHYSICIAN_COMPARE_BASE_DIR
 
-list.files("/Volumes/Video Projects Muffly 1/physician_compare/unzipped_files")
+unzip(PHYSICIAN_COMPARE_ZIP,
+      exdir = PHYSICIAN_COMPARE_UNZIP_DIR)
+
+list.files(PHYSICIAN_COMPARE_UNZIP_DIR)

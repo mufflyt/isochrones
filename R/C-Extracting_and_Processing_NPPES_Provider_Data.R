@@ -29,6 +29,11 @@
 #
 #
 # DATA SOURCES & DATABASE STRUCTURE
+# File Path Constants ----
+NPPES_PROCESS_DIR <- "data"
+OBGYN_PHYSICIANS_RDS <- file.path(NPPES_PROCESS_DIR, "C_extracting_and_processing_NPPES_obgyn_physicians_all_years.rds")
+PHYSICIAN_COMPARE_CSV <- file.path(NPPES_PROCESS_DIR, "C_physician_compare_data.csv")
+
 #
 #
 # PRIMARY DATABASE:
@@ -204,7 +209,7 @@
 #
 #
 # PRIMARY OUTPUT: ----
-# "data/C_extracting_and_processing_NPPES_obgyn_physicians_all_years.rds"
+# OBGYN_PHYSICIANS_RDS
 # #
 # # FINAL COLUMN STRUCTURE:
 # obgyn_physicians_all_years <- tibble(
@@ -1622,7 +1627,7 @@ obgyn_physicians_all_years$Year <- as.character(obgyn_physicians_all_years$Year)
 # 7. Save Results and Cleanup ----
 #
 # Save the processed data to an RDS file
-saveRDS(obgyn_physicians_all_years, "data/C_extracting_and_processing_NPPES_obgyn_physicians_all_years.rds"); invisible(gc())
+saveRDS(obgyn_physicians_all_years, OBGYN_PHYSICIANS_RDS); invisible(gc())
 
 # Close the database connection
 dbDisconnect(con)
@@ -1711,7 +1716,7 @@ physician_compare_data <- clean_physician_data %>%
   collect()  # This executes the query and brings results into R
 
 # Save extracted data to CSV
-write_csv(physician_compare_data, "data/C_physician_compare_data.csv")
+write_csv(physician_compare_data, PHYSICIAN_COMPARE_CSV)
 
 
 #

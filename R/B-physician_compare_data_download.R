@@ -6,6 +6,10 @@ source("R/01-setup.R")
 # You have to download this file manually.
 source("R/01-setup.R")
 
+# File Path Constants ----
+PHYSICIAN_COMPARE_BASE_DIR <- "/Volumes/Video Projects Muffly 1/physician_compare"
+PHYSICIAN_COMPARE_UNZIPPED_DIR <- file.path(PHYSICIAN_COMPARE_BASE_DIR, "unzipped_files")
+
 
 ###
 # Load libraries
@@ -16,7 +20,7 @@ library(purrr)
 library(fs)
 
 # Define base directory
-base_dir <- "/Volumes/Video Projects Muffly 1/physician_compare/unzipped_files/"
+base_dir <- PHYSICIAN_COMPARE_UNZIPPED_DIR
 
 # Get all year folders
 year_folders <- fs::dir_ls(base_dir, type = "directory")
@@ -64,7 +68,7 @@ library(scales)
 library(beepr)
 
 # Define base directory
-base_dir <- "/Volumes/Video Projects Muffly 1/physician_compare/unzipped_files/"
+base_dir <- PHYSICIAN_COMPARE_UNZIPPED_DIR
 
 # Find all *_filtered.csv files recursively (get path + size)
 filtered_files_info <- fs::dir_info(
@@ -102,9 +106,7 @@ logger::log_info(
 
 # Save merged file with timestamp
 timestamp <- format(Sys.time(), "%Y%m%d_%H%M")
-output_path <- stringr::str_glue(
-  "/Volumes/Video Projects Muffly 1/physician_compare/merged_filtered_physician_compare_{timestamp}.csv"
-)
+output_path <- stringr::str_glue("{PHYSICIAN_COMPARE_BASE_DIR}/merged_filtered_physician_compare_{timestamp}.csv")
 
 readr::write_csv(combined_physician_compare, output_path)
 logger::log_info("Saved merged file to: {output_path}")
@@ -128,7 +130,7 @@ beepr::beep(2)
 #'
 #' @param base_dir Character string specifying the base directory containing
 #'        year-organized subdirectories with filtered CSV files.
-#'        Default: "/Volumes/Video Projects Muffly 1/physician_compare/unzipped_files/"
+#'        Default: PHYSICIAN_COMPARE_UNZIPPED_DIR
 #' @param output_dir Character string specifying the directory for storing
 #'        intermediate chunk files.
 #'        Default: "/Volumes/Video Projects Muffly 1/physician_compare/merged_chunks/"
@@ -153,7 +155,7 @@ beepr::beep(2)
 #' \dontrun{
 #' # Example 1: Basic usage with default parameters
 #' merged_file <- merge_largest_physician_compare_filtered_files(
-#'   base_dir = "/Volumes/Video Projects Muffly 1/physician_compare/unzipped_files/",
+#'   base_dir = PHYSICIAN_COMPARE_UNZIPPED_DIR,
 #'   output_dir = "/Volumes/Video Projects Muffly 1/physician_compare/merged_chunks/",
 #'   verbose = TRUE,
 #'   deduplicate = FALSE,
@@ -185,7 +187,7 @@ beepr::beep(2)
 #' #           merged_filtered_physician_compare_20250503_1100.csv"
 #' }
 merge_largest_physician_compare_filtered_files <- function(
-    base_dir = "/Volumes/Video Projects Muffly 1/physician_compare/unzipped_files/",
+    base_dir = PHYSICIAN_COMPARE_UNZIPPED_DIR,
     output_dir = "/Volumes/Video Projects Muffly 1/physician_compare/merged_chunks/",
     verbose = TRUE,
     deduplicate = FALSE,
@@ -829,7 +831,7 @@ merge_chunks_to_final_output <- function(chunk_directory, preserve_all_columns =
 
 
 merge_largest_physician_compare_filtered_files(
-    base_dir = "/Volumes/Video Projects Muffly 1/physician_compare/unzipped_files/",
+    base_dir = PHYSICIAN_COMPARE_UNZIPPED_DIR,
     output_dir = "/Volumes/Video Projects Muffly 1/physician_compare/merged_chunks/",
     verbose = TRUE,
     deduplicate = TRUE,
@@ -837,7 +839,7 @@ merge_largest_physician_compare_filtered_files(
     preserve_all_columns = TRUE
 ) 
 
-physician_compare_output <- readr::read_csv("/Volumes/Video Projects Muffly 1/physician_compare/merged_filtered_physician_compare_20250504_0959.csv")
+physician_compare_output <- readr::read_csv(file.path(PHYSICIAN_COMPARE_BASE_DIR, "merged_filtered_physician_compare_20250504_0959.csv"))
 
 names(physician_compare_output)
 dim(physician_compare_output)

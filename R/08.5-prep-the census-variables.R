@@ -5,6 +5,15 @@ source("R/01-setup.R")
 
 # This code is focused on retrieving and preparing census variables for analysis. It starts by loading demographic and housing characteristic variables for the 2020 decennial census. The code filters and cleans these variables to include only the data related to females, excluding males and irrelevant annotations, and then writes the cleaned data to a CSV file. It also extracts ACS (American Community Survey) variables for 2020, specifically targeting variables related to population demographics. The code selects and stores these variables in a data frame and saves them as a CSV file. Overall, the code prepares demographic data for further analysis, focusing on gender and race-related variables.
 
+# File Path Constants ----
+CENSUS_PREP_DIR <- "data/08.5-prep-the-census-variables"
+CENSUS_VARS_PREPPED_FILE <- file.path(CENSUS_PREP_DIR, "end_census_variables_prepped.csv")
+TOTALS_VARS_PREPPED_FILE <- file.path(CENSUS_PREP_DIR, "end_totals_census_variables_prepped.csv")
+TEMP_BG_FILE <- file.path(CENSUS_PREP_DIR, "temp_bg.csv")
+DEMOGRAPHICS_BG_FILE <- file.path(CENSUS_PREP_DIR, "demographics_bg.csv")
+ACS_TOTALS_VARS_PREPPED_FILE <- file.path(CENSUS_PREP_DIR, "end_acs_totals_census_variables_prepped.csv")
+
+
 #************************************
 # GET THE DECENNIAL CENSUS VARIABLES
 #************************************
@@ -58,7 +67,7 @@ census_variables_prepped <- vars %>%
   reorder_cols(abbreviated)
   # Age and Race included, 686 rows included
 
-write_csv(census_variables_prepped, "data/08.5-prep-the-census-variables/end_census_variables_prepped.csv"); head(census_variables_prepped)
+write_csv(census_variables_prepped, CENSUS_VARS_PREPPED_FILE); head(census_variables_prepped)
 
 #***********************************************************************
 # CLEAN THE DECENNIAL CENSUS VARIABLES FOR TOTALS ONLY
@@ -67,7 +76,7 @@ write_csv(census_variables_prepped, "data/08.5-prep-the-census-variables/end_cen
 totals_census_variables_prepped <- census_variables_prepped %>%
   filter(str_detect(name, fixed("_026N"))) %>%
   # Only totals by Race.  29 rows
-  write_csv(., "data/08.5-prep-the-census-variables/end_totals_census_variables_prepped.csv"); head(totals_census_variables_prepped)
+  write_csv(., TOTALS_VARS_PREPPED_FILE); head(totals_census_variables_prepped)
 
 
 
@@ -75,7 +84,7 @@ totals_census_variables_prepped <- census_variables_prepped %>%
 # CHANGED TO A WIDE FORMAT CALCULATE PERCENTAGES
 #************************************
 # Steps to produce branching_point_1
-`branching_point_1`<- exploratory::read_delim_file("data/08.5-prep-the-census-variables/temp_bg.csv", delim = NULL, quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
+`branching_point_1`<- exploratory::read_delim_file(TEMP_BG_FILE, delim = NULL, quote = "\"" , col_names = TRUE , na = c('') , locale=readr::locale(encoding = "UTF-8", decimal_mark = ".", tz = "America/Denver", grouping_mark = "," ), trim_ws = TRUE , progress = FALSE) %>%
   readr::type_convert() %>%
   exploratory::clean_data_frame() %>%  # On the Census Demographic Profile they do a "Total races tallied" using "White alone or in combination with one or more races" so I will try that here.
 filter(str_ends(complete_description, fixed(", NOT HISPANIC OR LATINO)")) & str_detect(complete_description, fixed("OR IN COMBINATION WITH ONE OR MORE OTHER RACES"))) %>%
@@ -135,9 +144,9 @@ filter(str_ends(complete_description, fixed(", NOT HISPANIC OR LATINO)")) & str_
                 list(pct = ~ . / get(paste0("population_", sub("within_", "", cur_column())))),
                 .names = "{.col}_pct")) %>%
   # select(ends_with("_pct"), everything()) %>%
-  write_csv(., "data/08.5-prep-the-census-variables/demographics_bg.csv") -> abc
+  write_csv(., DEMOGRAPHICS_BG_FILE) -> abc
 
-read_csv("data/08.5-prep-the-census-variables/demographics_bg.csv")
+read_csv(DEMOGRAPHICS_BG_FILE)
 abc
 
 #************************************
@@ -159,7 +168,7 @@ vars_acs <- tidycensus::load_variables(year = 2020, "acs5")
  acs_totals_variables_prepped <- acs_variables_to_search [-1, ] %>%
    as.data.frame(); acs_totals_variables_prepped
 
-   write_csv(acs_totals_variables_prepped, "data/08.5-prep-the-census-variables/end_acs_totals_census_variables_prepped.csv"); head(acs_totals_variables_prepped)
+   write_csv(acs_totals_variables_prepped, ACS_TOTALS_VARS_PREPPED_FILE); head(acs_totals_variables_prepped)
 
 
 # TRASH

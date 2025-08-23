@@ -2,13 +2,17 @@
 source("R/01-setup.R")
 #######################
 
+# File Path Constants ----
+FACILITY_AFFILIATION_DIR <- "data/facility_affiliation"
+FACILITY_AFFILIATION_CSV <- file.path(FACILITY_AFFILIATION_DIR, "Facility_Affiliation.csv")
+
 # Must download by hand from https://data.cms.gov/provider-data/dataset/27ea-46a8
 # Facility Affiliation CMS Data was first published by the Centers for Medicare & Medicaid Services (CMS) in August 2023. The most recent dataset was released to the public on April 17, 2025.
 source("R/01-setup.R")
 
 library(tidyverse)
 
-facility_affiliation <- read_csv("/Users/tylermuffly/Dropbox (Personal)/isochrones/data/facility_affiliation/Facility_Affiliation.csv"); facility_affiliation
+facility_affiliation <- read_csv(FACILITY_AFFILIATION_CSV); facility_affiliation
 
 facility_affiliation_output <- facility_affiliation %>%
   dplyr::distinct(NPI, Ind_PAC_ID, .keep_all = TRUE) %>%
