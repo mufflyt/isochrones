@@ -38,6 +38,240 @@ GEOCODING_OUTPUT_DIR <- "data/04-geocode/output"
 VALID_CREDENTIALS <- c("MD", "DO")
 GYNECOLOGY_TAXONOMY_PATTERN <- "Gyn"
 
+# Reverse Search: Find NPI Numbers from Provider Names ----
+#' Reverse Search: Find NPI Numbers from Provider Names
+#'
+#' @description Search for NPI numbers using first and last names with the npi package.
+#' @param first_name First name of the provider
+#' @param last_name Last name of the provider  
+#' @param specialty_filter Optional vector of specialties to filter results (default NULL for all)
+#' @param credential_filter Vector of credentials to filter (default c("MD", "DO"))
+#' @param limit Maximum number of results to return (default 10)
+#' @return A data frame with NPI search results
+#' @examples
+#' reverse_search_npi("John", "Smith")
+#' reverse_search_npi("Jane", "Doe", specialty_filter = "Gynecologic Oncology")
+#' @export
+reverse_search_npi <- function(first_name, 
+                               last_name,
+                               specialty_filter = NULL,
+                               credential_filter = c("MD", "DO"),
+                               limit = 10) {
+  
+  cat("Searching for NPI:", first_name, last_name, "\n")
+  
+  # Input validation
+  if (is.null(first_name) || is.null(last_name) || 
+      first_name == "" || last_name == "") {
+    stop("Both first_name and last_name are required")
+  }
+  
+  tryCatch({
+    # Search using npi package
+    npi_obj <- npi::npi_search(
+      first_name = first_name, 
+      last_name = last_name,
+      limit = limit
+    )
+    
+    if (is.null(npi_obj)) {
+      cat("No results found for:", first_name, last_name, "\n")
+      return(data.frame())
+    }
+    
+    # Flatten the results - include ALL available data sections
+    results <- npi::npi_flatten(npi_obj)  # Get everything - basic, taxonomies, addresses, other_names, identifiers, endpoints
+    
+    if (nrow(results) == 0) {
+      cat("No flattened results for:", first_name, last_name, "\n") 
+      return(data.frame())
+    }
+    
+    # Filter by credentials if specified
+    if (!is.null(credential_filter) && "basic_credential" %in% names(results)) {
+      results <- results %>%
+        dplyr::filter(
+          stringr::str_to_upper(stringr::str_trim(basic_credential)) %in% 
+          stringr::str_to_upper(credential_filter)
+        )
+    }
+    
+    # Filter by specialty if specified
+    if (!is.null(specialty_filter) && "taxonomies_desc" %in% names(results)) {
+      results <- results %>%
+        dplyr::filter(
+          stringr::str_detect(taxonomies_desc, 
+                             paste(specialty_filter, collapse = "|"))
+        )
+    }
+    
+    # Clean and format results
+    if (nrow(results) > 0) {
+      # Debug: Print available columns
+      cat("Available columns:", paste(names(results), collapse = ", "), "\n")
+      
+      # Select available columns with safe column selection
+      available_cols <- names(results)
+      
+      result_cols <- list(
+        npi = "npi"
+      )
+      
+      # Basic demographic and identification fields
+      if ("basic_first_name" %in% available_cols) result_cols$first_name <- "basic_first_name"
+      if ("basic_last_name" %in% available_cols) result_cols$last_name <- "basic_last_name"
+      if ("basic_middle_name" %in% available_cols) result_cols$middle_name <- "basic_middle_name"
+      if ("basic_credential" %in% available_cols) result_cols$credential <- "basic_credential"
+      if ("basic_sole_proprietor" %in% available_cols) result_cols$sole_proprietor <- "basic_sole_proprietor"
+      if ("basic_gender" %in% available_cols) result_cols$gender <- "basic_gender"
+      if ("basic_sex" %in% available_cols) result_cols$sex <- "basic_sex"
+      if ("basic_enumeration_date" %in% available_cols) result_cols$enumeration_date <- "basic_enumeration_date"
+      if ("basic_last_updated" %in% available_cols) result_cols$last_updated <- "basic_last_updated"
+      if ("basic_certification_date" %in% available_cols) result_cols$certification_date <- "basic_certification_date"
+      if ("basic_status" %in% available_cols) result_cols$status <- "basic_status"
+      if ("basic_name_prefix" %in% available_cols) result_cols$name_prefix <- "basic_name_prefix"
+      if ("basic_name_suffix" %in% available_cols) result_cols$name_suffix <- "basic_name_suffix"
+      
+      # Taxonomy/Specialty information
+      if ("taxonomies_desc" %in% available_cols) result_cols$specialty <- "taxonomies_desc"
+      if ("taxonomies_code" %in% available_cols) result_cols$taxonomy_code <- "taxonomies_code"
+      if ("taxonomies_taxonomy_group" %in% available_cols) result_cols$taxonomy_group <- "taxonomies_taxonomy_group"
+      if ("taxonomies_state" %in% available_cols) result_cols$taxonomy_state <- "taxonomies_state"
+      if ("taxonomies_license" %in% available_cols) result_cols$license_number <- "taxonomies_license"
+      if ("taxonomies_primary" %in% available_cols) result_cols$primary_taxonomy <- "taxonomies_primary"
+      
+      # Address columns (try different variations)
+      address_fields <- c(
+        "addresses_address_1", "addresses_line_1", "address_1", "address"
+      )
+      address_col <- address_fields[address_fields %in% available_cols][1]
+      if (!is.na(address_col)) result_cols$practice_address <- address_col
+      
+      # Address line 2
+      address2_fields <- c(
+        "addresses_address_2", "addresses_line_2", "address_2"
+      )
+      address2_col <- address2_fields[address2_fields %in% available_cols][1]
+      if (!is.na(address2_col)) result_cols$practice_address_2 <- address2_col
+      
+      city_fields <- c(
+        "addresses_city", "city"
+      )
+      city_col <- city_fields[city_fields %in% available_cols][1]
+      if (!is.na(city_col)) result_cols$practice_city <- city_col
+      
+      state_fields <- c(
+        "addresses_state", "state"
+      )
+      state_col <- state_fields[state_fields %in% available_cols][1]
+      if (!is.na(state_col)) result_cols$practice_state <- state_col
+      
+      zip_fields <- c(
+        "addresses_postal_code", "postal_code", "addresses_zip", "zip"
+      )
+      zip_col <- zip_fields[zip_fields %in% available_cols][1]
+      if (!is.na(zip_col)) result_cols$practice_postal_code <- zip_col
+      
+      # Phone number
+      phone_fields <- c(
+        "addresses_telephone_number", "addresses_phone", "telephone_number", "phone"
+      )
+      phone_col <- phone_fields[phone_fields %in% available_cols][1]
+      if (!is.na(phone_col)) result_cols$practice_phone <- phone_col
+      
+      # Fax number
+      fax_fields <- c(
+        "addresses_fax_number", "fax_number", "fax"
+      )
+      fax_col <- fax_fields[fax_fields %in% available_cols][1]
+      if (!is.na(fax_col)) result_cols$practice_fax <- fax_col
+      
+      # Address type and purpose
+      if ("addresses_address_purpose" %in% available_cols) result_cols$address_purpose <- "addresses_address_purpose"
+      if ("addresses_address_type" %in% available_cols) result_cols$address_type <- "addresses_address_type"
+      if ("addresses_country_code" %in% available_cols) result_cols$country_code <- "addresses_country_code"
+      if ("addresses_country_name" %in% available_cols) result_cols$country_name <- "addresses_country_name"
+      
+      # Other names (alternate names, maiden names, etc.)
+      other_name_fields <- c(
+        "other_names_type", "other_names_code", "other_names_credential",
+        "other_names_first_name", "other_names_last_name", "other_names_middle_name",
+        "other_names_prefix", "other_names_suffix"
+      )
+      for (field in other_name_fields) {
+        if (field %in% available_cols) {
+          clean_field_name <- gsub("other_names_", "other_", field)
+          result_cols[[clean_field_name]] <- field
+        }
+      }
+      
+      # Professional identifiers (DEA, state license numbers, etc.)
+      identifier_fields <- c(
+        "identifiers_code", "identifiers_desc", "identifiers_identifier",
+        "identifiers_state", "identifiers_issuer"
+      )
+      for (field in identifier_fields) {
+        if (field %in% available_cols) {
+          clean_field_name <- gsub("identifiers_", "id_", field)
+          result_cols[[clean_field_name]] <- field
+        }
+      }
+      
+      # Endpoints (electronic health records, websites, etc.)
+      endpoint_fields <- c(
+        "endpoints_endpointType", "endpoints_endpointTypeDescription", 
+        "endpoints_endpoint", "endpoints_affiliation", "endpoints_useDescription",
+        "endpoints_contentTypeDescription", "endpoints_country_code",
+        "endpoints_country_name", "endpoints_address_type", "endpoints_address_1",
+        "endpoints_city", "endpoints_state", "endpoints_postal_code",
+        "endpoints_use", "endpoints_endpointDescription", "endpoints_affiliationName",
+        "endpoints_contentType", "endpoints_contentOtherDescription",
+        "endpoints_address_2", "endpoints_useOtherDescription"
+      )
+      for (field in endpoint_fields) {
+        if (field %in% available_cols) {
+          clean_field_name <- gsub("endpoints_", "endpoint_", field)
+          result_cols[[clean_field_name]] <- field
+        }
+      }
+      
+      # Select and rename columns safely
+      selected_cols <- intersect(unlist(result_cols), available_cols)
+      
+      results <- results %>%
+        dplyr::select(tidyselect::any_of(selected_cols))
+      
+      # Rename columns that exist
+      rename_map <- result_cols[names(result_cols) %in% names(results)]
+      if (length(rename_map) > 0) {
+        # Create proper rename mapping (new_name = old_name)
+        rename_list <- setNames(unlist(rename_map), names(rename_map))
+        results <- results %>% dplyr::rename(!!!rename_list)
+      }
+      
+      results <- results %>%
+        dplyr::distinct(npi, .keep_all = TRUE)
+      
+      # Only arrange by last_name, first_name if they exist
+      if (all(c("last_name", "first_name") %in% names(results))) {
+        results <- results %>% dplyr::arrange(last_name, first_name)
+      }
+      
+      cat("Found", nrow(results), "result(s) for:", first_name, last_name, "\n")
+      return(results)
+    } else {
+      cat("No matching results after filtering for:", first_name, last_name, "\n")
+      return(data.frame())
+    }
+    
+  }, error = function(e) {
+    cat("ERROR searching for", first_name, last_name, ":", conditionMessage(e), "\n")
+    return(data.frame())
+  })
+}
+
+# run ----
+results <- reverse_search_npi("Tyler ", "Muffly")
 
 #' Process National Provider Identifier (NPI) Database for Gynecologic Oncologists
 #'
