@@ -1,6 +1,6 @@
 
 # Setup ----
-source("~/Dropbox (Personal)/isochrones/R/01-setup.R")
+source("R/01-setup.R")
 
 
 # CONSTANTS - Configuration variables for reproducibility and maintainability
