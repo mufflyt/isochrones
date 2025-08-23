@@ -212,7 +212,12 @@ Sys.getenv("OMP_NUM_THREADS")   # how many threads it thinks you have
 parallel::detectCores()         # number of cores
 
 future::plan(future::multisession, workers = parallel::detectCores() - 1)
-furrr::future_map(1:8, ~ Sys.sleep(1))  # runs in parallel
+# Ensure reproducible seeding across parallel workers
+furrr::future_map(
+  1:8,
+  ~ Sys.sleep(1),
+  .options = furrr::furrr_options(seed = TRUE)
+)  # runs in parallel
 
 
 #Of note this is a personal package with some bespoke functions and data that we will use occasionally.  It is still under development and it is normal for it to give multiple warnings at libary(tyler).
