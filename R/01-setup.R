@@ -17,6 +17,7 @@
 set.seed(1978)
 invisible(gc())
 
+library(devtools)
 library(hereR)
 library(tidyverse)
 library(sf)
@@ -68,6 +69,7 @@ library(dplyr)       # data wrangling used across scripts
 library(duckdb)      # local DB operations in openpayments.R
 library(duckplyr)    # duckdb tibble translation in B-NPPES_read_in_csv_file_to_duckDB_database.R
 library(fs)          # filesystem helpers in A-open_payments_download.R
+# install.packages(c("gifski", "av"))
 library(gganimate)   # animations in GO_access_analysis_code.Rmd
 library(gghighlight) # highlight plots in GO_access_analysis_code.Rmd
 library(ggrepel)     # non-overlap labels in GO_REBUILD.Rmd
@@ -83,16 +85,27 @@ library(lme4)        # mixed models in isochrones.Rmd
 library(logger)      # logging in D-Quality_check_medicare_prescribing.R
 library(lubridate)   # date handling in D-Quality_check_medicare_prescribing.R
 library(patchwork)   # plot layouts in C-Medicare_part_d_prescribers_processing.R
+# remotes::install_github("slu-openGIS/postmastr")
 library(postmastr)   # address parsing in B-nber_nppes_combine_columns.R
 library(readr)       # fast CSV reading in B-Medicare_part_d_prescribers_read_in.R
 library(rlang)       # tidy evaluation in GO_REBUILD.Rmd
 library(rvest)       # web scraping in NPPES_deactivated_download.R
 library(scales)      # axis scales in GO_access_analysis_code.Rmd
 library(tibble)      # tidy tables in C-NPPES.R
-library(tyler)       # custom utilities in C-NPPES.R
 library(tigris)
 library(tidycensus)
+library(pdftools)
+library(R.utils)
+
 source("R/here_api_utils.R")
+
+# Parallel processing with the sweet computer
+Sys.getenv("OMP_NUM_THREADS")   # how many threads it thinks you have
+parallel::detectCores()         # number of cores
+
+future::plan(future::multisession, workers = parallel::detectCores() - 1)
+furrr::future_map(1:8, ~ Sys.sleep(1))  # runs in parallel
+
 
 #Of note this is a personal package with some bespoke functions and data that we will use occasionally.  It is still under development and it is normal for it to give multiple warnings at libary(tyler).
 # devtools::install_github("mufflyt/tyler")
@@ -103,7 +116,7 @@ options(tigris_use_cache = TRUE)
 duckplyr::methods_restore()  # return to plain dplyr
 
 
-readRenviron("~/.Renviron")
+readRenviron(".Renviron")
 if (!nzchar(Sys.getenv("HERE_API_KEY"))) {
   stop("HERE_API_KEY environment variable is not set.")
 }
@@ -1341,3 +1354,4 @@ standardize_addresses <- function(df,
 
 # fin
 print("Setup is complete!")
+
