@@ -24,10 +24,15 @@ source("R/01-setup.R")
 #' @export
 standardize_cms_data <- function(db_conn,
                                  output_table = "physician_data_standardized",
-                                 sample_size = 1000,
-                                 max_memory_mb = 2000,
+                                 sample_size = NULL,
+                                 max_memory_mb = NULL,
                                  verbose = TRUE) {
-  
+
+  DEFAULT_SAMPLE_SIZE <- 1000
+  DEFAULT_MAX_MEMORY_MB <- 2000
+  if (is.null(sample_size)) sample_size <- DEFAULT_SAMPLE_SIZE
+  if (is.null(max_memory_mb)) max_memory_mb <- DEFAULT_MAX_MEMORY_MB
+
   if (verbose) logger::log_threshold(logger::INFO) else logger::log_threshold(logger::WARN)
   
   # Start timing and memory tracking
@@ -609,9 +614,8 @@ con <- dbConnect(duckdb(), dbdir = db_path)
 
 # Run the standardization function
 standardize_cms_data(
-  db_conn = con, 
-  output_table = "physician_data_standardized",
-  max_memory_mb = 2000
+  db_conn = con,
+  output_table = "physician_data_standardized"
 )
 
 # Example: Track physician counts by year

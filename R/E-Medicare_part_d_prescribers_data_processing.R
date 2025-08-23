@@ -206,9 +206,12 @@ table_names <- c(
   "MUP_DPR_RY21_P04_V10_DY18_NPI_csv_6",
   "MUP_DPR_RY21_P04_V10_DY19_NPI_csv_7",
   "MUP_DPR_RY22_P04_V10_DY20_NPI_csv_8",
-  "MUP_DPR_RY23_P04_V10_DY21_NPI_csv_9"#, 
-  #"MUP_DPR_RY23_P04_V10_DY22_NPI_csv_10" 
+  "MUP_DPR_RY23_P04_V10_DY21_NPI_csv_9"#,
+  #"MUP_DPR_RY23_P04_V10_DY22_NPI_csv_10"
 )
+
+# Threshold for excluding extremely high claim counts
+MAX_CLAIMS_THRESHOLD <- 50000
 
 # --------------------------------------------------------------------------
 # ✅ Sanity Check: Confirm all required tables were created
@@ -274,7 +277,7 @@ for (i in 1:length(table_names)) {
       dplyr::filter(Prscrbr_Type %in% PRESCRIBER_TYPES &
                       Prscrbr_Cntry == "US") %>%
       dplyr::select(PRSCRBR_NPI, Tot_Clms) %>%
-      dplyr::filter(Tot_Clms < 50000) %>%
+      dplyr::filter(Tot_Clms < MAX_CLAIMS_THRESHOLD) %>%
       dplyr::mutate(Prescribed = "Prescription written") %>%
       dplyr::distinct(PRSCRBR_NPI, .keep_all = TRUE) %>%
       dplyr::mutate(year = table_name)

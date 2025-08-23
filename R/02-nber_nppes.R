@@ -8,6 +8,12 @@ ABOG_PROVIDER_DATA_FILE <- file.path(ABOG_INPUT_DIR, "best_abog_provider_datafra
 OBGYN_TAXONOMY_OUTPUT_FILE <- file.path(NPI_OUTPUT_DIR, "obgyn_taxonomy_abog_npi_matched_8_18_2025.csv")
 UROLOGY_TAXONOMY_OUTPUT_FILE <- file.path(NPI_OUTPUT_DIR, "urology_taxonomy_abog_npi_matched_8_18_2025.csv")
 
+# API and processing constants
+API_RATE_LIMIT_DELAY_DEFAULT <- 0.1
+API_RATE_LIMIT_DELAY_SLOW <- 0.2
+MAX_RESULTS_PER_QUERY <- 200
+HTTP_OK <- 200
+
 # Pull all the subspecialties from the NBER NPPES data.  
 #source("R/B-nber_nppes_combine_columns.R")
 source("R/01-setup.R")
@@ -191,8 +197,8 @@ batch_npi_api_lookup <- function(
     physician_names_input,
     specialty_filter = "Obstetrics & Gynecology",
     output_file_path = NULL,
-    api_rate_limit_delay = 0.1,
-    max_results_per_query = 200,
+    api_rate_limit_delay = API_RATE_LIMIT_DELAY_DEFAULT,
+    max_results_per_query = MAX_RESULTS_PER_QUERY,
     enable_verbose_logging = TRUE
 ) {
   
@@ -328,7 +334,7 @@ perform_batch_nppes_api_queries_fixed <- function(processed_names, specialty_fil
         timeout = 30
       )
       
-      if (httr::status_code(api_response) == 200) {
+      if (httr::status_code(api_response) == HTTP_OK) {
         response_content <- httr::content(api_response, "parsed")
         
         if (!is.null(response_content$results) && length(response_content$results) > 0) {
@@ -474,7 +480,7 @@ obgyn_taxonomy_full_abog_with_ids <- batch_npi_api_lookup(
   physician_names_input = names_with_abog_ids,
   specialty_filter = "Obstetrics & Gynecology", 
   output_file_path = OBGYN_TAXONOMY_OUTPUT_FILE,
-  api_rate_limit_delay = 0.2,
+  api_rate_limit_delay = API_RATE_LIMIT_DELAY_SLOW,
   enable_verbose_logging = TRUE
 )
 
@@ -482,7 +488,7 @@ urology_taxonomy_full_abog_with_ids <- batch_npi_api_lookup(
   physician_names_input = names_with_abog_ids,
   specialty_filter = "Urology",
   output_file_path = UROLOGY_TAXONOMY_OUTPUT_FILE,
-  api_rate_limit_delay = 0.2,
+  api_rate_limit_delay = API_RATE_LIMIT_DELAY_SLOW,
   enable_verbose_logging = TRUE
 )
 

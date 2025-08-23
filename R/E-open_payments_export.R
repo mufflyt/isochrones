@@ -88,16 +88,15 @@ export_to_csv <- function(connection, table_name, output_path, verbose) {
 #' @return Logical indicating if export was successful
 #' @noRd
 export_to_csv_in_chunks <- function(connection, table_name, output_path, verbose) {
+  CHUNK_SIZE <- 500000
+
   # Get row count of table
   count_query <- paste0("SELECT COUNT(*) AS row_count FROM ", table_name)
   count_result <- DBI::dbGetQuery(connection, count_query)
   total_rows <- count_result$row_count[1]
-  
-  # Define chunk size
-  chunk_size <- 500000  # Adjust based on memory constraints
-  
+
   # Calculate number of chunks
-  num_chunks <- ceiling(total_rows / chunk_size)
+  num_chunks <- ceiling(total_rows / CHUNK_SIZE)
   logger::log_info("Exporting {total_rows} rows in {num_chunks} chunks")
   
   # Create output directory if it doesn't exist
@@ -111,7 +110,7 @@ export_to_csv_in_chunks <- function(connection, table_name, output_path, verbose
   chunk_files <- character(num_chunks)
   
   for (chunk in 1:num_chunks) {
-    offset <- (chunk - 1) * chunk_size
+    offset <- (chunk - 1) * CHUNK_SIZE
     
     # Create chunk file path
     chunk_file <- paste0(tools::file_path_sans_ext(output_path), 
@@ -120,7 +119,7 @@ export_to_csv_in_chunks <- function(connection, table_name, output_path, verbose
     
     # Export chunk
     chunk_query <- paste0(
-      "COPY (SELECT * FROM ", table_name, " LIMIT ", chunk_size, " OFFSET ", offset, ") ",
+      "COPY (SELECT * FROM ", table_name, " LIMIT ", CHUNK_SIZE, " OFFSET ", offset, ") ",
       "TO '", chunk_file, "' (DELIMITER ',', HEADER, FORMAT CSV)"
     )
     

@@ -350,9 +350,11 @@ calculate_nearest_oncologist_distance <- function(highway_point_index,
 #' Calculate Great Circle Distance Between Two Points
 #' @noRd
 calculate_great_circle_distance <- function(lat1, lon1, lat2, lon2) {
-  
+
+  EARTH_RADIUS_MILES <- 3959
+
   # Haversine formula for great circle distance
-  earth_radius_miles <- 3959
+  earth_radius_miles <- EARTH_RADIUS_MILES
   
   # Convert degrees to radians
   lat1_rad <- lat1 * pi / 180
@@ -375,23 +377,29 @@ calculate_great_circle_distance <- function(lat1, lon1, lat2, lon2) {
 #' Simulate Drive Time from Distance
 #' @noRd
 simulate_drive_time_from_distance <- function(distance_miles) {
-  
+
+  BASE_TIME_MINUTES <- 5
+  DENSE_URBAN_SPEED_MPH <- 20
+  URBAN_SUBURBAN_SPEED_MPH <- 30
+  SUBURBAN_SPEED_MPH <- 40
+  RURAL_HIGHWAY_SPEED_MPH <- 50
+
   # Simulate realistic drive times accounting for:
   # - Base time for getting off highway, parking, etc.
   # - Variable speeds depending on urban vs rural areas
   # - Traffic factors
-  
-  base_time_minutes <- 5  # Reduced base time
-  
+
+  base_time_minutes <- BASE_TIME_MINUTES  # Reduced base time
+
   # More realistic speed based on distance and area type
   if (distance_miles <= 5) {
-    avg_speed_mph <- 20  # Dense urban driving
+    avg_speed_mph <- DENSE_URBAN_SPEED_MPH  # Dense urban driving
   } else if (distance_miles <= 15) {
-    avg_speed_mph <- 30  # Urban/suburban driving  
+    avg_speed_mph <- URBAN_SUBURBAN_SPEED_MPH  # Urban/suburban driving
   } else if (distance_miles <= 35) {
-    avg_speed_mph <- 40  # Suburban driving
+    avg_speed_mph <- SUBURBAN_SPEED_MPH  # Suburban driving
   } else {
-    avg_speed_mph <- 50  # Rural/highway driving
+    avg_speed_mph <- RURAL_HIGHWAY_SPEED_MPH  # Rural/highway driving
   }
   
   # Add some random variation for traffic (less extreme)
@@ -935,18 +943,21 @@ get_state_boundaries <- function(verbose = TRUE) {
 #' @return List of coverage circle data frames
 #' @noRd
 create_coverage_circles <- function(cancer_centers_data, coverage_minutes_vector, verbose = TRUE) {
-  
+
+  MILES_PER_MINUTE_AT_60_MPH <- 1.0
+  MILES_PER_DEGREE_APPROX <- 69
+
   if (verbose) {
     logger::log_info("Creating coverage circle data for travel time analysis")
     logger::log_info("Coverage times: {paste(coverage_minutes_vector, collapse = ', ')} minutes")
   }
-  
+
   # Convert minutes to approximate miles (assuming 60 mph average speed)
-  miles_per_minute <- 1.0  # 60 mph = 1 mile per minute
+  miles_per_minute <- MILES_PER_MINUTE_AT_60_MPH  # 60 mph = 1 mile per minute
   coverage_radius_miles <- coverage_minutes_vector * miles_per_minute
-  
+
   # Convert miles to degrees (approximate: 1 degree ≈ 69 miles at this latitude)
-  miles_per_degree <- 69
+  miles_per_degree <- MILES_PER_DEGREE_APPROX
   coverage_radius_degrees <- coverage_radius_miles / miles_per_degree
   
   coverage_circle_list <- list()
@@ -1832,18 +1843,21 @@ get_state_boundaries <- function(verbose = TRUE) {
 #' @return List of coverage circle data frames
 #' @noRd
 create_coverage_circles <- function(cancer_centers_data, coverage_minutes_vector, verbose = TRUE) {
-  
+
+  MILES_PER_MINUTE_AT_60_MPH <- 1.0
+  MILES_PER_DEGREE_APPROX <- 69
+
   if (verbose) {
     logger::log_info("Creating coverage circle data for travel time analysis")
     logger::log_info("Coverage times: {paste(coverage_minutes_vector, collapse = ', ')} minutes")
   }
-  
+
   # Convert minutes to approximate miles (assuming 60 mph average speed)
-  miles_per_minute <- 1.0  # 60 mph = 1 mile per minute
+  miles_per_minute <- MILES_PER_MINUTE_AT_60_MPH  # 60 mph = 1 mile per minute
   coverage_radius_miles <- coverage_minutes_vector * miles_per_minute
-  
+
   # Convert miles to degrees (approximate: 1 degree ≈ 69 miles at this latitude)
-  miles_per_degree <- 69
+  miles_per_degree <- MILES_PER_DEGREE_APPROX
   coverage_radius_degrees <- coverage_radius_miles / miles_per_degree
   
   coverage_circle_list <- list()

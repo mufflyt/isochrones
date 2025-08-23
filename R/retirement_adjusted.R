@@ -125,15 +125,21 @@ goba_df_subs$name_goba = tolower(goba_df_subs$name_goba)
 # we'll create a new column for the 'df_keep_recent' data.frame using the 'pfname' and 'plname' columns named as 'name_goba'  and we'll convert to lower case
 df_keep_recent$name_goba = tolower(glue::glue("{df_keep_recent$pfname} {df_keep_recent$plname}"))
 
+# Constants for fuzzy matching
+N_GRAM_WIDTH <- 6
+N_BANDS <- 350
+BAND_WIDTH <- 11
+JACCARD_THRESHOLD <- 0.6
+
 set.seed(1)
 join_out = zoomerjoin::jaccard_left_join(a = df_keep_recent,
                                          b = goba_df_subs,
                                          by = "name_goba",
-                                         n_gram_width = 6,      # The length of the n_grams used in calculating the Jaccard similarity
-                                         n_bands = 350,          # The number of bands used in the minihash algorithm
-                                         band_width = 11,        # The length of each band used in the minihashing algorithm (default is 8)
-                                         threshold = 0.6,        # The Jaccard similarity threshold above which two strings should be considered a match
-                                         progress = FALSE)        # print progress
+                                         n_gram_width = N_GRAM_WIDTH,      # The length of the n_grams used in calculating the Jaccard similarity
+                                         n_bands = N_BANDS,                # The number of bands used in the minihash algorithm
+                                         band_width = BAND_WIDTH,          # The length of each band used in the minihashing algorithm
+                                         threshold = JACCARD_THRESHOLD,    # The Jaccard similarity threshold above which two strings should be considered a match
+                                         progress = FALSE)                 # print progress
 
 join_out_dtbl = data.table::as.data.table(join_out)
 join_out_dtbl
