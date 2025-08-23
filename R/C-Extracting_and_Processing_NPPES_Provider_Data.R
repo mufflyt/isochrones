@@ -311,6 +311,17 @@
 # 
 
 source("R/01-setup.R")
+
+# Common OB/GYN specialties
+OB_GYN_SPECIALTIES <- c(
+  "Gynecological Oncology",
+  "Obstetrics & Gynecology"
+)
+# Uppercase variant for datasets using all caps
+OB_GYN_SPECIALTIES_UPPER <- toupper(OB_GYN_SPECIALTIES)
+
+# Taxonomy codes associated with OB/GYN specialties
+OB_GYN_TAXONOMY_CODES <- c("207V00000X", "207VX0201X")
 #
 # 1. Load Required Packages ----
 #
@@ -1688,7 +1699,7 @@ physician_data <- readr::read_csv(
 # Clean and transform the data in R
 clean_physician_data <- physician_data %>%
   select(-Ind_PAC_ID, -Ind_enrl_ID, -sec_spec_3, -sec_spec_4, -org_pac_id, -adr_ln_2, -ln_2_sprs) %>%
-  filter(!Cred %in% c("AA", "AU", "CNA", "CNM", "CNS", "CP", "CSW", "DC", "DDM", "DDS", "DPM", "MNT", "NP", "OD", "OT", "PA", "PSY", "PT", "SCW")) %>%
+  filter(!Cred %in% EXCLUDED_CREDENTIALS) %>%
   #select(-lst_nm, -frst_nm, -mid_nm, -suff, -gndr, -pri_spec, -sec_spec_1, -sec_spec_2, -sec_spec_all, -org_nm, -adr_ln_1, -cty, -st, -zip, -phn_numbr, -ind_assgn, -grp_assgn, -adrs_id) %>%
   distinct(NPI, .keep_all = TRUE)
 
@@ -1706,7 +1717,7 @@ if("physician_compare" %in% dbListTables(con)) {
 physician_compare_data <- clean_physician_data %>%
   distinct(NPI, .keep_all = TRUE) %>%
   #mutate(`Zip Code` = str_sub(`Zip Code`, 1, 5)) %>%
-  filter(pri_spec %in% c("GYNECOLOGICAL ONCOLOGY", "OBSTETRICS/GYNECOLOGY")) %>% 
+  filter(pri_spec %in% OB_GYN_SPECIALTIES_UPPER) %>%
   mutate(year = "2023") %>%
   collect()  # This executes the query and brings results into R
 
@@ -1736,7 +1747,7 @@ nppes_table %>%
 
 # Look for OBGYN records
 nppes_table %>%
-  filter(`Healthcare Provider Taxonomy Code_1` %in% c("207V00000X", "207VX0201X")) %>%
+  filter(`Healthcare Provider Taxonomy Code_1` %in% OB_GYN_TAXONOMY_CODES) %>%
   head(10) %>%
   collect() %>%
   select(NPI, `Healthcare Provider Taxonomy Code_1`, starts_with("Provider")) %>%

@@ -1,5 +1,7 @@
 #######################
 source("R/01-setup.R")
+# Non-contiguous U.S. state FIPS codes often removed from maps
+NON_CONTIGUOUS_STATE_FIPS <- c("02", "15")
 #######################
 
 # Make files for Mississippi Delta and Appalachia region
@@ -74,7 +76,7 @@ regions <- as.data.frame(regions)
 write.csv(regions, "data/fips-appalachia-delta.csv", na = "", row.names = FALSE)
 
 # Remove AK and HI for mapping
-counties <- counties %>% filter(!(STATEFP %in% c("02", "15")))
+counties <- counties %>% filter(!(STATEFP %in% NON_CONTIGUOUS_STATE_FIPS))
 
 ###########################################################################
 # Map

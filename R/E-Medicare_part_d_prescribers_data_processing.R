@@ -1,5 +1,9 @@
 #######################
 source("R/01-setup.R")
+OB_GYN_SPECIALTIES <- c(
+  "Gynecological Oncology",
+  "Obstetrics & Gynecology"
+)
 #######################
 
 # ------------------------------------------------------------------------------
@@ -268,7 +272,7 @@ for (i in 1:length(table_names)) {
     
     # Apply filters and transformations
     processed_data <- table_ref %>%
-      dplyr::filter(Prscrbr_Type %in% c("Gynecological Oncology", "Obstetrics & Gynecology") & 
+      dplyr::filter(Prscrbr_Type %in% OB_GYN_SPECIALTIES &
                       Prscrbr_Cntry == "US") %>%
       dplyr::select(PRSCRBR_NPI, Tot_Clms) %>%
       dplyr::filter(Tot_Clms < 50000) %>%

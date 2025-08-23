@@ -1,5 +1,7 @@
 #######################
 source("R/01-setup.R")
+# Physician degrees used in multiple scripts
+DOCTOR_DEGREES <- c("Medical Doctor", "Doctor of Osteopathy")
 #######################
 
 # Load required packages
@@ -47,7 +49,7 @@ specialty_string <- c(
 filtered_doctors_data <- payments_tbl %>%
   dplyr::distinct(Record_ID, .keep_all = TRUE) %>%
   # First filter for doctors
-  dplyr::filter(Covered_Recipient_Primary_Type_1 %in% c("Medical Doctor", "Doctor of Osteopathy")) %>%
+  dplyr::filter(Covered_Recipient_Primary_Type_1 %in% DOCTOR_DEGREES) %>%
   dplyr::filter(Covered_Recipient_Type == "Covered Recipient Physician") %>%
   # Filter for OB/GYN specialty in any specialty column
   dplyr::filter(Covered_Recipient_Specialty_1 %like% "%Obstetrics & Gynecology%") %>%

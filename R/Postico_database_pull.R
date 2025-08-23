@@ -1,5 +1,10 @@
 #######################
 source("R/01-setup.R")
+OB_GYN_SPECIALTIES <- c(
+  "Gynecological Oncology",
+  "Obstetrics & Gynecology"
+)
+OB_GYN_SPECIALTIES_UPPER <- toupper(OB_GYN_SPECIALTIES)
 #######################
 
 
@@ -92,7 +97,7 @@ nucc_taxonomy_201 <- dplyr::tbl(db_connection, "nucc_taxonomy_201")
 physician_compare_data <- physician_compare_table %>%
   distinct(NPI, .keep_all = TRUE) %>%
   mutate(`Zip Code` = str_sub(`Zip Code`,1 ,5)) %>%
-  filter(`Primary Specialty` %in% c("GYNECOLOGICAL ONCOLOGY", "OBSTETRICS/GYNECOLOGY")) %>%
+  filter(`Primary Specialty` %in% OB_GYN_SPECIALTIES_UPPER) %>%
   mutate(year = "2023") %>%
   dplyr::compute() %>%
   collect()
@@ -164,7 +169,7 @@ read_and_clean_tables <- function(db_connection, years) {
     
     # Perform cleaning operations
     cleaned_data <- table_data %>%
-      filter(`Primary Specialty` %in% c("OBSTETRICS/GYNECOLOGY", "GYNECOLOGICAL ONCOLOGY")) %>%
+      filter(`Primary Specialty` %in% OB_GYN_SPECIALTIES_UPPER) %>%
       mutate(`Zip Code` = str_sub(`Zip Code`, 1, 5)) %>%
       distinct(NPI, .keep_all = TRUE) %>%
       mutate(Year = as.character(year_num))
