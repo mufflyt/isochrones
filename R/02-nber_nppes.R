@@ -1,3 +1,12 @@
+# Pull all the subspecialties from the NBER NPPES data.
+
+# File Path Constants for NBER NPPES ----
+ABOG_INPUT_DIR <- "data/0-Download/output"
+NPI_OUTPUT_DIR <- "data/02.33-nber_nppes_data/output"
+
+ABOG_PROVIDER_DATA_FILE <- file.path(ABOG_INPUT_DIR, "best_abog_provider_dataframe_8_17_2025_2053.csv")
+OBGYN_TAXONOMY_OUTPUT_FILE <- file.path(NPI_OUTPUT_DIR, "obgyn_taxonomy_abog_npi_matched_8_18_2025.csv")
+UROLOGY_TAXONOMY_OUTPUT_FILE <- file.path(NPI_OUTPUT_DIR, "urology_taxonomy_abog_npi_matched_8_18_2025.csv")
 
 # Pull all the subspecialties from the NBER NPPES data.  
 #source("R/B-nber_nppes_combine_columns.R")
@@ -441,7 +450,8 @@ process_single_api_response_fixed <- function(api_results, query_physician) {
 
 # run ----
 # Better approach - preserve ABOG IDs for matching
-abog_names <- "data/0-Download/output/best_abog_provider_dataframe_8_17_2025_2053.csv"
+# abog_names <- "data/0-Download/output/best_abog_provider_dataframe_8_17_2025_2053.csv"
+abog_names <- ABOG_PROVIDER_DATA_FILE
 
 # Read the full dataset first to see what columns we have
 abog_full_data <- read_csv(abog_names, show_col_types = FALSE)
@@ -463,7 +473,7 @@ names_with_abog_ids <- abog_full_data %>%
 obgyn_taxonomy_full_abog_with_ids <- batch_npi_api_lookup(
   physician_names_input = names_with_abog_ids,
   specialty_filter = "Obstetrics & Gynecology", 
-  output_file_path = "data/02.33-nber_nppes_data/output/obgyn_taxonomy_abog_npi_matched_8_18_2025.csv",
+  output_file_path = OBGYN_TAXONOMY_OUTPUT_FILE,
   api_rate_limit_delay = 0.2,
   enable_verbose_logging = TRUE
 )
@@ -471,7 +481,7 @@ obgyn_taxonomy_full_abog_with_ids <- batch_npi_api_lookup(
 urology_taxonomy_full_abog_with_ids <- batch_npi_api_lookup(
   physician_names_input = names_with_abog_ids,
   specialty_filter = "Urology",
-  output_file_path = "data/02.33-nber_nppes_data/output/urology_taxonomy_abog_npi_matched_8_18_2025.csv",
+  output_file_path = UROLOGY_TAXONOMY_OUTPUT_FILE,
   api_rate_limit_delay = 0.2,
   enable_verbose_logging = TRUE
 )
