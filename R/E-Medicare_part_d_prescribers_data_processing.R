@@ -132,6 +132,9 @@ library(readr)
 library(stringr)
 library(assertthat)
 
+# Prescriber types included in analysis
+PRESCRIBER_TYPES <- c("Gynecological Oncology", "Obstetrics & Gynecology")
+
 # List of NPIs to check
 npi_list <- c(
   "1689603763",   # Tyler Muffly, MD
@@ -268,7 +271,7 @@ for (i in 1:length(table_names)) {
     
     # Apply filters and transformations
     processed_data <- table_ref %>%
-      dplyr::filter(Prscrbr_Type %in% c("Gynecological Oncology", "Obstetrics & Gynecology") & 
+      dplyr::filter(Prscrbr_Type %in% PRESCRIBER_TYPES &
                       Prscrbr_Cntry == "US") %>%
       dplyr::select(PRSCRBR_NPI, Tot_Clms) %>%
       dplyr::filter(Tot_Clms < 50000) %>%

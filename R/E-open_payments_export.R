@@ -7,6 +7,9 @@ library(duckdb)
 library(dplyr)
 library(dbplyr)
 
+# Physician types included in OB/GYN search
+PHYSICIAN_TYPES <- c("Medical Doctor", "Doctor of Osteopathy")
+
 # Connect to the database
 db_path <- "/Volumes/Video Projects Muffly 1/open_payments_data/open_payments_merged.duckdb"
 conn <- DBI::dbConnect(duckdb::duckdb(), dbdir = db_path)
@@ -18,7 +21,7 @@ payments_tbl <- tbl(conn, "open_payments_merged")
 obgyn_data <- payments_tbl %>%
   dplyr::filter(
     Covered_Recipient_Type == "Covered Recipient Physician",
-    Covered_Recipient_Primary_Type_1 %in% c("Medical Doctor", "Doctor of Osteopathy"),
+    Covered_Recipient_Primary_Type_1 %in% PHYSICIAN_TYPES,
     (Covered_Recipient_Specialty_1 %like% "%Obstetrics%" |
        Covered_Recipient_Specialty_1 %like% "%Gynecology%")
   ) %>%

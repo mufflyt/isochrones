@@ -5,6 +5,9 @@ source("R/01-setup.R")
 #' Process Open Payments Data Using DuckDB
 # Load global setup
 source("R/01-setup.R")
+
+# Valid payment type categories
+PAYMENT_TYPES <- c("general", "research", "ownership")
 #'
 #' This function reads Open Payments CSV files (General, Research, or Ownership payments)
 #' into a DuckDB database, normalizes the schema across years, and merges them into a
@@ -57,14 +60,14 @@ process_open_payments_data <- function(base_dir,
   # ---------------------------------------------------------------
   logger::log_debug("Validating input parameters")
   validate_open_payments_inputs(
-    base_dir, 
-    db_path, 
-    years, 
-    payment_type, 
-    output_table_name, 
+    base_dir,
+    db_path,
+    years,
+    payment_type,
+    output_table_name,
     verbose,
-    force_reimport, 
-    preserve_all_columns, 
+    force_reimport,
+    preserve_all_columns,
     max_rows
   )
   logger::log_debug("Input validation completed")
@@ -82,7 +85,7 @@ process_open_payments_data <- function(base_dir,
   # Ensure selected payment type is valid and extract its pattern
   # ---------------------------------------------------------------
   assertthat::assert_that(
-    payment_type %in% names(file_patterns),
+    payment_type %in% PAYMENT_TYPES,
     msg = "payment_type must be one of 'general', 'research', or 'ownership'"
   )
   file_pattern <- file_patterns[[payment_type]]
@@ -268,7 +271,7 @@ validate_open_payments_inputs <- function(base_dir,
   # Validate payment_type
   assertthat::assert_that(
     is.character(payment_type),
-    payment_type %in% c("general", "research", "ownership"),
+    payment_type %in% PAYMENT_TYPES,
     msg = "payment_type must be one of 'general', 'research', or 'ownership'"
   )
   
@@ -1261,7 +1264,7 @@ print(table_structure)
 #'   # Payment type validation
 #'   assertthat::assert_that(is.character(payment_type),
 #'                           msg = "payment_type must be a character string")
-#'   assertthat::assert_that(payment_type %in% c("general", "research", "ownership"),
+#'   assertthat::assert_that(payment_type %in% PAYMENT_TYPES,
 #'                           msg = "payment_type must be one of: general, research, ownership")
 #'   
 #'   # File pattern validation
@@ -2290,7 +2293,7 @@ print(table_structure)
 #'   assertthat::assert_that(is.character(base_dir))
 #'   assertthat::assert_that(is.character(db_path))
 #'   assertthat::assert_that(is.character(payment_type))
-#'   assertthat::assert_that(payment_type %in% c("general", "research", "ownership"))
+#'   assertthat::assert_that(payment_type %in% PAYMENT_TYPES)
 #'   assertthat::assert_that(is.logical(force_reimport))
 #'   assertthat::assert_that(is.logical(verbose))
 #'   
@@ -3009,7 +3012,7 @@ validate_open_payments_inputs <- function(base_dir,
   # Validate payment_type
   assertthat::assert_that(
     is.character(payment_type),
-    payment_type %in% c("general", "research", "ownership"),
+    payment_type %in% PAYMENT_TYPES,
     msg = "payment_type must be one of 'general', 'research', or 'ownership'"
   )
   
@@ -4199,7 +4202,7 @@ validate_open_payments_inputs <- function(base_dir,
     msg = "payment_type must be a character string"
   )
   assertthat::assert_that(
-    payment_type %in% c("general", "research", "ownership"),
+    payment_type %in% PAYMENT_TYPES,
     msg = "payment_type must be one of 'general', 'research', or 'ownership'"
   )
   
