@@ -163,3 +163,8 @@ tmp/
 temp/
 .temp/data/
 
+#
+# --- Track output artifacts inside data/*/output with Git (LFS handles storage) ---
+!data/*/output/
+!data/*/output/*
+!data/*/output/**/*
