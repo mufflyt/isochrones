@@ -374,17 +374,17 @@ zip_coords <- read_csv("/Users/tylermuffly/Documents/uszips.csv") %>%
   )
 
 obgyn_colorado <- obgyn_with_coords %>%
-  filter(`Provider Business Practice Location Address State Name` == "Colorado") %>%
-  filter(`Healthcare Provider Taxonomy Code_1` == "207VX0201X")
+  dplyr::filter(`Provider Business Practice Location Address State Name` == "Colorado") %>%
+  dplyr::filter(`Healthcare Provider Taxonomy Code_1` == "207VX0201X")
 
 obgyn_colorado <- obgyn_colorado %>%
-  filter(
+  dplyr::filter(
     lon >= -110, lon <= -101,  # Roughly covers Colorado
     lat >= 36.5, lat <= 42
   )
 
 colorado_map <- map_data("state") %>%
-  filter(region == "colorado")
+  dplyr::filter(region == "colorado")
 
 ggplot() +
   geom_polygon(
@@ -429,7 +429,7 @@ obgyn_colorado %>%
 # Map by Change
 # Get background ZIPs: any ZIP in zip_growth_geo
 background_zips <- zip_coords %>%
-  filter(zip %in% zip_growth_geo$zip)
+  dplyr::filter(zip %in% zip_growth_geo$zip)
 
 ggplot() +
   # Baseline ZIPs: faint background
@@ -441,7 +441,7 @@ ggplot() +
   
   # Overlay: ZIPs with change
   geom_point(
-    data = zip_growth_geo %>% filter(abs(net_change) > 0),
+    data = zip_growth_geo %>% dplyr::filter(abs(net_change) > 0),
     aes(x = lon, y = lat, color = net_change, size = abs(net_change)),
     alpha = 0.95
   ) +
@@ -478,7 +478,7 @@ ggplot() +
   
   # Overlay: ZIPs with net change
   geom_point(
-    data = zip_growth_geo %>% filter(net_change != 0),
+    data = zip_growth_geo %>% dplyr::filter(net_change != 0),
     aes(x = lon, y = lat, color = net_change, size = abs(net_change)),
     alpha = 0.95
   ) +
@@ -536,14 +536,14 @@ plot_provider_growth_map <- function(zip_growth_df, zip_coords_df, state_to_map 
   zip_change_coords <- zip_growth_df %>%
     mutate(zip = str_pad(zip, 5, pad = "0")) %>%
     left_join(zip_coords_df, by = "zip") %>%
-    filter(!is.na(lat), !is.na(lon))
+    dplyr::filter(!is.na(lat), !is.na(lon))
   
   # Determine bounding box
   if (!is.null(state_to_map)) {
     zip_change_coords <- zip_change_coords %>%
-      filter(zip %in% zip_coords_df$zip[zip_coords_df$state_name == state_to_map])
+      dplyr::filter(zip %in% zip_coords_df$zip[zip_coords_df$state_name == state_to_map])
     background_zips <- zip_coords_df %>%
-      filter(state_name == state_to_map)
+      dplyr::filter(state_name == state_to_map)
     coord_xlim <- state_bounds[[state_to_map]]$x
     coord_ylim <- state_bounds[[state_to_map]]$y
     map_title <- paste0("Net Change in OB/GYN Providers by ZIP (", state_to_map, ", 2010–2024)")
@@ -567,7 +567,7 @@ plot_provider_growth_map <- function(zip_growth_df, zip_coords_df, state_to_map 
       color = "gray90", size = 1
     ) +
     geom_point(
-      data = zip_change_coords %>% filter(net_change != 0),
+      data = zip_change_coords %>% dplyr::filter(net_change != 0),
       aes(x = lon, y = lat, color = net_change, size = abs(net_change)),
       alpha = 0.95
     ) +
@@ -622,7 +622,7 @@ zip_coords <- read_csv("/Users/tylermuffly/Documents/uszips.csv") %>%
 obgyn_with_coords <- obgyn_physicians_all_years %>%
   mutate(zip = str_sub(`Provider Business Practice Location Address Postal Code`, 1, 5)) %>%
   left_join(zip_coords, by = "zip") %>%
-  filter(!is.na(lat), !is.na(lon))
+  dplyr::filter(!is.na(lat), !is.na(lon))
 
 # 📍 Faceted Dot Map of OB/GYN Providers by Year ----
 library(ggplot2)
@@ -649,9 +649,9 @@ obgyn_with_coords <- obgyn_physicians_all_years %>%
     zip = str_sub(`Provider Business Practice Location Address Postal Code`, 1, 5),
     zip = str_pad(zip, 5, pad = "0")
   ) %>%
-  filter(str_detect(zip, "^\\d{5}$")) %>%
+  dplyr::filter(str_detect(zip, "^\\d{5}$")) %>%
   left_join(zip_coords, by = "zip") %>%
-  filter(!is.na(lat), !is.na(lon))
+  dplyr::filter(!is.na(lat), !is.na(lon))
 
 # Load map
 us_states <- map_data("state")
@@ -662,7 +662,7 @@ test_years <- c(2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020
 faceted_dot_map_subset <- ggplot() +
   geom_polygon(data = us_states, aes(x = long, y = lat, group = group),
                fill = "gray95", color = "white", size = 0.2) +
-  geom_point(data = obgyn_with_coords %>% filter(Year %in% test_years),
+  geom_point(data = obgyn_with_coords %>% dplyr::filter(Year %in% test_years),
              aes(x = lon, y = lat),
              color = "#0072B2", alpha = 0.5, size = 0.6) +
   facet_wrap(~ Year, ncol = 2) +
@@ -679,15 +679,15 @@ print(faceted_dot_map_subset)
 
 # Only GO ----
 gyn_onc_colorado <- obgyn_with_coords %>%
-  filter(`Provider Business Practice Location Address State Name` == "Colorado") %>%
-  filter(`Healthcare Provider Taxonomy Code_1` == "207VX0201X") %>%
-  filter(
+  dplyr::filter(`Provider Business Practice Location Address State Name` == "Colorado") %>%
+  dplyr::filter(`Healthcare Provider Taxonomy Code_1` == "207VX0201X") %>%
+  dplyr::filter(
     lon >= -110, lon <= -101,
     lat >= 36.5, lat <= 42
   )
 
 colorado_map <- map_data("state") %>%
-  filter(region == "colorado")
+  dplyr::filter(region == "colorado")
 
 ggplot() +
   geom_polygon(
@@ -746,8 +746,8 @@ library(leaflet)
 library(stringr)
 
 gyn_onc_colorado <- obgyn_with_coords %>%
-  filter(`Provider Business Practice Location Address State Name` == "Colorado") %>%
-  filter(`Healthcare Provider Taxonomy Code_1` == "207VX0201X") %>%
+  dplyr::filter(`Provider Business Practice Location Address State Name` == "Colorado") %>%
+  dplyr::filter(`Healthcare Provider Taxonomy Code_1` == "207VX0201X") %>%
   mutate(zip = str_sub(zip, 1, 5))
 
 zip_change_gyn_onc <- gyn_onc_colorado %>%
@@ -755,7 +755,7 @@ zip_change_gyn_onc <- gyn_onc_colorado %>%
   tidyr::pivot_wider(names_from = Year, values_from = n, values_fill = 0) %>%
   mutate(net_change = `2024` - `2010`) %>%
   left_join(zip_coords, by = "zip") %>%
-  filter(!is.na(lat), !is.na(lon))
+  dplyr::filter(!is.na(lat), !is.na(lon))
 
 library(leaflet)
 library(htmltools)

@@ -21,7 +21,7 @@ data <- data %>%
   group_by(userid) %>%
   mutate(endYear = max(Year)) %>%
   ungroup() %>%
-  filter(!is.na(startYear) & !is.na(endYear)) %>%
+  dplyr::filter(!is.na(startYear) & !is.na(endYear)) %>%
   mutate(as.character(Year))
 
 # Create a list of all years each physician practiced
@@ -31,7 +31,7 @@ all_years <- map2(data$startYear, data$endYear, seq)
 years_df <- data.frame(Year = unlist(all_years))
 
 # Filter years between 2012 and 2022
-filtered_years_df <- filter(years_df, Year > 2011 & Year < 2023)
+filtered_years_df <- dplyr::filter(years_df, Year > 2011 & Year < 2023)
 
 # Count the occurrences of each year
 year_counts <- filtered_years_df %>%

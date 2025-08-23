@@ -180,7 +180,7 @@ npi_data <- read_xlsx(
 # Summarize NPPES Deactivation Data
 nppes_summary <- npi_data %>%
   distinct(npi, .keep_all = TRUE) %>%
-  filter(!is.na(retirement_year)) %>%
+  dplyr::filter(!is.na(retirement_year)) %>%
   count(retirement_year, name = "count") %>%
   arrange(retirement_year)
 
@@ -188,7 +188,7 @@ cat("\nNPPES Deactivation of All Physicians (not just OBGYNs)- Retirement Summar
 print(kable(head(nppes_summary, 10)))
 
 # Visualization of NPPES Deactivation Data
-ggplot(npi_data %>% filter(!is.na(retirement_year)), aes(x = retirement_year)) +
+ggplot(npi_data %>% dplyr::filter(!is.na(retirement_year)), aes(x = retirement_year)) +
   geom_histogram(binwidth = 1, fill = "#1B9E77", color = "white") +
   labs(title = "NPPES Deactivation of All Physicians (not just OBGYNs)",
        x = "Retirement Year", y = "Number of Physicians") +
@@ -213,7 +213,7 @@ medicare_data <- type_convert(medicare_data) %>%
   rename(npi = PRSCRBR_NPI)
 
 medicare_summary <- medicare_data %>%
-  filter(!is.na(retirement_year)) %>%
+  dplyr::filter(!is.na(retirement_year)) %>%
   count(retirement_year, name = "count") %>%
   arrange(desc(retirement_year))
 
@@ -221,7 +221,7 @@ cat("\nMedicare Part D - Last Consecutive Year Summary:\n")
 print(kable(head(medicare_summary, 10)))
 
 # Visualization
-ggplot(medicare_data %>% filter(!is.na(retirement_year)), aes(x = retirement_year)) +
+ggplot(medicare_data %>% dplyr::filter(!is.na(retirement_year)), aes(x = retirement_year)) +
   geom_histogram(binwidth = 1, fill = "#1B9E77", color = "white") +
   labs(title = "Medicare Part D - Last Consecutive Year of Prescribing",
        x = "Year", y = "Number of Physicians") +
@@ -241,7 +241,7 @@ if (!is.null(nips_data) && "year_of_retirement" %in% names(nips_data)) {
   nips_data <- mutate(nips_data, retirement_year = as.numeric(as.character(year_of_retirement)))
   
   nips_summary <- nips_data %>%
-    filter(!is.na(retirement_year)) %>%
+    dplyr::filter(!is.na(retirement_year)) %>%
     count(retirement_year, name = "count") %>%
     arrange(desc(retirement_year))
   
@@ -249,7 +249,7 @@ if (!is.null(nips_data) && "year_of_retirement" %in% names(nips_data)) {
   print(kable(head(nips_summary, 10)))
   
   # Visualization
-  ggplot(nips_data %>% filter(!is.na(retirement_year)), aes(x = retirement_year)) +
+  ggplot(nips_data %>% dplyr::filter(!is.na(retirement_year)), aes(x = retirement_year)) +
     geom_histogram(binwidth = 1, fill = "#7570B3", color = "white") +
     labs(title = "NIPS Data - Retirement Years", x = "Year", y = "Number of Physicians") +
     theme_minimal() -> p_nips
@@ -273,7 +273,7 @@ combined_data <- bind_rows(
   if (!is.null(nppes_data)) nppes_data %>% select(npi, retirement_year) %>% mutate(source = "NPPES"),
   if (!is.null(medicare_data)) medicare_data %>% select(npi, retirement_year) %>% mutate(source = "Medicare Part D"),
   if (!is.null(nips_data)) nips_data %>% select(npi, retirement_year) %>% mutate(source = "NIPS")
-) %>% filter(!is.na(retirement_year))
+) %>% dplyr::filter(!is.na(retirement_year))
 
 # Combined plot
 ggplot(combined_data, aes(x = retirement_year, fill = source)) +

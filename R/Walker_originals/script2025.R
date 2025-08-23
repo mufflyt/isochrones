@@ -314,7 +314,7 @@ yearly_tables_urban <- map(years, function(x) {
     summarize(across(total_female:total_female_hipi,
                      .fns = ~sum(.x, na.rm = TRUE)),
               .by = "urban") %>%
-    filter(!is.na(urban))
+    dplyr::filter(!is.na(urban))
 
 })
 
@@ -353,7 +353,7 @@ urban_access_by_year <- map_dfr(years, function(x) {
     summarize(across(total_female:total_female_hipi,
                      .fns = ~sum(.x, na.rm = TRUE))) %>%
     ungroup() %>%
-    filter(!is.na(urban))
+    dplyr::filter(!is.na(urban))
 
   isos_joined
 

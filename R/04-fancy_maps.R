@@ -6635,7 +6635,7 @@ enhanced_physician_map_with_years(
 physician_by_year <- read_csv("data/B-nber_nppes_combine_columns/nber_nppes_combine_columns_final_obgyn_provider_dataset.csv")
 
 
-physician_by_year %>% filter(plname == "MUFFLY")
+physician_by_year %>% dplyr::filter(plname == "MUFFLY")
 
 # Get every physician, year combo with lat and long ----
 join_physician_data_with_sf <- function(

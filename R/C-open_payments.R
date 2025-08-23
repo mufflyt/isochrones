@@ -83,7 +83,7 @@ print(recipient_types)
 
 # Optional: Check for any OB/GYN related specialties
 obgyn_specialties <- specialties %>%
-  filter(grepl("Obstetrics|Gynecology", Covered_Recipient_Specialty_1, ignore.case = TRUE))
+  dplyr::filter(grepl("Obstetrics|Gynecology", Covered_Recipient_Specialty_1, ignore.case = TRUE))
 
 print("OB/GYN related specialties:")
 print(obgyn_specialties)

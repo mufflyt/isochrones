@@ -16,10 +16,10 @@ payments_tbl <- tbl(conn, "open_payments_merged")
 
 # Look for OB/GYN specialties with a more flexible approach
 obgyn_data <- payments_tbl %>%
-  filter(
+  dplyr::filter(
     Covered_Recipient_Type == "Covered Recipient Physician",
     Covered_Recipient_Primary_Type_1 %in% c("Medical Doctor", "Doctor of Osteopathy"),
-    (Covered_Recipient_Specialty_1 %like% "%Obstetrics%" | 
+    (Covered_Recipient_Specialty_1 %like% "%Obstetrics%" |
        Covered_Recipient_Specialty_1 %like% "%Gynecology%")
   ) %>%
   mutate(Payment_Amount_Numeric = as.numeric(Total_Amount_of_Payment_USDollars)) %>%

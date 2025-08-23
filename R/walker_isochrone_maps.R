@@ -26,7 +26,7 @@ state_borders <- tigris::states(cb = TRUE, resolution = "20m") %>% tigris::shift
 # Iterate over the years and create a map for each year
 yearly_maps <- map(years, function(yr) {
   isos1 <- isos %>%
-    filter(year == yr) %>%
+    dplyr::filter(year == yr) %>%
     shift_geometry() %>%
     group_by(range) %>%
     summarize() %>%
@@ -52,7 +52,7 @@ library(patchwork)
 
 yearly_maps_min <- map(years, function(yr) {
   isos1 <- isos %>%
-    filter(year == yr) %>%
+    dplyr::filter(year == yr) %>%
     shift_geometry() %>%
     group_by(range) %>%
     summarize() %>%
