@@ -492,3 +492,5 @@ urology_taxonomy_full_abog_with_ids <- batch_npi_api_lookup(
   enable_verbose_logging = TRUE
 )
 
+# npi function ----
+
