@@ -1,10 +1,30 @@
 # News
+
+## Unreleased
+- Placeholder for upcoming changes.
+- Add entries here as features, fixes, or improvements are made.
+
+## 2025-08-23
+- Expanded `.Rprofile` with additional options for reproducibility, 
+  geospatial analysis, and tidyverse printing.
+- Improved `.Renviron` template and guidance for secure API key storage.
+- Cleaned and streamlined `.gitattributes` rules for Git LFS.
+- Refined `.Rbuildignore` entries with better grouping and comments.
+- Enhanced `NEWS.md` structure with an "Unreleased" section for 
+  easier future contributions.
+
 ## 2025-06-28
-Refined file names for consistency, added a `CITATION.MD` file, and improved code style across functions and tests.
+- Standardized file names for consistency.
+- Added `CITATION.md` to document citation guidance.
+- Improved code style throughout functions and test files.
 
 ## 2025-06-27
-The project now standardizes address data with the `postmastr` package, greatly improving downstream geocoding. Roxygen documentation has been expanded across helper files and additional comments in `01-setup.R` explain the purpose of each library.
+- Integrated the **postmastr** package for address standardization, 
+  improving downstream geocoding accuracy.
+- Expanded **Roxygen2** documentation across helper functions.
+- Enhanced `01-setup.R` with clearer comments on library usage.
 
 ## 2025-06-20
-A new `CITATION.cff` file was added along with ASCII art that prints at startup. Several helper scripts were reorganized for clarity and future maintainability.
-
+- Added `CITATION.cff` for citation metadata (GitHub/Zenodo integration).
+- Introduced ASCII art displayed at package startup.
+- Reorganized helper scripts for greater clarity and maintainability.

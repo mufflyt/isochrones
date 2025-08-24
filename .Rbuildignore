@@ -1,9 +1,40 @@
+# --- RStudio project junk
 ^.*\.Rproj$
 ^\.Rproj\.user$
+
+# --- Local caches & OS cruft
 ^\.cache$
-^manuscript$
+^\.DS_Store$
+
+# --- CI / GitHub / tooling
+^\.github$
+^\.vscode$
+^\.idea$
+^codecov\.yml$
+^_pkgdown\.yml$
+^pkgdown$
+^revdep$
+
+# --- Sites, docs not meant for the tarball
 ^docs$
-^R/GO_access_analysis_code\.html$
+^manuscript$
+
+# --- Vignettes: include sources, exclude built artifacts
+^vignettes/.*\.html$
+^vignettes/.*\.R$
+
+# --- README sources (cover both cases)
+^README\.Rmd$
+^README\.rmd$
+
+# --- Dev notes / scratch
+^database_optimization_notes\.md$
+^healthcare_benchmark_references\.md$
+^NEWBIE_MISTAKES\.md$
+^incremental_push\.sh$
+^@deprecated$
+
+# --- One-off scripts not shipped with the package
 ^Medicare_part_D_idontknow\.R$
 ^Medicare_part_d_prescribers_data_processing\.R$
 ^NPPES_deactivated_download\.R$
@@ -11,10 +42,11 @@
 ^openpayments\.R$
 ^mosaic_better\.R$
 ^Untitled\.Rmd$
-^README\.rmd$
-^database_optimization_notes\.md$
-^healthcare_benchmark_references\.md$
-^NEWBIE_MISTAKES\.md$
-^incremental_push\.sh$
-^data$
-^@deprecated$
+
+# --- Stray file that shouldn't live in R/ (move to inst/ or tools/)
+^R/GO_access_analysis_code\.html$
+
+# --- BIG ⚠️: this excludes ALL of data/ from the tarball
+#     Keep ONLY if you do NOT intend to ship any datasets.
+#     If you have data/ you want users to access via data(), remove this.
+# ^data$
