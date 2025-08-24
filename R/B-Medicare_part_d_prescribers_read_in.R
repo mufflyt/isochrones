@@ -144,6 +144,36 @@ npi_list <- c(
   "1487879987"    # Peter Jeppson
 )
 
+npi_dataframe <- tibble::tibble(
+  Provider_Name = c(
+    "Taylor Pitt, MD",
+    "Erin Franks, MD",
+    "Alicia Lovegrove, MD",
+    "Tim Billharz, MD",
+    "Christina Faulkner, MD",
+    "Chad McCormick, MD",
+    "Roger P Smith, MD",
+    "Mark Schnee, DO",
+    "Marc Parrish, DO",
+    "Catherine Bradley, MD",
+    "Shannon Wallace, MD"
+  ),
+  NPI_Number = c(
+    "1598262289",
+    "1699237040",
+    "1932218641",
+    "1255368759",
+    "1053349175",
+    "1215377312",
+    "1023045671",
+    "1437153020",
+    "1033146196",
+    "1225022486",
+    "1205102092"
+  )
+)
+
+
 # Logger configuration
 logger::log_threshold(logger::INFO)
 logger::log_layout(logger::layout_glue_generator(

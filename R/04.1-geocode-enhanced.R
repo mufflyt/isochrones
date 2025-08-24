@@ -16,6 +16,10 @@
 # Last Updated: 2025-08-23
 
 # Setup ----
+# Remove EVERYTHING (incl. hidden) from the Global Environment
+base::rm(list = base::ls(envir = .GlobalEnv, all.names = TRUE),
+         envir = .GlobalEnv)
+gc()
 source("R/01-setup.R")
 
 library(dplyr)
@@ -184,20 +188,8 @@ normalize_address <- function(address_vector, use_postmastr = TRUE) {
           ),
           TRUE ~ ""
         ),
-        norm_direction = case_when(
-          !is.na(pm.streetDir) ~ case_when(
-            tolower(pm.streetDir) %in% c("north", "n") ~ "n",
-            tolower(pm.streetDir) %in% c("south", "s") ~ "s",
-            tolower(pm.streetDir) %in% c("east", "e") ~ "e", 
-            tolower(pm.streetDir) %in% c("west", "w") ~ "w",
-            tolower(pm.streetDir) %in% c("northeast", "ne") ~ "ne",
-            tolower(pm.streetDir) %in% c("northwest", "nw") ~ "nw",
-            tolower(pm.streetDir) %in% c("southeast", "se") ~ "se",
-            tolower(pm.streetDir) %in% c("southwest", "sw") ~ "sw",
-            TRUE ~ tolower(pm.streetDir)
-          ),
-          TRUE ~ ""
-        ),
+        norm_direction = if_else(!is.na(pm.streetDir) & pm.streetDir != "", 
+                                tolower(trimws(pm.streetDir)), ""),
         # Reconstruct normalized address
         normalized_address = paste(
           norm_house,
@@ -645,6 +637,8 @@ cat("🚀 OPTIMAL: Use similarity_threshold = 0.75 for maximum savings\n")
 
 # run ----
 # 1. Save intermediate duplicate detection results
+abog_data <- readr::read_csv("data/02.33-nber_nppes_data/output/abog_npi_matched_8_18_2025.csv")
+
 abog_deduplicated <- identify_duplicate_addresses(
   abog_data,
   address_col = "practice_address_combined",
